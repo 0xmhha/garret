@@ -15,7 +15,7 @@ attachments (logs, proofs of concept), account credentials.
 | Threat | Example |
 |---|---|
 | Access from outside the local network | A port forward, a misconfigured router, a host with a public address |
-| An uninvited device on the same network | Someone else on a shared office or conference Wi-Fi |
+| An uninvited device on the same network | Someone else on a shared office Wi-Fi, including colleagues who are not part of the fix |
 | Passive eavesdropping on the network | A person who knows the Wi-Fi password capturing traffic |
 | A member's stolen token or session | A token pasted into a log, a laptop left unlocked |
 | Malicious content from a member | Script injection in comments, crafted file names, oversized uploads |
@@ -49,22 +49,82 @@ The filter uses the TCP peer address only. `X-Forwarded-For`, `Forwarded` and
 similar headers are ignored. A rejected connection is closed without a
 response body and logged with its address.
 
-## Transport security
+## Transport security and device certificates
 
-- On first start garret creates an ECDSA P-256 key and a self-signed
-  certificate covering the listen address and the host name, valid for
-  7 days. Key files are written with mode `0600`. How the certificate is
-  renewed before it expires, and how members keep trusting it across
-  renewals, is an open decision.
-- The SHA-256 fingerprint is printed at every start and shown in the web UI.
-  Members compare it once, then trust the certificate in the browser and pass
-  it to Git with `http.sslCAInfo`.
-- `--tls-cert` and `--tls-key` load an existing certificate instead.
-- Plain HTTP is available only with `--insecure-http`, which prints a warning
-  at every start.
-- TLS 1.2 is the minimum version. Responses carry
-  `Strict-Transport-Security` only when a user-supplied certificate is used,
-  so a regenerated self-signed certificate cannot lock members out.
+garret runs a small private certificate authority. It authenticates the
+server to members, and members' devices to the server (mutual TLS). A device
+on the same access point without a valid client certificate cannot complete a
+TLS handshake, so it learns nothing beyond the fact that a port is open.
+
+### Certificate authority
+
+- On first start garret creates an ECDSA P-256 CA key and a CA certificate.
+  The CA carries X.509 name constraints that limit it to the server's
+  addresses and host name, so a leaked CA key cannot impersonate other sites.
+- The CA key never leaves the data directory and is written with mode `0600`.
+  Project purge does not remove it; resetting the server does.
+- The CA's SHA-256 fingerprint is printed at every start and embedded in every
+  invitation link, so new members verify the CA without comparing it by eye.
+
+### Server certificate
+
+- The server certificate is issued by the CA, valid for 7 days, and covers
+  the listen addresses and the host name.
+- garret issues a new one before the current one expires and swaps it in
+  without a restart (`tls.Config.GetCertificate`). Members trust the CA, so
+  rotation needs no action from them.
+
+### Client certificates
+
+Client certificates are required by default. Each certificate identifies one
+device of one user and is valid for 7 days.
+
+| Case | How a device gets a certificate |
+|---|---|
+| New member | `garret enroll <invitation link>` generates a key on the device, verifies the CA fingerprint from the link, sends a certificate signing request with the invitation token over the enrollment listener, and receives a certificate. The private key never leaves the device |
+| Existing member | `garret renew` connects with the current, still valid certificate and requests a new one for the same key or a new key. A device without a valid certificate cannot renew |
+| Expired certificate | The device must be enrolled again with a new invitation |
+| First administrator | `garret admin setup` runs on the host, reads the data directory directly, and issues the administrator's certificate locally |
+
+- `garret enroll` installs the certificate into the macOS login keychain (or
+  a file on Linux), configures Git (`http.sslCert`, `http.sslKey`,
+  `http.sslCAInfo`) for the server's URL, and registers a background renewal
+  job (launchd on macOS, a systemd user timer on Linux). The job renews when
+  less than half of the validity remains.
+- Disabling a user revokes all of the user's client certificates at once. The
+  server checks every handshake against its own revocation list in the
+  database.
+- The client certificate is bound to the user account. After the handshake
+  the user still logs in (browser) or presents a personal access token (Git).
+  A request whose session or token belongs to a different user than the
+  certificate is rejected.
+
+### Enrollment listener
+
+A device that is not enrolled has no client certificate, so enrollment uses a
+separate listener. It accepts TLS without client certificates and serves only
+the enrollment endpoint. It is open only while at least one unused,
+unexpired invitation exists, and closes when the last one is used, revoked or
+expired.
+
+### Turning client certificates off
+
+`--client-cert=off` disables mutual TLS for teams on an access point they
+fully control. Login and tokens still apply. garret prints a warning at every
+start while client certificates are off.
+
+### Other transport settings
+
+- `--tls-cert` and `--tls-key` load an externally issued server certificate.
+  Client certificates are still issued by garret's CA.
+- Plain HTTP is available only with `--insecure-http`. It implies
+  `--client-cert=off` and prints a warning at every start.
+- TLS 1.3 is the minimum version. Every client the project supports (current
+  Git, Chrome and Safari) speaks it.
+- Supported browsers are the latest Chrome and Safari, which read client
+  certificates from the system keychain. Firefox keeps its own certificate
+  store, which the renewal job cannot update, so it is not supported while
+  client certificates are on.
 
 ## Authentication
 
@@ -79,7 +139,8 @@ response body and logged with its address.
 - Tokens and session identifiers are 256 bits from `crypto/rand`.
 - Credentials are compared in constant time.
 - Login and token checks are rate-limited per source address and per username.
-- Disabling a user revokes their sessions and tokens immediately.
+- Disabling a user revokes their sessions, tokens and client certificates
+  immediately.
 - Secrets never appear in logs, error messages or audit events.
 
 ## Authorization

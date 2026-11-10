@@ -91,8 +91,10 @@ not what works today.
 - Review states and verdicts recorded with who decided and when
 - Discussion posts and review descriptions edited by several people at once
 - Live updates, an in-app inbox with mentions, and file attachments
-- Invitation-only accounts and personal access tokens for Git
-- Access restricted to clients on the local subnet, HTTPS by default
+- Invitation-only accounts, device certificates (mutual TLS) and personal
+  access tokens for Git
+- Access restricted to the local subnet and to enrolled devices, with
+  automatically rotated 7-day certificates
 - Edit history for everything, and a purge command for when the work is public
 - A web frontend and an embedded database in the same binary
 
@@ -110,12 +112,15 @@ Build and installation instructions will be added with the first working
 version. The intended workflow looks like this:
 
 ```sh
-# On the host machine: prints the allowed network and the certificate fingerprint
+# On the host machine: prints the allowed network and the CA fingerprint
 garret serve
 
-# On a developer machine on the same network
+# On a developer machine on the same network, once per device
+garret enroll '<invitation link>'
+
+# Then use Git as usual
 git remote add review https://<host-ip>:8443/git/<project>.git
-git -c http.sslCAInfo=garret.pem push review fix/my-branch
+git push review fix/my-branch
 
 # Then open https://<host-ip>:8443 in a browser
 ```

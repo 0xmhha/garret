@@ -127,12 +127,32 @@ The web UI uses React, TypeScript and Vite. The build output is embedded with
   templates with htmx (collaborative editing and rich diffs need a client
   application anyway).
 
-## D11. HTTPS by default
+## D11. HTTPS by default, device certificates on by default
 
-On first start garret generates a self-signed certificate and prints its
-SHA-256 fingerprint. Members compare the fingerprint once and trust the
-certificate in the browser and in Git. `--tls-cert` and `--tls-key` use an
-existing certificate. Plain HTTP requires an explicit `--insecure-http`.
+garret runs a private certificate authority. The server certificate is valid
+for 7 days and rotates automatically; members trust the CA once, through the
+fingerprint embedded in their invitation link. Every device also needs a
+client certificate (mutual TLS), valid for 7 days:
+
+- a device gets its first certificate only through an invitation link;
+- a device renews only by presenting its current, valid certificate;
+- a background job on the device renews automatically.
+
+`--client-cert=off` disables mutual TLS for access points the team fully
+controls, with a warning at every start. Supported browsers are the latest
+Chrome and Safari. Plain HTTP requires an explicit `--insecure-http`. Details
+are in [security.md](security.md#transport-security-and-device-certificates).
+
+- **Why**: the main deployment is a shared office access point where people
+  outside the fix are connected. With login alone they could still reach the
+  login page and learn that a private review server exists. With mutual TLS
+  their handshake fails. Short-lived certificates limit the damage of a
+  leaked key, and the CA keeps rotation invisible to members.
+- **Rejected**: server certificate and login only (exposes the login surface
+  on shared access points); mutual TLS that cannot be turned off (forces the
+  enrollment cost on teams with a private access point); a self-signed server
+  certificate re-trusted every 7 days (every member reconfigures weekly);
+  mutual TLS for Git only (the web UI shows the same code and comments).
 
 Data at rest is not encrypted by garret in the first release. Files are
 created with owner-only permissions, garret warns at startup when disk
@@ -143,8 +163,7 @@ feature.
   members' traffic. Repository files must stay readable by `git`, so
   application-level encryption of only the database would protect half the
   data.
-- **Rejected**: user-supplied certificates only (setup friction);
-  HTTP only.
+  HTTP only was rejected for the same reason.
 
 ## D12. Definition of done
 

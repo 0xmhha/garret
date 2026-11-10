@@ -22,6 +22,7 @@ relate to Git, and the retention rules.
 ```
 users ─┬─ sessions
        ├─ access_tokens
+       ├─ client_certificates
        └─ invitations (created_by)
 
 projects ─┬─ reviews ─┬─ revisions ── revision_commits
@@ -49,6 +50,7 @@ erasures      (what was permanently erased, by whom, when)
 | `users` | `id`, `username` (unique), `display_name`, `password_hash`, `role` (`admin`, `member`), `disabled_at` | Passwords use Argon2id with per-user salt |
 | `invitations` | `id`, `token_hash`, `created_by`, `role`, `expires_at`, `used_at`, `used_by` | Single use. Only the SHA-256 of the token is stored |
 | `sessions` | `id_hash`, `user_id`, `created_at`, `expires_at`, `last_seen_at` | Browser sessions. Only the hash of the cookie value is stored |
+| `client_certificates` | `serial`, `user_id`, `device_name`, `public_key_sha256`, `not_before`, `not_after`, `issued_via` (`invitation`, `renewal`, `setup`), `revoked_at` | One row per issued certificate. Checked on every handshake |
 | `access_tokens` | `id`, `user_id`, `name`, `token_hash`, `created_at`, `last_used_at`, `revoked_at` | Used for Git over HTTP |
 
 ### Projects and reviews

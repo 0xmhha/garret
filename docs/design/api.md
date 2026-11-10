@@ -25,9 +25,6 @@ stated otherwise.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/auth/setup` | Create the first administrator with the one-time setup token |
-| `GET` | `/auth/invitations/{token}` | Check that an invitation is valid |
-| `POST` | `/auth/invitations/{token}/accept` | Create an account from an invitation |
 | `POST` | `/auth/login` | Start a session |
 | `POST` | `/auth/logout` | End the session |
 | `GET` | `/me` | Current user |
@@ -138,5 +135,14 @@ git remote add review https://<host>:<port>/git/<project>.git
 git -c http.sslCAInfo=garret.pem push review fix/my-branch
 ```
 
-The certificate file is downloadable from the web UI after its fingerprint
-has been compared with the one printed by the server.
+`garret enroll` configures the client certificate and the CA for the server's
+URL, so the `-c` option above is only needed on a machine configured by hand.
+
+## Enrollment and renewal
+
+| Listener | Method | Path | Purpose |
+|---|---|---|---|
+| Enrollment | `POST` | `/enroll` | Invitation token, CSR, username and password in; client certificate and CA certificate out |
+| Main | `POST` | `/api/v1/me/certificates/renew` | CSR in; new client certificate out. Requires the current valid client certificate |
+| Main | `GET` | `/api/v1/me/certificates` | The user's device certificates |
+| Main | `DELETE` | `/api/v1/me/certificates/{serial}` | Revoke one of the user's device certificates |

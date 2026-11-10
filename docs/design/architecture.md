@@ -40,7 +40,8 @@ The layout follows the Go convention of hiding implementation under
 | `cmd/garret` | Command-line entry point: `serve`, `admin`, `export`, `purge` |
 | `internal/config` | Flag and file configuration, validated at startup |
 | `internal/netguard` | Allowed-network detection and the connection filter |
-| `internal/tlscert` | Self-signed certificate generation, loading and fingerprints |
+| `internal/pki` | Private CA, server certificate rotation, client certificate issuance, renewal and revocation |
+| `internal/enroll` | Client side of `garret enroll` and `garret renew`: key generation, keychain and Git setup, renewal job |
 | `internal/auth` | Users, invitations, password hashing, sessions, access tokens |
 | `internal/gitserver` | Smart HTTP endpoint and push authorization |
 | `internal/gitrepo` | Read operations on bare repositories (log, diff, merge-base) |
@@ -64,8 +65,9 @@ through constructors. There is no package-level mutable state.
 2. Resolve the allowed network (see [security.md](security.md#network-boundary)).
    Stop if it is ambiguous or public.
 3. Open the data directory, check permissions, open SQLite and run migrations.
-4. Load or create the TLS certificate. Print the listen address, the allowed
-   network and the certificate fingerprint.
+4. Load or create the CA, then load or issue the server certificate and start
+   its rotation timer. Print the listen address, the allowed network and the
+   CA fingerprint. Open the enrollment listener if unused invitations exist.
 5. If no administrator exists, print a one-time setup link for the first
    administrator.
 6. Warn if disk encryption appears to be disabled.
