@@ -120,7 +120,7 @@ git -c http.sslCAInfo=garret.pem push review fix/my-branch
 # Then open https://<host-ip>:8443 in a browser
 ```
 
-Requirements (planned): macOS or Linux, Git on the host machine, and Go 1.25
+Requirements (planned): macOS or Linux, Git on the host machine, and Go 1.26.8
 or newer to build from source.
 
 ## Security model

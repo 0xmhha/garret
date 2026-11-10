@@ -21,6 +21,9 @@ erased when the work is done.
 | [security.md](security.md) | Threat model, network boundary, authentication, TLS and data handling |
 | [testing.md](testing.md) | Definition of done for the first release and how it is verified |
 
+How code is written against this design is described in
+[../development-process.md](../development-process.md).
+
 ## Status
 
 These documents describe the first release. Items marked **proposed default**

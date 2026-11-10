@@ -53,7 +53,9 @@ response body and logged with its address.
 
 - On first start garret creates an ECDSA P-256 key and a self-signed
   certificate covering the listen address and the host name, valid for
-  **proposed default** 825 days. Key files are written with mode `0600`.
+  7 days. Key files are written with mode `0600`. How the certificate is
+  renewed before it expires, and how members keep trusting it across
+  renewals, is an open decision.
 - The SHA-256 fingerprint is printed at every start and shown in the web UI.
   Members compare it once, then trust the certificate in the browser and pass
   it to Git with `http.sslCAInfo`.
