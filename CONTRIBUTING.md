@@ -22,9 +22,14 @@ By participating, you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 garret is in early development, and the toolchain may change. The current
 expectations are:
 
-- Go 1.22 or newer
+- macOS or Linux
+- Go 1.25 or newer
 - Git
 - Node.js (LTS) for the web frontend, once it exists
+
+Read the [design documents](docs/design/README.md) before working on a
+feature. Changes that contradict [decisions.md](docs/design/decisions.md)
+should start with an issue that proposes updating the decision.
 
 ```sh
 git clone https://github.com/0xmhha/garret.git

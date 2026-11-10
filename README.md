@@ -83,14 +83,20 @@ short-lived, private room for work that is not ready to be seen.
 garret is in early development. The items below describe the intended scope,
 not what works today.
 
-- Git repository hosting over HTTP, so members can `git push` and `git fetch`
-- Branch-based review: compare a branch against its target and review the diff
-- Revision tracking: each push to a review becomes a new, comparable revision
-- Inline comments, threaded replies and general discussion on a review
+- Git repository hosting over HTTPS, so members can `git push` and `git fetch`
+- Branch-based review, read commit by commit or as a whole
+- Revision tracking: each push becomes a new, comparable revision, kept even
+  after force pushes
+- Inline comments with threads, carried over to new revisions
 - Review states and verdicts recorded with who decided and when
-- Persistent history stored in an embedded database
-- Access restricted to clients on the local subnet
-- A web frontend served by the same binary
+- Discussion posts and review descriptions edited by several people at once
+- Live updates, an in-app inbox with mentions, and file attachments
+- Invitation-only accounts and personal access tokens for Git
+- Access restricted to clients on the local subnet, HTTPS by default
+- Edit history for everything, and a purge command for when the work is public
+- A web frontend and an embedded database in the same binary
+
+See [docs/design](docs/design/README.md) for the full design.
 
 ## Project status
 
@@ -104,18 +110,18 @@ Build and installation instructions will be added with the first working
 version. The intended workflow looks like this:
 
 ```sh
-# On the host machine
-garret serve --listen 0.0.0.0:8080
+# On the host machine: prints the allowed network and the certificate fingerprint
+garret serve
 
 # On a developer machine on the same network
-git remote add review http://<host-ip>:8080/<repo>.git
-git push review fix/my-branch
+git remote add review https://<host-ip>:8443/git/<project>.git
+git -c http.sslCAInfo=garret.pem push review fix/my-branch
 
-# Then open http://<host-ip>:8080 in a browser
+# Then open https://<host-ip>:8443 in a browser
 ```
 
-Requirements (planned): Go 1.22 or newer to build from source, and Git on the
-host machine.
+Requirements (planned): macOS or Linux, Git on the host machine, and Go 1.25
+or newer to build from source.
 
 ## Security model
 
@@ -130,12 +136,12 @@ protections are scoped to that setting:
   members. Use a network you control, and remove the data when the work is
   released.
 
-The detailed authentication and encryption design is still being decided and
-will be documented here.
+The full threat model, authentication and encryption design are described in
+[docs/design/security.md](docs/design/security.md).
 
 ## Roadmap
 
-- [ ] Architecture and data model
+- [x] Architecture and data model ([docs/design](docs/design/README.md))
 - [ ] Git over HTTP (push and fetch)
 - [ ] Subnet-based access control
 - [ ] Review creation from a pushed branch
