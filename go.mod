@@ -8,6 +8,7 @@ tool (
 )
 
 require (
+	github.com/oklog/ulid/v2 v2.1.2
 	github.com/pressly/goose/v3 v3.29.0
 	modernc.org/sqlite v1.61.1
 )
