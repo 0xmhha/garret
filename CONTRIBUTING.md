@@ -23,7 +23,7 @@ garret is in early development, and the toolchain may change. The current
 expectations are:
 
 - macOS or Linux
-- Go 1.26.8 or newer
+- Go 1.26.11 or newer
 - Git
 - Node.js (LTS) for the web frontend, once it exists
 

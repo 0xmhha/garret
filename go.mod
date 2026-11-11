@@ -1,6 +1,6 @@
 module github.com/0xmhha/garret
 
-go 1.26.8
+go 1.26.11
 
 tool (
 	github.com/sqlc-dev/sqlc/cmd/sqlc
