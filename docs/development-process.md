@@ -99,7 +99,29 @@ introduces a pattern or a data structure states why it fits, what it costs,
 and which alternative was rejected. Performance claims are backed by
 benchmarks (`go test -bench`).
 
-## 7. Definition of done for a change
+## 7. Choosing a library
+
+A library is never chosen for a single reason such as "it is already in the
+module graph" or "it is the most popular". Candidates, including writing the
+code ourselves, are compared on these criteria in this order:
+
+1. **Correctness and standards.** Does it do the job correctly, and does it
+   follow the relevant standard?
+2. **Fit with project rules.** Can time, randomness and I/O be injected? Are
+   results deterministic? Does it avoid package-level mutable state?
+3. **Maintenance and supply chain.** Who maintains it (an organization or one
+   person), how recent is the latest release, and what does it pull into the
+   build? A runtime-path module without a release in over a year needs a
+   stated reason.
+4. **Features.** Does it cover what the spec needs without large unused parts?
+5. **Performance.** Measured with a benchmark when it matters.
+6. **Footprint.** How many modules it adds to `go list -deps`.
+
+A new dependency is worth adding when it is clearly better on the higher
+criteria. Footprint alone does not decide. The spec records the comparison
+table, the choice and the rejected candidates.
+
+## 8. Definition of done for a change
 
 - The spec and the design documents match the code.
 - All tests pass with `-race`, and the linters pass.

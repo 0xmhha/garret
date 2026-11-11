@@ -6,8 +6,8 @@ relate to Git, and the retention rules.
 
 ## Conventions
 
-- Primary keys are UUIDv7 values stored as text, so they sort by creation
-  time and reveal nothing about row counts.
+- Primary keys are ULIDs stored as text, so they sort by creation time and
+  reveal nothing about row counts.
 - Times are stored as Unix milliseconds (UTC) and produced by an injected
   clock.
 - Column-level definitions, the ERD, the data lifecycle and the concurrency
