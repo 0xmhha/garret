@@ -47,5 +47,14 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# --- Local tooling ---
+# --- AI assistant local files (never commit) ---
 .claude/
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+.mcp.json
+AGENTS.md
+**/AGENTS.md
+.codex/
+.Codex/
