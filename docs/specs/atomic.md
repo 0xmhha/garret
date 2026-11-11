@@ -68,6 +68,7 @@ func (g *Generator) New() (string, error)
 | Two calls in the same millisecond | Second ID sorts after the first |
 | Clock moves backwards by 1 s | ID still sorts after the previous one |
 | Clock moves forward | ID carries the new timestamp |
+| Clock before the Unix epoch | ID timestamp 0 (the library would otherwise wrap around) |
 | Entropy reader fails | Error, and the next call with working entropy still succeeds |
 | Monotonic overflow (entropy all `0xff`, two calls in one ms) | Error on the second call |
 | 1,000 calls from 8 goroutines | 1,000 distinct IDs, run with `-race` |
