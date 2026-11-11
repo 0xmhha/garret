@@ -144,9 +144,10 @@ every feature garret uses (`uploadpack.hideRefs`, `-z` output, `merge-base`).
 Every command:
 
 - runs without a shell, arguments as a list, with `--` before any path;
-- gets an environment of only `PATH`, `HOME` (set to the data directory),
-  `LANG=C`, `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null`,
-  `GIT_TERMINAL_PROMPT=0`;
+- gets an environment of only `PATH` (the directory of `gitPath` followed by
+  `/usr/bin:/bin:/usr/sbin:/sbin`, not the server's own `PATH`), `HOME` (set
+  to the data directory), `LANG=C`, `LC_ALL=C`, `GIT_CONFIG_NOSYSTEM=1`,
+  `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_TERMINAL_PROMPT=0`;
 - acquires the semaphore with the caller's context, then runs under
   `context.WithTimeout(ctx, timeout)`;
 - caps captured output (64 MiB, Q4) and returns `ErrTooLarge`
@@ -170,6 +171,9 @@ Every command:
 
 Commit names passed in are checked to be 40 or 64 lowercase hex characters
 before use; refs with `ValidBranchRef` or the `refs/garret/` prefix.
+`UpdateRef` writes only under `refs/garret/`. The version check at
+construction always uses the default timeout and output cap, so options meant
+for commands cannot make it fail.
 
 Tests run against a real `git` in a temporary directory and are skipped
 when `git` is missing. Cases: each operation on a fresh repository; a
