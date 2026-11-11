@@ -201,14 +201,18 @@ certificate is reissued. Client certificates carry no SANs, so the name
 constraints do not apply to them; the device is identified by its serial,
 which the server looks up in `client_certificates`.
 
-Errors: empty host, host that is not a valid DNS name, no networks, a
-network that fails `IsPrivate`, an empty user ID, or a nil serial.
+Errors (`ErrNames`): empty host, host that is not a valid DNS name (labels
+of letters, digits and inner hyphens, 1–63 bytes each, 253 bytes in total),
+no networks, a network that fails `IsPrivate`, a listen address outside the
+networks (the CA's name constraints would reject it), an empty user ID, or a
+nil serial.
 
 | Case | Expected |
 |---|---|
 | Valid names | Fields as in the table |
 | `NotBefore` and `NotAfter` | Exactly `now − 5 min` and the stated end |
 | Public network in `Names` | Error |
+| Listen address outside the networks | Error |
 | Host `bad host` or empty | Error |
 | A server certificate signed by the CA verifies for `<host>` and each address | Verifies |
 | A certificate for `evil.example` signed by the same CA key | Verification fails on the name constraint |
@@ -216,7 +220,8 @@ network that fails `IsPrivate`, an empty user ID, or a nil serial.
 ### 5.4 `Sign(template, parent *x509.Certificate, pub crypto.PublicKey, signer crypto.Signer, rand io.Reader) (*x509.Certificate, error)`
 
 Calls `x509.CreateCertificate` and parses the result. Rejects a public key
-that is not ECDSA P-256 with `ErrKeyType`.
+that is not ECDSA P-256 with `ErrKeyType`. For the self-signed CA, `parent`
+is the template itself.
 
 ### 5.5 `CheckCSR(der []byte) (*x509.CertificateRequest, error)`
 
