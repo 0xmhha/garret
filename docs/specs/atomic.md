@@ -360,9 +360,11 @@ Parses `git diff --raw -z -M <from> <to>`:
 `:<old mode> <new mode> <old sha> <new sha> <status>\0<path>\0[<new path>\0]`.
 
 `FileChange` is `{Status Status; OldPath, NewPath string; OldMode, NewMode
-string; Similarity int}` with `Status` one of added, modified, deleted,
+string; OldSHA, NewSHA string; Similarity int}` with `Status` one of added, modified, deleted,
 renamed, type-changed. Copy (`C`) does not occur without `-C` and is
 rejected; unknown statuses return `ErrRawFormat` with the byte offset.
+Modes are six octal digits and object names 4–64 lowercase hex characters,
+so abbreviated and full SHA-1 or SHA-256 names are accepted.
 
 | Case | Expected |
 |---|---|
@@ -387,7 +389,10 @@ Parses the patch of one file from `git diff --no-color --no-ext-diff
 -U<n> <from> <to> -- <path>`. The caller asks for one file at a time, which
 matches the diff cache key `(from_sha, to_sha, path)` in
 [data.md section 7.3](data.md#73-bounded-external-work). Header lines before
-the first `@@` are skipped, so path quoting in headers never matters.
+the first `@@` are skipped, so path quoting in headers never matters. For
+a renamed file the caller passes both the old and the new path as the
+pathspec; with only the new path, `-M` cannot see the source and Git shows
+the file as added (checked with git 2.50.1).
 
 ```go
 type Hunk struct {
@@ -410,6 +415,10 @@ Rules:
   context and added lines the new count. A mismatch is `ErrPatchFormat`.
 - `\ No newline at end of file` marks the previous line.
 - Hunks must not overlap and must be in increasing order.
+- A start of 0 is allowed only on a side with no lines. An empty line inside
+  a hunk, or any line after the last hunk other than `\ No newline at end of
+  file`, is `ErrPatchFormat`. A missing newline at the very end of the patch
+  is accepted.
 - `Limits{MaxBytes, MaxLines}` (2 MiB and 20,000 lines,
   Q5): over either limit returns `ErrTooLarge`, so the API reports the file
   as too large instead of sending it.
