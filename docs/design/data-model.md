@@ -6,9 +6,12 @@ relate to Git, and the retention rules.
 
 ## Conventions
 
-- Primary keys are random 128-bit identifiers encoded as text (ULIDs), so
-  they sort by creation time and reveal nothing about row counts.
-- Times are stored as UTC RFC 3339 strings and produced by an injected clock.
+- Primary keys are UUIDv7 values stored as text, so they sort by creation
+  time and reveal nothing about row counts.
+- Times are stored as Unix milliseconds (UTC) and produced by an injected
+  clock.
+- Column-level definitions, the ERD, the data lifecycle and the concurrency
+  model are in [../specs/data.md](../specs/data.md).
 - Every table that holds user content has a `project_id`, so a project purge
   can find all of its rows.
 - Foreign keys are enforced (`PRAGMA foreign_keys = ON`).
