@@ -459,16 +459,19 @@ Logic: walk the blocks in order with `shift = 0`.
 
 1. If the range ends before the block (`end < OldStart`, or for a pure
    insertion `end ≤ OldStart`), stop.
-2. If the range starts after the block's last old line, add
-   `NewLines − OldLines` to `shift` and continue.
-3. Otherwise the range touches changed lines: return
-   `Position{FileLevel: true}`.
+2. If the range starts after the block's last old line (for a pure
+   insertion, `start > OldStart`), add `NewLines − OldLines` to `shift` and
+   continue.
+3. Otherwise the range touches changed lines, or an insertion splits it:
+   return `Position{FileLevel: true}`.
 
 After the walk, return `Position{Start: start + shift, End: end + shift}`.
 The caller ports file-level comments (no lines) without calling `Port`, and
 decides which diff to use (old head to new head for new-side comments).
 
-Errors: `start < 1`, `end < start`, or blocks out of order.
+Errors: `start < 1`, `end < start`, a negative block field, or blocks out
+of order or overlapping. All blocks are validated before the walk, so the
+result never depends on where the walk stops.
 
 | Case | Expected |
 |---|---|
@@ -480,6 +483,8 @@ Errors: `start < 1`, `end < start`, or blocks out of order.
 | Insertion right after the line before the range | Moved down |
 | Range overlaps a modified line, its first line, its last line | File-level |
 | Range inside a deleted block | File-level |
+| Insertion between two lines of the range | File-level |
+| Bad block after the block that touches the range | `ErrRange` |
 | Several blocks above with mixed effects | Sum of the effects |
 | `start = 0`, `end < start` | Error |
 | Property test: random edits that do not touch the range | Ported text equals original text |
@@ -504,7 +509,8 @@ Stage 2 is done when:
 
 - every case in this spec passes with `-race`, and `make check` and the
   required macOS CI job pass;
-- the fuzz targets for `ParseRaw`, `ParseNumstat`, `ParseHunks` and `Port`
+- the fuzz targets for `ParseRaw`, `ParseNumstat`, `ParseHunks`,
+  `ValidBranchRef` and `Port`
   are committed with seed corpora and each has run for 60 seconds locally
   without failure before its pull request;
 - the `HashPassword` benchmark with `Default` runs under one second on the
