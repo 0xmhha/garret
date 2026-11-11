@@ -1,0 +1,12 @@
+# sqlc reads the goose migrations as its schema and generates typed Go code
+# from internal/store/queries. Generated code is committed (docs/design/data-model.md).
+version: "2"
+sql:
+  - engine: "sqlite"
+    schema: "internal/store/migrations"
+    queries: "internal/store/queries"
+    gen:
+      go:
+        package: "sqlcgen"
+        out: "internal/store/sqlcgen"
+        emit_interface: true

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Third-party actions are pinned to commit SHAs (docs/design/security.md,
+# Dependencies). Dependabot proposes updates after a 7-day cooldown.
+
+jobs:
+  macos:
+    # Required: macOS is the supported server platform. Branch protection on
+    # main lists this job as a required check.
+    name: macos
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: make build
+      - name: Test
+        run: make test
+      - name: Lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+      - name: Vulnerabilities
+        run: make vuln
+      - name: Generated code is current
+        run: make generate-check
+
+  linux:
+    # Not release-blocking (docs/design/decisions.md, D13): failures are
+    # reported but do not fail the workflow.
+    name: linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: make build
+      - name: Test
+        run: make test

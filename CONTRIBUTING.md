@@ -23,7 +23,7 @@ garret is in early development, and the toolchain may change. The current
 expectations are:
 
 - macOS or Linux
-- Go 1.26.8 or newer
+- Go 1.26.11 or newer
 - Git
 - Node.js (LTS) for the web frontend, once it exists
 
@@ -38,7 +38,22 @@ git clone https://github.com/0xmhha/garret.git
 cd garret
 ```
 
-Build and test commands will be documented here as the code lands.
+Everything runs through `make`:
+
+| Command | What it does |
+|---|---|
+| `make build` | Compile every package |
+| `make test` | Run tests with the race detector |
+| `make lint` | Run golangci-lint (CI uses v2.15.0) |
+| `make vuln` | Run govulncheck |
+| `make secrets` | Scan the repository with betterleaks |
+| `make generate` | Regenerate sqlc code from `internal/store/queries` |
+| `make check` | All of the above; run it before opening a pull request |
+
+`sqlc` and `govulncheck` are pinned in `go.mod` as tools and run through
+`go tool`, so they need no separate install. Install
+[golangci-lint](https://golangci-lint.run) and
+[betterleaks](https://github.com/betterleaks/betterleaks) yourself.
 
 ## Workflow
 
