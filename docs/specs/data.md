@@ -138,7 +138,8 @@ Column notes: **PK** primary key, **FK** foreign key, **U** unique,
 | `used_by` | TEXT | N, FK users, U |
 
 Index: `(used_at, revoked_at, expires_at)` to decide whether the enrollment
-listener must be open.
+listener must be open. Check: `used_at` and `used_by` are both null or both
+set.
 
 **sessions**
 
@@ -223,6 +224,7 @@ A partial unique index allows at most one open review per source branch:
 | `number` | INTEGER | U with `review_id`, starts at 1 |
 | `base_sha` | TEXT | 40 or 64 hex characters |
 | `head_sha` | TEXT | Same |
+| `commits_omitted` | INTEGER | 0 or 1. Set when the push exceeded the commit limit and `revision_commits` was not filled |
 | `pushed_by` | TEXT | FK users |
 | `pushed_at` | INTEGER | |
 
@@ -238,7 +240,7 @@ A partial unique index allows at most one open review per source branch:
 | `authored_at` | INTEGER | |
 
 A revision is limited to 500 commits (proposed default); a larger push is
-recorded as a revision with a flag instead of a commit list.
+recorded as a revision with `commits_omitted = 1` instead of a commit list.
 
 **verdicts** (append-only)
 
@@ -297,7 +299,8 @@ Checks:
 - anchor columns are all null, or `anchor_revision_id`, `anchor_view`,
   `anchor_from_sha`, `anchor_to_sha`, `anchor_path` and `anchor_side` are all
   set (lines may be null for a file-level comment);
-- anchors are allowed only when `review_id` is set and the comment is a root.
+- anchors are allowed only when `review_id` is set and the comment is a root;
+- `deleted_at` and `deleted_by` are both null or both set.
 
 Indexes: `(review_id, thread_root_id, created_at)`,
 `(discussion_id, thread_root_id, created_at)`,
@@ -427,6 +430,20 @@ Index: `(project_id, created_at)`, `(subject_kind, subject_id)`.
 | `subject_label` | TEXT | For `project`, the project name. Otherwise empty |
 | `reason` | TEXT | 1–500 characters, required |
 | `created_at` | INTEGER | |
+
+### 4.6 Additional checks and indexes
+
+The migration adds these to the tables above:
+
+- `client_certificates`: `not_after > not_before`.
+- `review_state_changes`: `from_state <> to_state`; index
+  `(review_id, created_at)` for the history view.
+- `reviews` and `discussions`: index `(project_id, updated_at)` for list
+  ordering.
+- `attachments`: index `(project_id, sha256)` to find a stored file by
+  content.
+- Digest columns are checked to be exactly 32 bytes; commit names 40 or 64
+  hex characters; JSON columns are checked with `json_valid`.
 
 ## 5. Data lifecycle
 
