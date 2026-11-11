@@ -114,6 +114,14 @@ Waiting respects `ctx`.
 `ProjectLocks` gives a reader–writer lock per project: `Shared(ctx, id)` for
 ordinary writes and `Exclusive(ctx, id)` for purge.
 
+`ProjectLocks` is built on `golang.org/x/sync/semaphore.Weighted` (Go team,
+already pinned at v0.24.0 through the build tools): shared takes weight 1 and
+exclusive takes the full weight. The semaphore serves waiters first in,
+first out, so a waiting purge blocks later writers instead of starving. A
+hand-written context-aware reader–writer lock was rejected as more code to
+verify for the same behavior. Entries are kept for the life of the server,
+since projects are few.
+
 | Case | Expected |
 |---|---|
 | Two callers, same key | Second waits until the first unlocks |
