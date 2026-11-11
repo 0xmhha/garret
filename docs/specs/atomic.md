@@ -121,6 +121,8 @@ effects.
 | Explicit `192.168.1.7/24` | `[192.168.1.0/24]` |
 | Explicit list with a duplicate | Duplicate removed |
 | Explicit `0.0.0.0/0` or `8.8.8.0/24` | `ErrPublicNetwork` |
+| Explicit invalid (zero) prefix | `ErrPublicNetwork` |
+| Input slices | Not modified |
 | Same input in a different order | Same output |
 
 ### 4.3 `Allowed(set []netip.Prefix, peer netip.Addr) bool`
@@ -135,6 +137,7 @@ passes the TCP peer address only; headers are never consulted.
 | `127.0.0.1`, `::1` with an empty set | true |
 | `::ffff:192.168.1.5` with `192.168.1.0/24` | true |
 | Zero `Addr{}` | false |
+| Link-local peer with a zone, `fe80::1%en0`, against `fe80::/64` | true (the zone is dropped before matching) |
 | Network address and broadcast address of the prefix | true (the filter decides by range only) |
 
 ## 5. Certificates (`internal/pki`)
