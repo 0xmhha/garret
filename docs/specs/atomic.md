@@ -1,6 +1,6 @@
 # Atomic functions specification
 
-Status: draft for review. This spec defines the lowest layer of garret: pure
+Status: approved. This spec defines the lowest layer of garret: pure
 functions with no I/O, built first per the
 [development process](../development-process.md#4-bottom-up-construction).
 Components, services and transport build on them in later stages.
@@ -183,7 +183,7 @@ func ClientTemplate(serial *big.Int, now time.Time, userID string) (*x509.Certif
 
 | Field | CA | Server | Client |
 |---|---|---|---|
-| Validity | `now − 5 min` to `now + 10 years` (proposed) | `now − 5 min` to `now + 7 days` | Same as server |
+| Validity | `now − 5 min` to `now + 10 years` (Q1) | `now − 5 min` to `now + 7 days` | Same as server |
 | Key usage | Cert sign, CRL sign | Digital signature | Digital signature |
 | Extended key usage | none | Server auth | Client auth |
 | Basic constraints | CA, path length 0 | not CA | not CA |
@@ -313,7 +313,7 @@ standard base64.
 - `ValidUsername(s string) error`: matches `^[a-z0-9][a-z0-9_-]{1,31}$`
   (data.md, `users.username`).
 - `ValidPassword(s string) error`: at least 15 characters counted as Unicode
-  code points, at most 1,024 bytes, valid UTF-8 (proposed defaults, Q3).
+  code points, at most 1,024 bytes, valid UTF-8 (Q3).
   NIST SP 800-63B-4 section 3.1.1.2 requires 15 characters for a password
   used as a single factor and recommends allowing at least 64. garret can run
   with client certificates off, so the password may be the single factor.
@@ -403,7 +403,7 @@ Rules:
   context and added lines the new count. A mismatch is `ErrPatchFormat`.
 - `\ No newline at end of file` marks the previous line.
 - Hunks must not overlap and must be in increasing order.
-- `Limits{MaxBytes, MaxLines}` (proposed defaults 2 MiB and 20,000 lines,
+- `Limits{MaxBytes, MaxLines}` (2 MiB and 20,000 lines,
   Q5): over either limit returns `ErrTooLarge`, so the API reports the file
   as too large instead of sending it.
 
@@ -494,9 +494,12 @@ Stage 2 is done when:
 - the `HashPassword` benchmark with `Default` runs under one second on the
   reference Mac.
 
-## 11. Open questions
+## 11. Settled values
 
-| # | Question | Proposed answer |
+These were open questions in the draft and were accepted as proposed during
+review.
+
+| # | Question | Value |
 |---|---|---|
 | Q1 | CA validity | 10 years. Rotating the CA forces every device to re-enroll |
 | Q2 | Certificate back-dating | 5 minutes, for clock differences between machines |
@@ -504,4 +507,4 @@ Stage 2 is done when:
 | Q4 | Accepted client key types | ECDSA P-256 only; `garret enroll` generates the key |
 | Q5 | Diff size limits per file | 2 MiB and 20,000 lines |
 
-These are proposed defaults. Changing them changes constants, not the design.
+Changing any of them changes constants, not the design.
