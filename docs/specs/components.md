@@ -1,6 +1,6 @@
 # Components specification
 
-Status: draft for review. Components combine the atomic functions of
+Status: approved. Components combine the atomic functions of
 [atomic.md](atomic.md) with exactly one outside dependency each: the file
 system, SQLite, the `git` binary, the network interfaces or the clock-driven
 certificate rotation. Services (stage 4) coordinate them.
@@ -141,7 +141,7 @@ Every command:
   `GIT_TERMINAL_PROMPT=0`;
 - acquires the semaphore with the caller's context, then runs under
   `context.WithTimeout(ctx, timeout)`;
-- caps captured output (proposed default 64 MiB) and returns `ErrTooLarge`
+- caps captured output (64 MiB, Q4) and returns `ErrTooLarge`
   beyond it;
 - returns an error that includes the subcommand and Git's stderr (trimmed to
   4 KiB), never the full argument list, since paths can be sensitive.
@@ -199,7 +199,7 @@ says re-enrollment is required. The key is ECDSA P-256 in PKCS #8 PEM.
 ### 6.2 `ServerCertificates`
 
 Holds the current server certificate behind an `atomic.Pointer` and serves
-it through `GetCertificate`. `Run(ctx)` checks every hour (proposed default)
+it through `GetCertificate`. `Run(ctx)` checks every hour (Q5)
 with `RenewalDue` and issues a new one when due, writes it with
 `WriteFile`, then swaps the pointer. It returns when `ctx` is done. Issuing
 fails safe: on error the old certificate stays in place and the error is
@@ -224,9 +224,12 @@ content twice keeps one file. `Open(projectID, sha256)` opens it for reading.
 
 The project ID is checked to be a ULID before it becomes a path segment.
 
-## 8. Open questions
+## 8. Settled values
 
-| # | Question | Proposed answer |
+These were open questions in the draft and were accepted as proposed during
+review.
+
+| # | Question | Value |
 |---|---|---|
 | Q1 | Default data directory | `~/Library/Application Support/garret` on macOS, `$XDG_DATA_HOME/garret` (or `~/.local/share/garret`) on Linux; `--data` overrides |
 | Q2 | Minimum Git version | 2.38 |
