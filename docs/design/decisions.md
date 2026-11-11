@@ -165,7 +165,32 @@ feature.
   data.
   HTTP only was rejected for the same reason.
 
-## D12. Definition of done
+## D12. sqlc for data access, goose for migrations
+
+Schema and queries are written in SQL. [sqlc](https://github.com/sqlc-dev/sqlc)
+generates typed Go code from them at build time; the generated code uses only
+`database/sql` and is committed. Schema changes are numbered SQL files applied
+by [goose](https://github.com/pressly/goose), embedded in the binary and run
+at startup. The ERD and table documentation are generated from the real
+schema in CI, so they cannot drift from it.
+
+- **Why**: the record must be exact. Hard deletes, soft deletes, append-only
+  tables and project purge all depend on precise SQL, and the concurrency
+  model needs explicit transaction boundaries. sqlc keeps every statement
+  visible and checks it against the schema before the code compiles. It adds
+  no runtime module to the binary.
+- **Supply chain**: measured by the modules compiled into the binary. The
+  SQLite driver alone pulls 10 modules; goose adds 5. Every link is maintained
+  by an organization with active releases.
+- **Rejected**: GORM (implicit soft-delete scoping makes an incomplete purge
+  easy to miss, zero-value updates are silently skipped, hooks hide side
+  effects, and the pure-Go SQLite driver goes through single-maintainer forks
+  that pin an old SQLite engine); ent (heavier generated code, less control
+  over transactions, extra work to use the pure-Go driver); squirrel for
+  dynamic queries (no release since 2023); a hand-written migration runner
+  (fewer modules, but new code to verify).
+
+## D13. Definition of done
 
 The first release is done when an end-to-end scenario with three users passes
 as an automated test, together with the quality gates. See

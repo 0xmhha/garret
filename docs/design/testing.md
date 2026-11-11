@@ -47,6 +47,7 @@ Time and randomness are injected, so tests are deterministic.
 | End to end | The Playwright suite passes |
 | Secrets | `betterleaks` reports no findings |
 | Vulnerabilities | `govulncheck` and `npm audit` report no known exploitable issue |
+| Generated code | Regenerating sqlc output and the schema documentation produces no diff |
 | Platforms | Required on macOS; also run on Linux in CI without blocking a release |
 | Browsers | Latest Chrome and Safari |
 | Client modes | The scenario passes with client certificates on (default) and off |

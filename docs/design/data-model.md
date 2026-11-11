@@ -14,8 +14,14 @@ relate to Git, and the retention rules.
 - Foreign keys are enforced (`PRAGMA foreign_keys = ON`).
 - `PRAGMA secure_delete = ON` makes SQLite overwrite deleted content, which
   matters for permanent erasure and project purge.
-- Schema changes are numbered SQL migrations embedded in the binary and
-  applied at startup inside a transaction.
+- Schema changes are numbered goose SQL migrations under
+  `internal/store/migrations`, embedded in the binary and applied at startup.
+  A migration is never edited after it is merged; changes go in a new file.
+- Queries live in `internal/store/queries/*.sql`. sqlc generates the Go code
+  into `internal/store/sqlcgen`, which is committed and reviewed like any
+  other code. CI fails if regenerating changes it.
+- The ERD and per-table documentation are generated from a migrated database
+  in CI. CI fails if the committed copy differs.
 
 ## Entities
 
