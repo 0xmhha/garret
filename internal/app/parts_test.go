@@ -217,11 +217,3 @@ func TestRouter(t *testing.T) {
 		}
 	}
 }
-
-func TestPlaceholderHasSecurityHeaders(t *testing.T) {
-	w := httptest.NewRecorder()
-	placeholder().ServeHTTP(w, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
-	if w.Code != http.StatusOK || w.Header().Get("Content-Security-Policy") == "" || w.Header().Get("X-Frame-Options") != "DENY" {
-		t.Fatalf("placeholder %d %v", w.Code, w.Header())
-	}
-}

@@ -39,6 +39,7 @@ import (
 	"github.com/0xmhha/garret/internal/review"
 	"github.com/0xmhha/garret/internal/server"
 	"github.com/0xmhha/garret/internal/store"
+	"github.com/0xmhha/garret/internal/webui"
 )
 
 // Intervals of the background work (transport.md 2.5).
@@ -216,7 +217,7 @@ func (a *App) build(ctx context.Context, dir *datadir.Dir, runner *gitrepo.Runne
 		EnrollURL: enrollURL, CAFingerprint: pki.Fingerprint(a.ca.Cert), OnInvitationsChanged: a.gate.Changed, Log: sys.Log})
 	git := gitserver.New(gitserver.Config{Auth: a.auth, Projects: projects, Reviews: reviews, Runner: runner,
 		ClientCerts: cfg.ClientCerts, Active: active, Log: sys.Log, MaxPush: gitserver.DefaultMaxPush})
-	a.main = &http.Server{Handler: router(api, git, placeholder()), ReadHeaderTimeout: readHeaderTimeout, IdleTimeout: idleTimeout,
+	a.main = &http.Server{Handler: router(api, git, webui.Handler(webui.Files())), ReadHeaderTimeout: readHeaderTimeout, IdleTimeout: idleTimeout,
 		ErrorLog: slog.NewLogLogger(sys.Log.Handler(), slog.LevelWarn)}
 	if !cfg.InsecureHTTP {
 		a.main.TLSConfig = server.MainTLS(mainCert, a.ca.Cert, active, cfg.ClientCerts, sys.Clock.Now)
@@ -262,6 +263,9 @@ func (a *App) banner() {
 	_, _ = fmt.Fprintf(w, "  CA fingerprint (SHA-256) %s\n", pki.Fingerprint(a.ca.Cert))
 	if !a.cfg.ClientCerts {
 		_, _ = fmt.Fprintln(w, "warning: client certificates are off; any device on the allowed networks can reach the login page")
+	}
+	if !webui.Built() {
+		_, _ = fmt.Fprintln(w, "note: web interface: not built (this binary serves a placeholder page; build with make build)")
 	}
 	if a.cfg.InsecureHTTP {
 		_, _ = fmt.Fprintln(w, "warning: plain HTTP is on; passwords and code cross the network unencrypted")

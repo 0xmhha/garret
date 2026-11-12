@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/0xmhha/garret/internal/clock"
-	"github.com/0xmhha/garret/internal/httpapi"
 	"github.com/0xmhha/garret/internal/netguard"
 )
 
@@ -166,17 +165,4 @@ func router(api, git, web http.Handler) http.Handler {
 			web.ServeHTTP(w, r)
 		}
 	})
-}
-
-const placeholderPage = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>garret</title></head>
-<body><p>garret is running. The web interface is not part of this build yet.</p></body></html>
-`
-
-// placeholder serves the page shown until the web interface exists.
-func placeholder() http.Handler {
-	return httpapi.WithSecurityHeaders(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(placeholderPage))
-	}))
 }
