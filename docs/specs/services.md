@@ -110,11 +110,14 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
   Issues a new certificate with `issued_via = renewal` and
   `renewed_from = currentSerial`. The old certificate stays valid until it
   expires, so a renewal job that crashes after the response does not lock
-  the device out.
+  the device out. The checks run again inside the write transaction, so a
+  revocation or a disable that commits in between cannot be bypassed.
 - `ListCertificates`, `RevokeCertificate` (own devices, or any as admin).
 - `DisableUser(ctx, admin, userID)`: sets `disabled_at`, deletes sessions,
   revokes tokens and certificates in one transaction, then replaces the
-  active serials and closes the user's connections.
+  active serials and closes the user's connections. The last enabled
+  administrator cannot be disabled (`ErrConflict`), so setup never reopens
+  by accident.
 
 ## 4. Projects (`internal/project`)
 
