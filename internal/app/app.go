@@ -208,7 +208,7 @@ func (a *App) build(ctx context.Context, dir *datadir.Dir, runner *gitrepo.Runne
 	a.main = &http.Server{Handler: router(api, git, placeholder()), ReadHeaderTimeout: readHeaderTimeout, IdleTimeout: idleTimeout,
 		ErrorLog: slog.NewLogLogger(sys.Log.Handler(), slog.LevelWarn)}
 	if !cfg.InsecureHTTP {
-		a.main.TLSConfig = server.MainTLS(mainCert, a.ca.Cert, active, cfg.ClientCerts)
+		a.main.TLSConfig = server.MainTLS(mainCert, a.ca.Cert, active, cfg.ClientCerts, sys.Clock.Now)
 	}
 	return nil
 }

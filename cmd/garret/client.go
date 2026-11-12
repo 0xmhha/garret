@@ -203,7 +203,6 @@ func renewCmd(args []string, d deps) int {
 	fs := flag.NewFlagSet("renew", flag.ContinueOnError)
 	fs.SetOutput(d.stderr)
 	server := fs.String("server", "", "renew only this server (its URL)")
-	force := fs.Bool("force", false, "renew even when the certificate is not due")
 	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
 		return exitUsage
 	}
@@ -217,7 +216,7 @@ func renewCmd(args []string, d deps) int {
 	}
 	code := exitOK
 	for _, s := range servers {
-		if err := renewOne(d, s, *force); err != nil {
+		if err := renewOne(d, s); err != nil {
 			_, _ = fmt.Fprintf(d.stderr, "garret renew %s: %v\n", s, err)
 			code = exitError
 		}
@@ -257,7 +256,7 @@ func installedServers(d deps, serverURL string) ([]string, error) {
 
 var errExpired = errors.New("the certificate has expired; ask an administrator for a new invitation and run garret enroll")
 
-func renewOne(d deps, serverURL string, force bool) error {
+func renewOne(d deps, serverURL string) error {
 	files, err := filesFor(d, serverURL)
 	if err != nil {
 		return err
@@ -274,7 +273,7 @@ func renewOne(d deps, serverURL string, force bool) error {
 	if !now.Before(cert.NotAfter) {
 		return errExpired
 	}
-	if !force && !pki.RenewalDue(cert.NotBefore, cert.NotAfter, now) {
+	if !pki.RenewalDue(cert.NotBefore, cert.NotAfter, now) {
 		_, _ = fmt.Fprintf(d.stdout, "%s: not due until %s\n", serverURL, cert.NotBefore.Add(cert.NotAfter.Sub(cert.NotBefore)/2).Format(time.RFC3339))
 		return nil
 	}

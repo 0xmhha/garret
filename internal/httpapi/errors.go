@@ -41,6 +41,8 @@ var errorMapping = []struct {
 	{[]error{auth.ErrInvalidCredentials, auth.ErrUnauthenticated}, http.StatusUnauthorized, codeUnauthenticated, "sign in again"},
 	{[]error{auth.ErrInvalidInvitation}, http.StatusBadRequest, codeInvalidInvitation, "the invitation code is not valid"},
 	{[]error{admin.ErrExportRequired}, http.StatusConflict, codeExportRequired, "export the project first"},
+	{[]error{auth.ErrRenewalRefused}, http.StatusConflict, "renewal_refused",
+		"renewal refused: the certificate is not due yet, or it was already renewed; if this device did not renew it, revoke the device"},
 	{[]error{errNotJSON}, http.StatusUnsupportedMediaType, "unsupported_media_type", "send application/json"},
 	{[]error{errTooManyConnections}, http.StatusTooManyRequests, "too_many_connections", "too many open connections"},
 	{[]error{auth.ErrForbidden, project.ErrForbidden, review.ErrForbidden, comment.ErrForbidden, discussion.ErrForbidden,

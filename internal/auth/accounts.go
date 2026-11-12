@@ -412,6 +412,9 @@ func (s *Service) RenewCertificate(ctx context.Context, actor User, currentSeria
 		if c.UserID != actor.ID || actor.Disabled || c.RevokedAt.Valid || s.clock.Now().UnixMilli() >= c.NotAfter {
 			return ErrForbidden
 		}
+		if err := s.renewable(ctx, sqlcgen.New(tx), c); err != nil {
+			return err
+		}
 		device = c.DeviceName
 		return nil
 	})
@@ -437,6 +440,9 @@ func (s *Service) RenewCertificate(ctx context.Context, actor User, currentSeria
 		if c.RevokedAt.Valid || u.DisabledAt.Valid {
 			return ErrForbidden
 		}
+		if err := s.renewable(ctx, q, c); err != nil {
+			return err
+		}
 		if err := s.insertCertificate(ctx, q, cert, actor.ID, device, viaRenewal, currentSerial); err != nil {
 			return err
 		}
@@ -457,6 +463,54 @@ type Certificate struct {
 	NotBefore  time.Time
 	NotAfter   time.Time
 	RevokedAt  *time.Time
+}
+
+// maxLine bounds the walk along a device's line of certificates; a line
+// grows by about two certificates a week.
+const maxLine = 100_000
+
+// renewable reports ErrRenewalRefused unless c may be renewed now: in the second
+// half of its validity, and not renewed before (one line per device).
+func (s *Service) renewable(ctx context.Context, q *sqlcgen.Queries, c sqlcgen.ClientCertificate) error {
+	if !pki.RenewalDue(fromMS(c.NotBefore), fromMS(c.NotAfter), s.clock.Now()) {
+		return fmt.Errorf("%w: the certificate is not due for renewal yet", ErrRenewalRefused)
+	}
+	n, err := q.CountRenewals(ctx, sql.NullString{String: c.Serial, Valid: true})
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		return fmt.Errorf("%w: this certificate was already renewed", ErrRenewalRefused)
+	}
+	return nil
+}
+
+// lineOf returns the serials of every certificate linked to c through
+// renewed_from, oldest first.
+func lineOf(ctx context.Context, q *sqlcgen.Queries, c sqlcgen.ClientCertificate) ([]string, error) {
+	for range maxLine {
+		if !c.RenewedFrom.Valid {
+			break
+		}
+		prev, err := q.GetCertificate(ctx, c.RenewedFrom.String)
+		if err != nil {
+			return nil, err
+		}
+		c = prev
+	}
+	line := []string{c.Serial}
+	for range maxLine {
+		next, err := q.GetRenewalOf(ctx, sql.NullString{String: c.Serial, Valid: true})
+		if errors.Is(err, sql.ErrNoRows) {
+			return line, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		line = append(line, next.Serial)
+		c = next
+	}
+	return nil, errors.New("auth: certificate line too long")
 }
 
 // ListCertificates lists the certificates of userID; members see only their
@@ -494,12 +548,20 @@ func (s *Service) RevokeCertificate(ctx context.Context, actor User, serial stri
 		if c.UserID != actor.ID && !actor.IsAdmin() {
 			return ErrForbidden
 		}
-		if _, err := q.RevokeCertificate(ctx, sqlcgen.RevokeCertificateParams{
-			RevokedAt: sql.NullInt64{Int64: s.clock.Now().UnixMilli(), Valid: true}, Serial: serial}); err != nil {
+		// Revoke the device's whole line, so a certificate renewed from this
+		// one, perhaps by whoever stole its key, stops working too.
+		line, err := lineOf(ctx, q, c)
+		if err != nil {
 			return err
 		}
+		now := sql.NullInt64{Int64: s.clock.Now().UnixMilli(), Valid: true}
+		for _, l := range line {
+			if _, err := q.RevokeCertificate(ctx, sqlcgen.RevokeCertificateParams{RevokedAt: now, Serial: l}); err != nil {
+				return err
+			}
+		}
 		return s.audit.Record(ctx, tx, audit.Event{ActorID: actor.ID, Action: "certificate.revoked",
-			SubjectKind: "certificate", SubjectID: serial, Data: map[string]any{"user": c.UserID}})
+			SubjectKind: "certificate", SubjectID: serial, Data: map[string]any{"user": c.UserID, "line": line}})
 	})
 	if err != nil {
 		return err
