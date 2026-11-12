@@ -206,22 +206,30 @@ Reads `tls/ca.key` and `tls/ca.crt` if both exist; creates both if neither
 exists; refuses if only one exists (`ErrCAIncomplete`). A loaded CA whose
 name constraints no longer cover the current `names` (for example the server
 moved to another network) is refused with `ErrCAMismatch` and a message that
-says re-enrollment is required. The key is ECDSA P-256 in PKCS #8 PEM.
+says re-enrollment is required. The key is ECDSA P-256 in PKCS #8 PEM. A
+key that does not match the certificate, or a file that does not parse, is
+an error; garret never replaces a broken CA on its own.
 
 ### 6.2 `ServerCertificates`
 
 Holds the current server certificate behind an `atomic.Pointer` and serves
-it through `GetCertificate`. `Run(ctx)` checks every hour (Q5)
+it through `GetCertificate`. At start it reuses the stored certificate only
+if it verifies against the CA for the host and every listen address and is
+not yet due; otherwise it issues a new one. The key is written before the
+certificate, so a crash between the two leaves a pair that fails to load
+and is reissued. `Run(ctx)` checks every hour (Q5)
 with `RenewalDue` and issues a new one when due, writes it with
 `WriteFile`, then swaps the pointer. It returns when `ctx` is done. Issuing
 fails safe: on error the old certificate stays in place and the error is
 logged; the next check retries.
 
-### 6.3 `RevocationSet`
+### 6.3 `ActiveSerials`
 
 The set of active client certificate serials (data.md 7.4) as an immutable
 map behind an `atomic.Pointer`. `Replace(serials)` publishes a new map;
-`Active(serial) bool` reads without locking. Services call `Replace` after
+`Active(serial) bool` reads without locking. Serials are written by
+`SerialString`: lowercase hex without leading zeros, the form stored in
+`client_certificates.serial`. Services call `Replace` after
 the commit that issued or revoked a certificate.
 
 ## 7. Attachments (`internal/attachment`)
