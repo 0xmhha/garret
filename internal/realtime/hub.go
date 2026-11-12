@@ -16,6 +16,9 @@ type Event struct {
 	Project string `json:"project"`
 	Review  int    `json:"review,omitempty"`
 	ID      string `json:"id,omitempty"`
+	// User, when set, limits delivery to that user's subscriptions. It is
+	// not sent to the browser.
+	User string `json:"-"`
 }
 
 // Hub delivers events to subscriptions. Run must be running for delivery.
@@ -145,7 +148,7 @@ func (h *Hub) Run(ctx context.Context) {
 			}
 		case e := <-h.events:
 			for s := range subs {
-				if !s.canSee(e.Project) {
+				if (e.User != "" && e.User != s.user) || !s.canSee(e.Project) {
 					continue
 				}
 				select {
