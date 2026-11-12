@@ -67,7 +67,8 @@ where they apply and marked **(review)**.
 - TLS 1.3 with the same server certificate and no client certificates.
 - Serves exactly two routes and nothing else **(review)**: `GET /ca.crt`
   (the CA certificate, public) and `POST /enroll`.
-- Rate limited per source address with the login limiter.
+- Rate limited per source address with the login limiter: every failed
+  enrollment counts, and a success gives the attempt back.
 
 ### 2.3 Request identity
 
@@ -187,7 +188,8 @@ goroutine per connection.
 ### 6.1 Invitation code and link
 
 - An invitation code is six words drawn uniformly from the EFF large wordlist
-  (7,776 words, about 77.5 bits), joined by `-`, for example
+  without its four hyphenated words (7,772 words, about 77.5 bits), joined
+  by `-`, for example
   `marble-orbit-candle-velvet-thimble-anchor`. The code is shown once to the
   administrator; only its SHA-256 is stored.
 - Lifetime 30 minutes, single use (T-D3). security.md's 24 hours changes to
@@ -267,7 +269,7 @@ review.
 | Q2 | JSON request body limit | 1 MiB |
 | Q3 | WebSocket connection limits | 16 per user, 64 per document |
 | Q4 | Renewal check interval on clients | Every 6 hours |
-| Q5 | Wordlist for invitation codes | EFF large wordlist (7,776 words), embedded with its CC BY 3.0 attribution |
+| Q5 | Wordlist for invitation codes | EFF large wordlist, embedded with its attribution. Implementation found the license is CC BY 4.0 (EFF's copyright page), not 3.0, and that four words contain a hyphen; they are left out, leaving 7,772 words |
 | Q6 | Default host name in certificates | The computer's name with `.local` when `--host` is not given |
 
 ## 9. Done criteria for stage 5

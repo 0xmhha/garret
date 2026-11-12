@@ -123,7 +123,7 @@ func (e *env) member(t *testing.T, admin User, name string) Issued {
 	if err != nil {
 		t.Fatal(err)
 	}
-	issued, err := e.svc.Enroll(context.Background(), token, account(name), newCSR(t))
+	issued, err := e.svc.Enroll(context.Background(), addr, token, account(name), newCSR(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestEnrollRejectsBadInvitations(t *testing.T) {
 	admin := e.admin(t)
 	ctx := context.Background()
 	_, used, _ := e.svc.CreateInvitation(ctx, admin, RoleMember)
-	if _, err := e.svc.Enroll(ctx, used, account("bob"), newCSR(t)); err != nil {
+	if _, err := e.svc.Enroll(ctx, addr, used, account("bob"), newCSR(t)); err != nil {
 		t.Fatal(err)
 	}
 	inv, revoked, _ := e.svc.CreateInvitation(ctx, admin, RoleMember)
@@ -195,7 +195,7 @@ func TestEnrollRejectsBadInvitations(t *testing.T) {
 	_, expired, _ := e.svc.CreateInvitation(ctx, admin, RoleMember)
 	e.clock.advance(InvitationLifetime + time.Second)
 	for name, token := range map[string]string{"used": used, "revoked": revoked, "expired": expired, "unknown": "nope"} {
-		if _, err := e.svc.Enroll(ctx, token, account("carol"), newCSR(t)); !errors.Is(err, ErrInvalidInvitation) {
+		if _, err := e.svc.Enroll(ctx, addr, token, account("carol"), newCSR(t)); !errors.Is(err, ErrInvalidInvitation) {
 			t.Errorf("%s: err = %v, want ErrInvalidInvitation", name, err)
 		}
 	}
@@ -214,19 +214,19 @@ func TestEnrollValidation(t *testing.T) {
 	}
 	for name, acct := range tests {
 		_, token, _ := e.svc.CreateInvitation(ctx, admin, RoleMember)
-		if _, err := e.svc.Enroll(ctx, token, acct, newCSR(t)); !errors.Is(err, ErrInvalid) {
+		if _, err := e.svc.Enroll(ctx, addr, token, acct, newCSR(t)); !errors.Is(err, ErrInvalid) {
 			t.Errorf("%s: err = %v, want ErrInvalid", name, err)
 		}
 	}
 	_, token, _ := e.svc.CreateInvitation(ctx, admin, RoleMember)
-	if _, err := e.svc.Enroll(ctx, token, account("bob"), []byte("garbage")); !errors.Is(err, ErrInvalid) {
+	if _, err := e.svc.Enroll(ctx, addr, token, account("bob"), []byte("garbage")); !errors.Is(err, ErrInvalid) {
 		t.Errorf("bad CSR: %v", err)
 	}
-	if _, err := e.svc.Enroll(ctx, token, account("root"), newCSR(t)); !errors.Is(err, ErrConflict) {
+	if _, err := e.svc.Enroll(ctx, addr, token, account("root"), newCSR(t)); !errors.Is(err, ErrConflict) {
 		t.Errorf("taken username: %v", err)
 	}
 	// The failed attempts must not have used the invitation.
-	if _, err := e.svc.Enroll(ctx, token, account("bob"), newCSR(t)); err != nil {
+	if _, err := e.svc.Enroll(ctx, addr, token, account("bob"), newCSR(t)); err != nil {
 		t.Errorf("invitation consumed by a failed attempt: %v", err)
 	}
 }
@@ -239,7 +239,7 @@ func TestEnrollConcurrentUseOfOneInvitation(t *testing.T) {
 	results := make(chan error, 2)
 	for _, name := range []string{"bob", "carol"} {
 		wg.Go(func() {
-			_, err := e.svc.Enroll(context.Background(), token, account(name), newCSR(t))
+			_, err := e.svc.Enroll(context.Background(), addr, token, account(name), newCSR(t))
 			results <- err
 		})
 	}
@@ -359,5 +359,38 @@ func TestRefreshActiveAtStartup(t *testing.T) {
 	}
 	if !fresh.Active(pki.SerialString(bob.Certificate.SerialNumber)) {
 		t.Fatal("RefreshActive did not load stored serials")
+	}
+}
+
+func TestEnrollCodeIsWordsAndTypingIsForgiving(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	_, code, err := e.svc.CreateInvitation(context.Background(), admin, RoleMember)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(strings.Split(code, "-")) != codeWords {
+		t.Fatalf("code %q", code)
+	}
+	typed := strings.ToUpper(strings.ReplaceAll(code, "-", "  "))
+	if _, err := e.svc.Enroll(context.Background(), addr, typed, account("bob"), newCSR(t)); err != nil {
+		t.Fatalf("code typed with spaces and capitals: %v", err)
+	}
+}
+
+func TestEnrollRateLimitedPerAddress(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	ctx := context.Background()
+	for range maxFailures {
+		_, _ = e.svc.Enroll(ctx, addr, "wrong-code", account("bob"), newCSR(t))
+	}
+	_, code, _ := e.svc.CreateInvitation(ctx, admin, RoleMember)
+	if _, err := e.svc.Enroll(ctx, addr, code, account("bob"), newCSR(t)); !errors.Is(err, ErrInvalidInvitation) {
+		t.Fatalf("enrollment allowed while the address is limited: %v", err)
+	}
+	other := netip.MustParseAddr("192.168.1.77")
+	if _, err := e.svc.Enroll(ctx, other, code, account("bob"), newCSR(t)); err != nil {
+		t.Fatalf("another address blocked: %v", err)
 	}
 }
