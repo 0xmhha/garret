@@ -414,3 +414,81 @@ func TestListUsers(t *testing.T) {
 		}
 	}
 }
+
+func TestRenewalKeepsOneLinePerDevice(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	bob := e.member(t, admin, "bob")
+	ctx := context.Background()
+	first := pki.SerialString(bob.Certificate.SerialNumber)
+	if _, err := e.svc.RenewCertificate(ctx, bob.User, first, newCSR(t)); !errors.Is(err, ErrRenewalRefused) {
+		t.Fatalf("renewal in the first half of the validity: %v", err)
+	}
+	e.clock.advance(4 * 24 * time.Hour)
+	second, err := e.svc.RenewCertificate(ctx, bob.User, first, newCSR(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.RenewCertificate(ctx, bob.User, first, newCSR(t)); !errors.Is(err, ErrRenewalRefused) {
+		t.Fatalf("second renewal from the same certificate: %v", err)
+	}
+	e.clock.advance(4 * 24 * time.Hour)
+	third, err := e.svc.RenewCertificate(ctx, bob.User, pki.SerialString(second.SerialNumber), newCSR(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Revoking the middle certificate ends the whole line.
+	if err := e.svc.RevokeCertificate(ctx, bob.User, pki.SerialString(second.SerialNumber)); err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{first, pki.SerialString(second.SerialNumber), pki.SerialString(third.SerialNumber)} {
+		if e.active.Active(s) {
+			t.Errorf("%s still active after revoking its line", s)
+		}
+	}
+}
+
+func TestRevokingOneDeviceLeavesOthers(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	bob := e.member(t, admin, "bob")
+	carol := e.member(t, admin, "carol")
+	ctx := context.Background()
+	if err := e.svc.RevokeCertificate(ctx, bob.User, pki.SerialString(bob.Certificate.SerialNumber)); err != nil {
+		t.Fatal(err)
+	}
+	if !e.active.Active(pki.SerialString(carol.Certificate.SerialNumber)) {
+		t.Fatal("revoking bob's device revoked carol's")
+	}
+}
+
+func TestConcurrentRenewalsFromOneCertificate(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	bob := e.member(t, admin, "bob")
+	e.clock.advance(4 * 24 * time.Hour)
+	serial := pki.SerialString(bob.Certificate.SerialNumber)
+	const n = 8
+	errs := make(chan error, n)
+	var wg sync.WaitGroup
+	for range n {
+		wg.Go(func() {
+			_, err := e.svc.RenewCertificate(context.Background(), bob.User, serial, newCSR(t))
+			errs <- err
+		})
+	}
+	wg.Wait()
+	close(errs)
+	ok := 0
+	for err := range errs {
+		switch {
+		case err == nil:
+			ok++
+		case !errors.Is(err, ErrRenewalRefused):
+			t.Errorf("unexpected error %v", err)
+		}
+	}
+	if ok != 1 {
+		t.Fatalf("%d concurrent renewals succeeded, want 1", ok)
+	}
+}

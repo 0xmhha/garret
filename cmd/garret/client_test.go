@@ -18,17 +18,26 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/0xmhha/garret/internal/app"
-	"github.com/0xmhha/garret/internal/clock"
 	"github.com/0xmhha/garret/internal/config"
 	"github.com/0xmhha/garret/internal/enroll"
 	"github.com/0xmhha/garret/internal/netguard"
 )
 
 const testPassword = "correct horse battery staple"
+
+// shifted is the wall clock moved forward by a settable offset; the test
+// server and the commands share one.
+type shifted struct{ off atomic.Int64 }
+
+func (s *shifted) Now() time.Time          { return time.Now().Add(time.Duration(s.off.Load())) }
+func (s *shifted) advance(d time.Duration) { s.off.Add(int64(d)) }
+
+var testClock = &shifted{}
 
 // answers is a Prompter that replies in order and records the labels.
 type answers struct {
@@ -92,7 +101,7 @@ func server(t *testing.T) (*app.App, string) {
 		Listen:       netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), 0),
 		EnrollListen: netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), enrollPort),
 		Port:         config.DefaultPort, EnrollPort: enrollPort, ClientCerts: true}
-	sys := app.System{Clock: clock.System{}, Rand: rand.Reader, GitPath: git, Log: quiet(), Out: &bytes.Buffer{},
+	sys := app.System{Clock: testClock, Rand: rand.Reader, GitPath: git, Log: quiet(), Out: &bytes.Buffer{},
 		ActiveRefresh: 50 * time.Millisecond,
 		Interfaces: func() ([]netguard.Interface, error) {
 			return []netguard.Interface{{Name: "en0", Up: true, Prefixes: []netip.Prefix{netip.MustParsePrefix("192.168.1.20/24")}}}, nil
@@ -118,7 +127,7 @@ func depsFor(t *testing.T, home string, replies ...string) (deps, *answers, *rec
 	ans := &answers{replies: replies}
 	rec := &recorder{}
 	var out bytes.Buffer
-	return deps{stdout: &out, stderr: &out, prompt: ans, runner: rec, clock: clock.System{}, hostname: "test-machine",
+	return deps{stdout: &out, stderr: &out, prompt: ans, runner: rec, clock: testClock, hostname: "test-machine",
 		platform: enroll.Platform{GOOS: "freebsd", Home: home, Executable: "/usr/local/bin/garret"}}, ans, rec, &out
 }
 
@@ -273,8 +282,10 @@ func TestSetupEnrollRenew(t *testing.T) {
 	if code := runWith([]string{"renew"}, d); code != exitOK || !strings.Contains(out.String(), "not due") || strings.Contains(out.String(), ".old") {
 		t.Fatalf("renew when not due exit %d:\n%s", code, out)
 	}
+	testClock.advance(4 * 24 * time.Hour) // into the second half of the validity
+	t.Cleanup(func() { testClock.advance(-4 * 24 * time.Hour) })
 	d, _, _, out = depsFor(t, memberHome)
-	if code := runWith([]string{"renew", "--server", a.MainURL(), "--force"}, d); code != exitOK {
+	if code := runWith([]string{"renew", "--server", a.MainURL()}, d); code != exitOK {
 		t.Fatalf("renew exit %d:\n%s", code, out)
 	}
 	_, after, err := files.Load()
@@ -282,6 +293,11 @@ func TestSetupEnrollRenew(t *testing.T) {
 		t.Fatalf("certificate not replaced: %v", err)
 	}
 	session(t, a, files.Dir, "bob")
+	// The new certificate is in its first half: nothing to do.
+	d, _, _, out = depsFor(t, memberHome)
+	if code := runWith([]string{"renew"}, d); code != exitOK || !strings.Contains(out.String(), "not due") {
+		t.Fatalf("renew right after renewal exit %d:\n%s", code, out)
+	}
 }
 
 func TestSetupWithoutCA(t *testing.T) {
