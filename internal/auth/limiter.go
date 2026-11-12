@@ -31,6 +31,37 @@ func newLimiter(c clock.Clock) *limiter {
 	return &limiter{clock: c, keys: make(map[string]*window)}
 }
 
+// attempt reserves one attempt for every key under one lock: it returns
+// false, counting nothing, if any key is at the limit, and otherwise counts
+// the attempt as a failure before the credential is checked. Concurrent
+// requests therefore cannot all pass the check before any failure is
+// recorded. Call succeeded when the credential turns out to be correct.
+func (l *limiter) attempt(keys ...string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.clock.Now()
+	for _, k := range keys {
+		if w := l.current(k, now); w != nil && w.failures >= maxFailures {
+			return false
+		}
+	}
+	for _, k := range keys {
+		l.count(k, now)
+	}
+	return true
+}
+
+// succeeded undoes the reservation of a successful attempt: the username's
+// window is cleared and the address gets its attempt back.
+func (l *limiter) succeeded(userKey, addrKey string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.keys, userKey)
+	if w := l.current(addrKey, l.clock.Now()); w != nil && w.failures > 0 {
+		w.failures--
+	}
+}
+
 // blocked reports whether any of keys has reached the limit in its window.
 func (l *limiter) blocked(keys ...string) bool {
 	l.mu.Lock()
@@ -50,21 +81,18 @@ func (l *limiter) fail(keys ...string) {
 	defer l.mu.Unlock()
 	now := l.clock.Now()
 	for _, k := range keys {
-		w := l.current(k, now)
-		if w == nil {
-			l.makeRoom(now)
-			w = &window{start: now}
-			l.keys[k] = w
-		}
-		w.failures++
+		l.count(k, now)
 	}
 }
 
-// reset forgets key, after a successful login for that username.
-func (l *limiter) reset(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	delete(l.keys, key)
+func (l *limiter) count(k string, now time.Time) {
+	w := l.current(k, now)
+	if w == nil {
+		l.makeRoom(now)
+		w = &window{start: now}
+		l.keys[k] = w
+	}
+	w.failures++
 }
 
 func (l *limiter) current(k string, now time.Time) *window {
