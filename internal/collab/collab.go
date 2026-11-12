@@ -199,6 +199,44 @@ func (sess *Session) Leave() {
 	})
 }
 
+// Generation returns the current generation of docID in projectName, which
+// a client passes to Join. A deleted discussion's body is ErrNotFound.
+func (s *Service) Generation(ctx context.Context, projectName, docID string) (int64, error) {
+	var gen int64
+	err := s.cfg.DB.ReadTx(ctx, func(tx *sql.Tx) error {
+		d, err := sqlcgen.New(tx).GetCollabDocument(ctx, docID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		gen = d.Generation
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	if err := s.checkDocument(ctx, projectName, docID, gen); err != nil {
+		return 0, err
+	}
+	return gen, nil
+}
+
+// CloseUser disconnects every session of userID, for example after the
+// user is disabled.
+func (s *Service) CloseUser(userID string) {
+	s.mu.Lock()
+	owners := make([]*owner, 0, len(s.owners))
+	for _, o := range s.owners {
+		owners = append(owners, o)
+	}
+	s.mu.Unlock()
+	for _, o := range owners {
+		select {
+		case o.cmds <- command{closeUser: userID}:
+		case <-o.done:
+		}
+	}
+}
+
 // Text returns the latest checkpoint text of docID, "" before the first
 // checkpoint.
 func (s *Service) Text(ctx context.Context, docID string) (string, error) {
@@ -379,6 +417,8 @@ type command struct {
 	from    *Session
 	msg     []byte
 	rebuild *rebuildRequest
+	// closeUser disconnects every session of that user.
+	closeUser string
 }
 
 type rebuildRequest struct {
@@ -547,6 +587,15 @@ func (o *owner) process(ctx context.Context, c command, grace *time.Timer) (chan
 		o.send(c.join, frame(step1))
 	case c.leave != nil:
 		delete(o.sessions, c.leave)
+		if len(o.sessions) == 0 {
+			grace.Reset(o.svc.cfg.Grace)
+		}
+	case c.closeUser != "":
+		for sess := range o.sessions {
+			if sess.user == c.closeUser {
+				o.drop(sess)
+			}
+		}
 		if len(o.sessions) == 0 {
 			grace.Reset(o.svc.cfg.Grace)
 		}

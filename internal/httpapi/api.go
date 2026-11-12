@@ -12,11 +12,13 @@ import (
 	"github.com/0xmhha/garret/internal/admin"
 	"github.com/0xmhha/garret/internal/attachment"
 	"github.com/0xmhha/garret/internal/auth"
+	"github.com/0xmhha/garret/internal/collab"
 	"github.com/0xmhha/garret/internal/comment"
 	"github.com/0xmhha/garret/internal/discussion"
 	"github.com/0xmhha/garret/internal/inbox"
 	"github.com/0xmhha/garret/internal/pki"
 	"github.com/0xmhha/garret/internal/project"
+	"github.com/0xmhha/garret/internal/realtime"
 	"github.com/0xmhha/garret/internal/review"
 	"github.com/0xmhha/garret/internal/server"
 )
@@ -40,6 +42,8 @@ type Config struct {
 	Attachments *attachment.Service
 	Inbox       *inbox.Service
 	Admin       *admin.Service
+	Hub         *realtime.Hub
+	Collab      *collab.Service
 	Origin      string
 	ClientCerts bool
 	// Active is consulted on every request: TLS checks the serial only at
@@ -58,8 +62,9 @@ type Config struct {
 
 // API is the JSON API handler.
 type API struct {
-	cfg Config
-	mux *http.ServeMux
+	cfg    Config
+	mux    *http.ServeMux
+	limits connLimits
 }
 
 // New returns the API with every route registered.

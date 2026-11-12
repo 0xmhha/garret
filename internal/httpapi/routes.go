@@ -59,6 +59,10 @@ func (a *API) routes() {
 	h("POST "+ad+"/projects/{project}/export", a.authed(a.export))
 	h("POST "+ad+"/projects/{project}/purge", a.authed(a.purge))
 
+	h("GET "+basePath+"/ws", a.authed(a.events))
+	h("GET "+p+"/{project}/collab/{doc}", a.authed(a.collabDocument))
+	h("GET "+p+"/{project}/collab/{doc}/info", a.authed(a.collabInfo))
+
 	c := basePath + "/comments/{id}"
 	h("PATCH "+c, a.authed(a.editComment))
 	h("POST "+c+"/resolve", a.authed(a.resolveComment))

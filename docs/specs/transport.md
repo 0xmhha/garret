@@ -11,9 +11,8 @@ starts the server and sets up client devices.
 | `cmd/garret` | Commands: `serve`, `admin setup`, `enroll`, `renew`, `version` |
 | `internal/config` | Flags, defaults and their validation |
 | `internal/server` | Listeners, TLS, request identity, graceful shutdown |
-| `internal/httpapi` | JSON API of [api.md](../design/api.md), errors, CSRF, pagination |
+| `internal/httpapi` | JSON API of [api.md](../design/api.md), errors, CSRF, pagination, and the WebSocket endpoints (they share the request authentication, so they live in the same package rather than a separate `internal/ws`) |
 | `internal/gitserver` | Git smart HTTP through `git http-backend`, push detection |
-| `internal/ws` | WebSocket endpoints for events and collaborative documents |
 | `internal/enroll` | Client side of `enroll` and `renew`: key, request, installation |
 | `internal/webui` | The embedded web application (a placeholder page until stage 6) |
 
@@ -169,7 +168,7 @@ so the project always comes from the path **(review)**; api.md is updated.
 - Limits: a push body over 500 MiB (components.md Q6) is refused; the whole
   request runs under the 60-second long timeout of components.md Q3.
 
-## 5. WebSocket endpoints (`internal/ws`)
+## 5. WebSocket endpoints (`internal/httpapi`)
 
 Both endpoints authenticate before the upgrade, check `Origin` exactly
 against the server origin **(review)**, and run one reader and one writer
@@ -178,7 +177,10 @@ goroutine per connection.
 - `/api/v1/ws` (events): subscribes to the hub; the writer sends each event
   as JSON text; a full send buffer closes the connection (the hub already
   drops slow subscribers).
-- `/api/v1/projects/{project}/collab/{doc}?generation=N`:
+- `/api/v1/projects/{project}/collab/{doc}/info` (plain GET) returns the
+  generation to join with.
+- `/api/v1/projects/{project}/collab/{doc}?generation=N`: a stale generation
+  answers 409 before the upgrade, so the client reloads;
   - binary messages only; a text frame closes the connection **(review)**;
   - read limit 1 MiB plus 64 bytes (`SetReadLimit`) **(review)**;
   - the writer has a 64-message buffer and a 10-second write timeout;

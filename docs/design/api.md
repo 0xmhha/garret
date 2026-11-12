@@ -118,6 +118,9 @@ Event types: `revision.created`, `comment.created`, `comment.updated`,
 
 ### Collaborative documents: `/api/v1/projects/{project}/collab/{doc}?generation=N`
 
+`GET /api/v1/projects/{project}/collab/{doc}/info` returns `generation`, the
+value to join with. A stale generation answers 409 before the upgrade.
+
 Binary messages in the Yjs sync and awareness protocols. The connection is
 accepted only for users who can see the document's project.
 

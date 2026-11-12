@@ -8,6 +8,7 @@ tool (
 )
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/reearth/ygo v1.55.0
