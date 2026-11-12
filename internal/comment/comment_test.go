@@ -99,7 +99,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	ev := &events{}
 	in := inbox.NewService(db, inbox.NewNotifier(ids, c), c)
-	reviews := review.NewService(db, rec, ids, c, runner, projects, ev)
+	reviews := review.NewService(db, rec, ids, c, runner, projects, ev, in.Notifier())
 	f := &fixture{svc: New(db, rec, ids, c, runner, projects, ev, in.Notifier()), inbox: in, events: ev,
 		wt: filepath.Join(base, "wt"), git: gitPath}
 	_ = os.Mkdir(f.wt, 0o700)

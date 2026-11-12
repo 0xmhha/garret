@@ -17,6 +17,7 @@ import (
 	"github.com/0xmhha/garret/internal/auth"
 	"github.com/0xmhha/garret/internal/gitrepo"
 	"github.com/0xmhha/garret/internal/id"
+	"github.com/0xmhha/garret/internal/inbox"
 	"github.com/0xmhha/garret/internal/project"
 	"github.com/0xmhha/garret/internal/realtime"
 	"github.com/0xmhha/garret/internal/store"
@@ -108,7 +109,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	ev := &events{}
 	f := &fixture{
-		svc: NewService(db, rec, ids, c, runner, projects, ev), db: db, runner: runner, events: ev,
+		svc: NewService(db, rec, ids, c, runner, projects, ev, inbox.NewNotifier(ids, c)), db: db, runner: runner, events: ev,
 		repo: filepath.Join(repos, "libfoo.git"), wt: filepath.Join(base, "wt"), git: gitPath,
 	}
 	if err := os.Mkdir(f.wt, 0o700); err != nil {
