@@ -56,3 +56,11 @@ INSERT INTO review_state_changes (id, review_id, from_state, to_state, user_id, 
 -- name: ListRevisionPins :many
 SELECT r.id AS revision_id, r.review_id, r.number, r.head_sha, p.name AS project_name
 FROM revisions r JOIN reviews v ON v.id = r.review_id JOIN projects p ON p.id = v.project_id;
+
+-- name: ReviewParticipants :many
+SELECT v.user_id FROM verdicts v WHERE v.review_id = sqlc.arg(review)
+UNION
+SELECT c.author_id FROM comments c WHERE c.review_id = sqlc.arg(review);
+
+-- name: GetRevisionByID :one
+SELECT * FROM revisions WHERE id = ?;

@@ -14,6 +14,7 @@ import (
 	"github.com/0xmhha/garret/internal/clock"
 	"github.com/0xmhha/garret/internal/gitrepo"
 	"github.com/0xmhha/garret/internal/id"
+	"github.com/0xmhha/garret/internal/inbox"
 	"github.com/0xmhha/garret/internal/project"
 	"github.com/0xmhha/garret/internal/realtime"
 	"github.com/0xmhha/garret/internal/store"
@@ -128,13 +129,16 @@ type Service struct {
 	runner   *gitrepo.Runner
 	projects *project.Service
 	events   Publisher
+	notifier *inbox.Notifier
 	locks    store.KeyedMutex
+	cache    *diffCache
 }
 
 // NewService returns a review Service.
 func NewService(db *store.DB, rec *audit.Recorder, ids *id.Generator, c clock.Clock, runner *gitrepo.Runner,
-	projects *project.Service, events Publisher) *Service {
-	return &Service{db: db, audit: rec, ids: ids, clock: c, runner: runner, projects: projects, events: events}
+	projects *project.Service, events Publisher, notifier *inbox.Notifier) *Service {
+	return &Service{db: db, audit: rec, ids: ids, clock: c, runner: runner, projects: projects, events: events,
+		notifier: notifier, cache: newDiffCache()}
 }
 
 // Open opens a review of sourceBranch against targetBranch with its first
@@ -271,6 +275,7 @@ func (s *Service) addRevision(ctx context.Context, p project.Project, dir string
 	}
 	number := latest.Number + 1
 	now := s.clock.Now().UnixMilli()
+	var notified []string
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		q := sqlcgen.New(tx)
 		if err := insertRevision(ctx, q, revID, r.ID, number, rev, pusher.ID, now); err != nil {
@@ -278,6 +283,20 @@ func (s *Service) addRevision(ctx context.Context, p project.Project, dir string
 		}
 		if err := q.TouchReview(ctx, sqlcgen.TouchReviewParams{UpdatedAt: now, ID: r.ID}); err != nil {
 			return err
+		}
+		participants, err := q.ReviewParticipants(ctx, r.ID)
+		if err != nil {
+			return err
+		}
+		for _, u := range participants {
+			if u == pusher.ID {
+				continue
+			}
+			if err := s.notifier.Notify(ctx, tx, inbox.Notification{UserID: u, ProjectID: p.ID, Kind: inbox.KindRevisionOnReviewed,
+				SubjectKind: inbox.SubjectRevision, SubjectID: revID}); err != nil {
+				return err
+			}
+			notified = append(notified, u)
 		}
 		return s.audit.Record(ctx, tx, audit.Event{ProjectID: p.ID, ActorID: pusher.ID, Action: "revision.created",
 			SubjectKind: "revision", SubjectID: revID, Data: map[string]any{"review": r.ID, "number": number}})
@@ -289,6 +308,7 @@ func (s *Service) addRevision(ctx context.Context, p project.Project, dir string
 		return err
 	}
 	s.events.Publish(realtime.Event{Type: "revision.created", Project: p.Name, Review: int(r.Number), ID: revID})
+	s.notifyEvents(p.Name, notified)
 	return nil
 }
 
@@ -407,7 +427,7 @@ func (s *Service) RecordVerdict(ctx context.Context, actor auth.User, projectNam
 	if err != nil {
 		return err
 	}
-	var reviewID string
+	var reviewID, notifyAuthor string
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		q := sqlcgen.New(tx)
 		r, err := q.GetReviewByNumber(ctx, sqlcgen.GetReviewByNumberParams{ProjectID: p.ID, Number: number})
@@ -436,6 +456,13 @@ func (s *Service) RecordVerdict(ctx context.Context, actor auth.User, projectNam
 		if err := q.TouchReview(ctx, sqlcgen.TouchReviewParams{UpdatedAt: now, ID: r.ID}); err != nil {
 			return err
 		}
+		if r.AuthorID != actor.ID {
+			if err := s.notifier.Notify(ctx, tx, inbox.Notification{UserID: r.AuthorID, ProjectID: p.ID, Kind: inbox.KindVerdictOnMyReview,
+				SubjectKind: inbox.SubjectReview, SubjectID: r.ID}); err != nil {
+				return err
+			}
+			notifyAuthor = r.AuthorID
+		}
 		return s.audit.Record(ctx, tx, audit.Event{ProjectID: p.ID, ActorID: actor.ID, Action: "verdict.recorded",
 			SubjectKind: "review", SubjectID: r.ID, Data: map[string]any{"value": value, "revision": latest.Number}})
 	})
@@ -443,6 +470,9 @@ func (s *Service) RecordVerdict(ctx context.Context, actor auth.User, projectNam
 		return err
 	}
 	s.events.Publish(realtime.Event{Type: "verdict.recorded", Project: p.Name, Review: int(number), ID: reviewID})
+	if notifyAuthor != "" {
+		s.notifyEvents(p.Name, []string{notifyAuthor})
+	}
 	return nil
 }
 
@@ -581,4 +611,10 @@ func toReview(r sqlcgen.Review) Review {
 	return Review{ID: r.ID, ProjectID: r.ProjectID, Number: r.Number, Title: r.Title, SourceBranch: r.SourceBranch,
 		TargetBranch: r.TargetBranch, State: State(r.State), AuthorID: r.AuthorID, DescriptionID: r.DescriptionDocID,
 		CreatedAt: time.UnixMilli(r.CreatedAt).UTC(), UpdatedAt: time.UnixMilli(r.UpdatedAt).UTC()}
+}
+
+func (s *Service) notifyEvents(projectName string, users []string) {
+	for _, u := range users {
+		s.events.Publish(realtime.Event{Type: "notification.created", Project: projectName, User: u})
+	}
 }
