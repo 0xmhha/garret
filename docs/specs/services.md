@@ -211,9 +211,14 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
 
 Decision S4-D1 (this stage): `github.com/reearth/ygo` v1.55.0, using only its
 `crdt` and `sync` packages, which add one module to the build. A spike
-confirmed sync, convergence of concurrent edits, rebuilding from a
-checkpoint plus later updates, and rejection of malformed updates without a
-panic. The sync package is transport-agnostic, so garret serves it from its
+confirmed sync, convergence of concurrent edits and rebuilding from a
+checkpoint plus later updates. The spike's claim that malformed updates are
+rejected without a panic was wrong: the security review found an 18-byte
+update (a subdocument guid that is not UTF-8) that makes
+`EncodeStateVectorFromUpdate` panic. Every call into ygo therefore runs
+inside a recover that turns a panic into an error, and the owner loop
+recovers per message, so crafted input costs the sender its connection and
+never stops the server. The sync package is transport-agnostic, so garret serves it from its
 own authenticated WebSocket handler instead of ygo's bundled server. The
 library is mostly maintained by one person; the version is pinned, and every
 update pull request reviews the upstream changes before merging.
@@ -224,8 +229,14 @@ update pull request reviews the upstream changes before merging.
   (found in the spike).
 - **Join**: the handler registers a connection with the owner, which sends
   sync step 1 and answers the client's step 1.
-- **Update**: data.md 6.5. An update over 1 MiB or one that fails to apply is
-  rejected and the connection closed; nothing is stored.
+- **Update**: data.md 6.5. An update over 1 MiB, one that does not parse, or
+  one that makes the library panic is rejected and the connection closed;
+  nothing is stored. An update that parses but then fails to apply is
+  already stored: it is logged, skipped again on reload, and the document
+  state stays the same on every load.
+- **Joining**: a deleted discussion's body cannot be joined. A join queued
+  while the document unloads is always served, because the owner unloads
+  only when its queue is empty, under the lock joins queue under.
 - **Checkpoint** after a quiet period (Q6): encoded state, extracted text,
   contributors since the previous checkpoint. Mention detection runs on the
   checkpoint text and notifies only newly mentioned users.

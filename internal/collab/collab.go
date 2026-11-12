@@ -29,7 +29,22 @@ var (
 	ErrNotFound = errors.New("collab: document not found")
 	ErrTooLarge = errors.New("collab: update too large")
 	ErrClosed   = errors.New("collab: session closed")
+	// errPanic marks a panic inside the Yjs library turned into an error.
+	errPanic = errors.New("collab: Yjs library panicked")
 )
+
+// guard runs fn and turns a panic into an error. Every call into ygo goes
+// through it: ygo v1.55.0 can panic on crafted input (a subdocument guid
+// that is not UTF-8), and an unrecovered panic in an owner goroutine would
+// stop the whole server.
+func guard(fn func() error) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%w: %v", errPanic, r)
+		}
+	}()
+	return fn()
+}
 
 // TextName is the name of the Y.Text that holds a document's content. The
 // browser binds the same name to its editor.
@@ -120,16 +135,19 @@ func (s *Service) Join(ctx context.Context, actor auth.User, projectName, docID 
 		return nil, err
 	}
 	for {
-		o, err := s.owner(ctx, docID)
+		o, queued, sess, err := s.ownerWithJoin(ctx, docID, actor.ID, conn)
 		if err != nil {
 			return nil, err
 		}
-		sess := &Session{owner: o, conn: conn, user: actor.ID}
+		if queued {
+			return sess, nil
+		}
+		// The owner's queue is full, so it is busy and not unloading; wait.
 		select {
 		case o.cmds <- command{join: sess}:
 			return sess, nil
 		case <-o.done:
-			continue // the owner stopped between lookup and join; load again
+			continue // the owner stopped; load the document again
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
@@ -141,7 +159,13 @@ func (s *Service) Join(ctx context.Context, actor auth.User, projectName, docID 
 // has ended.
 func (sess *Session) Receive(ctx context.Context, msg []byte) error {
 	if len(msg) > 1 && msg[0] == messageSync {
-		if _, payload, err := ysync.ReadSyncMessage(msg[1:]); err == nil && len(payload) > MaxUpdateBytes {
+		var payload []byte
+		err := guard(func() error {
+			var err error
+			_, payload, err = ysync.ReadSyncMessage(msg[1:])
+			return err
+		})
+		if err == nil && len(payload) > MaxUpdateBytes {
 			sess.conn.Close()
 			sess.Leave()
 			return ErrTooLarge
@@ -199,8 +223,53 @@ func (s *Service) checkDocument(ctx context.Context, projectName, docID string) 
 		if p.Name != projectName {
 			return ErrNotFound
 		}
+		if d.Kind == "discussion_body" {
+			disc, err := q.GetDiscussionByBodyDoc(ctx, docID)
+			if err != nil || disc.DeletedAt.Valid {
+				return ErrNotFound
+			}
+		}
 		return nil
 	})
+}
+
+// ownerWithJoin finds or loads the owner of docID and, under the same lock
+// the owner takes to unload, tries to queue the join. A join queued here is
+// always served: the owner unloads only with an empty queue.
+func (s *Service) ownerWithJoin(ctx context.Context, docID, user string, conn Conn) (*owner, bool, *Session, error) {
+	o, err := s.owner(ctx, docID)
+	if err != nil {
+		return nil, false, nil, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess := &Session{owner: o, conn: conn, user: user}
+	if s.owners[o.docID] != o {
+		return s.ownerWithJoinRetry(ctx, docID, user, conn)
+	}
+	select {
+	case o.cmds <- command{join: sess}:
+		return o, true, sess, nil
+	default:
+		return o, false, sess, nil
+	}
+}
+
+// ownerWithJoinRetry handles an owner that unloaded between lookup and
+// lock; it is called with s.mu held and releases nothing.
+func (s *Service) ownerWithJoinRetry(ctx context.Context, docID, user string, conn Conn) (*owner, bool, *Session, error) {
+	if s.runCtx.Err() != nil {
+		return nil, false, nil, ErrClosed
+	}
+	o, err := s.load(ctx, docID)
+	if err != nil {
+		return nil, false, nil, err
+	}
+	s.owners[docID] = o
+	s.wg.Go(func() { o.run(s.runCtx) })
+	sess := &Session{owner: o, conn: conn, user: user}
+	o.cmds <- command{join: sess} // a new owner's queue is empty
+	return o, true, sess, nil
 }
 
 // owner returns the running owner of docID, loading the document if needed.
@@ -236,6 +305,21 @@ func (s *Service) remove(o *owner) {
 	}
 }
 
+// tryUnload removes o from the map if it has no sessions and nothing
+// queued, under the lock that joins queue under. It reports whether o may
+// stop.
+func (s *Service) tryUnload(o *owner) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(o.sessions) > 0 || len(o.cmds) > 0 {
+		return false
+	}
+	if s.owners[o.docID] == o {
+		delete(s.owners, o.docID)
+	}
+	return true
+}
+
 func (s *Service) load(ctx context.Context, docID string) (*owner, error) {
 	doc := crdt.New()
 	o := &owner{svc: s, docID: docID, doc: doc, text: doc.GetText(TextName),
@@ -253,7 +337,7 @@ func (s *Service) load(ctx context.Context, docID string) (*owner, error) {
 		case err != nil:
 			return err
 		default:
-			if err := doc.ApplyUpdate(cp.State); err != nil {
+			if err := guard(func() error { return doc.ApplyUpdate(cp.State) }); err != nil {
 				return fmt.Errorf("collab: load checkpoint: %w", err)
 			}
 			o.lastSeq, o.checkpointSeq, o.lastText = cp.UpToSeq, cp.UpToSeq, cp.Text
@@ -263,7 +347,7 @@ func (s *Service) load(ctx context.Context, docID string) (*owner, error) {
 			return err
 		}
 		for _, u := range updates {
-			if err := doc.ApplyUpdate(u.Payload); err != nil {
+			if err := guard(func() error { return doc.ApplyUpdate(u.Payload) }); err != nil {
 				s.cfg.Log.Error("skipping an update that does not apply", "document", docID, "seq", u.Seq, "err", err)
 			}
 			o.lastSeq = u.Seq
@@ -324,28 +408,52 @@ func (o *owner) run(ctx context.Context) {
 		case <-quiet.C:
 			o.checkpoint(ctx)
 		case <-grace.C:
-			if len(o.sessions) == 0 {
+			if o.svc.tryUnload(o) {
 				o.checkpoint(ctx)
 				return
 			}
 		case c := <-o.cmds:
-			switch {
-			case c.join != nil:
-				o.sessions[c.join] = true
-				grace.Stop()
-				o.send(c.join, frame(ysync.EncodeSyncStep1(o.doc)))
-			case c.leave != nil:
-				delete(o.sessions, c.leave)
-				if len(o.sessions) == 0 {
-					grace.Reset(o.svc.cfg.Grace)
-				}
-			case c.from != nil && o.sessions[c.from]:
-				if o.handle(ctx, c.from, c.msg) {
-					quiet.Reset(o.svc.cfg.Quiet)
-				}
+			if o.process(ctx, c, grace) {
+				quiet.Reset(o.svc.cfg.Quiet)
 			}
 		}
 	}
+}
+
+// process runs one command and reports whether the document changed. A
+// panic while handling a client's message drops that client only.
+func (o *owner) process(ctx context.Context, c command, grace *time.Timer) (changed bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			o.svc.cfg.Log.Error("dropping a connection after a panic", "document", o.docID, "panic", r)
+			if c.from != nil {
+				o.drop(c.from)
+			}
+			if c.join != nil {
+				o.drop(c.join)
+			}
+			changed = false
+		}
+	}()
+	switch {
+	case c.join != nil:
+		o.sessions[c.join] = true
+		grace.Stop()
+		var step1 []byte
+		if err := guard(func() error { step1 = ysync.EncodeSyncStep1(o.doc); return nil }); err != nil {
+			o.drop(c.join)
+			return false
+		}
+		o.send(c.join, frame(step1))
+	case c.leave != nil:
+		delete(o.sessions, c.leave)
+		if len(o.sessions) == 0 {
+			grace.Reset(o.svc.cfg.Grace)
+		}
+	case c.from != nil && o.sessions[c.from]:
+		return o.handle(ctx, c.from, c.msg)
+	}
+	return false
 }
 
 // handle processes one client message and reports whether the document
@@ -369,13 +477,23 @@ func (o *owner) handle(ctx context.Context, from *Session, msg []byte) bool {
 		return false
 	}
 	inner := msg[1:]
-	kind, payload, err := ysync.ReadSyncMessage(inner)
-	if err != nil {
+	var kind int
+	var payload []byte
+	if err := guard(func() error {
+		var err error
+		kind, payload, err = ysync.ReadSyncMessage(inner)
+		return err
+	}); err != nil {
 		o.drop(from)
 		return false
 	}
 	if kind == ysync.MsgSyncStep1 {
-		reply, err := ysync.EncodeSyncStep2(o.doc, inner)
+		var reply []byte
+		err := guard(func() error {
+			var err error
+			reply, err = ysync.EncodeSyncStep2(o.doc, inner)
+			return err
+		})
 		if err != nil {
 			o.drop(from)
 			return false
@@ -393,8 +511,8 @@ func (o *owner) update(ctx context.Context, from *Session, update []byte) bool {
 		o.drop(from)
 		return false
 	}
-	if _, err := crdt.EncodeStateVectorFromUpdate(update); err != nil {
-		o.drop(from) // malformed: nothing is stored
+	if err := guard(func() error { _, err := crdt.EncodeStateVectorFromUpdate(update); return err }); err != nil {
+		o.drop(from) // malformed or crafted to panic: nothing is stored
 		return false
 	}
 	var seq int64
@@ -412,7 +530,7 @@ func (o *owner) update(ctx context.Context, from *Session, update []byte) bool {
 		o.drop(from)
 		return false
 	}
-	if err := o.doc.ApplyUpdate(update); err != nil {
+	if err := guard(func() error { return o.doc.ApplyUpdate(update) }); err != nil {
 		o.svc.cfg.Log.Error("a stored update did not apply", "document", o.docID, "seq", seq, "err", err)
 	}
 	o.lastSeq = seq
@@ -432,7 +550,12 @@ func (o *owner) checkpoint(ctx context.Context) {
 	if o.lastSeq == o.checkpointSeq {
 		return
 	}
-	text := o.text.ToString()
+	var text string
+	var state []byte
+	if err := guard(func() error { text, state = o.text.ToString(), o.doc.EncodeStateAsUpdate(); return nil }); err != nil {
+		o.svc.cfg.Log.Error("reading the document for a checkpoint failed", "document", o.docID, "err", err)
+		return
+	}
 	contributors := make([]string, 0, len(o.contributors))
 	for u := range o.contributors {
 		contributors = append(contributors, u)
@@ -447,7 +570,7 @@ func (o *owner) checkpoint(ctx context.Context) {
 	err = o.svc.cfg.DB.WriteTx(ctx, func(tx *sql.Tx) error {
 		q := sqlcgen.New(tx)
 		if err := q.InsertCheckpoint(ctx, sqlcgen.InsertCheckpointParams{DocumentID: o.docID, UpToSeq: o.lastSeq,
-			State: o.doc.EncodeStateAsUpdate(), Text: text, Contributors: string(encoded),
+			State: state, Text: text, Contributors: string(encoded),
 			CreatedAt: o.svc.cfg.Clock.Now().UnixMilli()}); err != nil {
 			return err
 		}

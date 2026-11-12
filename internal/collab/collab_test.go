@@ -328,3 +328,78 @@ func TestAwarenessIsRelayedNotStored(t *testing.T) {
 		t.Fatal("awareness stored")
 	}
 }
+
+// crashUpdate is an update that makes ygo v1.55.0 panic while it is
+// parsed: a subdocument whose guid is not valid UTF-8. Before the fix it
+// stopped the whole server process.
+var crashUpdate = []byte{messageSync, 0x02, 0x0f,
+	0x01, 0x01, 0x01, 0x00, 0x09, 0x01, 0x04, 'b', 'o', 'd', 'y', 0x01, 0xff, 0x7f, 0x00}
+
+func TestPanickingUpdateClosesOnlyTheSender(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(ctx, t, filepath.Join(t.TempDir(), "garret.db"))
+	seed(ctx, t, e.db)
+	attacker, bystander := newConn(), newConn()
+	sa, err := e.svc.Join(ctx, bob, "libfoo", docID, attacker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb, err := e.svc.Join(ctx, carol, "libfoo", docID, bystander)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bystander.wait(t, 1)
+	_ = sa.Receive(ctx, crashUpdate)
+	deadline := time.Now().Add(5 * time.Second)
+	for !attacker.isClosed() && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond) // waiting for the owner goroutine to drop the sender
+	}
+	if !attacker.isClosed() {
+		t.Fatal("sender of a panicking update not disconnected")
+	}
+	if n := countRows(ctx, t, e.db, "collab_updates"); n != 0 {
+		t.Fatalf("%d rows stored for a panicking update", n)
+	}
+	// The document still works for everyone else.
+	cl := newClient()
+	if err := sb.Receive(ctx, cl.edit("still alive")); err != nil {
+		t.Fatal(err)
+	}
+	for countRows(ctx, t, e.db, "collab_updates") == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond) // waiting for the bystander's update to be stored
+	}
+	if n := countRows(ctx, t, e.db, "collab_updates"); n != 1 {
+		t.Fatalf("bystander's update not stored: %d rows", n)
+	}
+}
+
+func TestDeletedDiscussionCannotBeJoined(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(ctx, t, filepath.Join(t.TempDir(), "garret.db"))
+	seed(ctx, t, e.db)
+	if err := e.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, "UPDATE discussions SET deleted_at = 5")
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.Join(ctx, bob, "libfoo", docID, newConn()); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("joined a deleted discussion: %v", err)
+	}
+}
+
+func TestJoinDuringUnloadIsServed(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(ctx, t, filepath.Join(t.TempDir(), "garret.db"))
+	seed(ctx, t, e.db)
+	for range 50 {
+		c := newConn()
+		s, err := e.svc.Join(ctx, bob, "libfoo", docID, c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.wait(t, 1) // every join gets sync step 1, even right as the owner unloads
+		s.Leave()
+		time.Sleep(time.Duration(len(c.all())) * 45 * time.Millisecond) // land near the 50 ms grace expiry
+	}
+}
