@@ -183,3 +183,12 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+// WithSecurityHeaders sets the headers of transport.md 3.3 on every
+// response of h, for handlers served beside the API.
+func WithSecurityHeaders(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setSecurityHeaders(w.Header())
+		h.ServeHTTP(w, r)
+	})
+}

@@ -7,12 +7,15 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"io"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -121,7 +124,7 @@ func TestMainTLSWithClientCertificates(t *testing.T) {
 	good := clientCert(t, k.ca)
 	revoked := clientCert(t, k.ca)
 	k.active.Replace([]string{pki.SerialString(good.Leaf.SerialNumber)})
-	url := serve(t, MainTLS(k.certs, k.ca.Cert, k.active, true), true)
+	url := serve(t, MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, true), true)
 
 	body, err := get(t, url, k.ca.Cert, &good)
 	if err != nil {
@@ -145,7 +148,7 @@ func TestMainTLSWithClientCertificates(t *testing.T) {
 
 func TestMainTLSWithoutClientCertificates(t *testing.T) {
 	k := newKit(t)
-	url := serve(t, MainTLS(k.certs, k.ca.Cert, k.active, false), false)
+	url := serve(t, MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, false), false)
 	body, err := get(t, url, k.ca.Cert, nil)
 	if err != nil || !strings.HasPrefix(body, " 127.0.0.1") {
 		t.Fatalf("certificates off: %q, %v", body, err)
@@ -154,7 +157,7 @@ func TestMainTLSWithoutClientCertificates(t *testing.T) {
 
 func TestMainTLSVersion(t *testing.T) {
 	k := newKit(t)
-	cfg := MainTLS(k.certs, k.ca.Cert, k.active, false)
+	cfg := MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, false)
 	if cfg.MinVersion != tls.VersionTLS13 {
 		t.Fatalf("min version %x", cfg.MinVersion)
 	}
@@ -177,5 +180,27 @@ func TestIdentityIgnoresHeaders(t *testing.T) {
 	r.RemoteAddr = "garbage"
 	if _, err := IdentityOf(r, false); err == nil {
 		t.Fatal("unparsable remote address accepted")
+	}
+}
+
+func TestStaticCertificate(t *testing.T) {
+	dir := t.TempDir()
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), DNSNames: []string{"review.example"}}
+	der, _ := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	kder, _ := x509.MarshalECPrivateKey(key)
+	certPath, keyPath := filepath.Join(dir, "c.pem"), filepath.Join(dir, "k.pem")
+	_ = os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600)
+	_ = os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: kder}), 0o600)
+	get, err := StaticCertificate(certPath, keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := get(nil)
+	if err != nil || c.Leaf == nil || c.Leaf.DNSNames[0] != "review.example" {
+		t.Fatalf("certificate %v %v", c, err)
+	}
+	if _, err := StaticCertificate(certPath, filepath.Join(dir, "missing.pem")); err == nil {
+		t.Fatal("missing key accepted")
 	}
 }
