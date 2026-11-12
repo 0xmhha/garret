@@ -267,7 +267,8 @@ any of them. Each step has a one-line summary and is either a command run
 without a shell or an action in the process (writing a file). `--dry-run`
 prints the summaries; a real run prints each summary as it runs it and stops
 at the first failure, except for steps marked optional. Every command has a
-60-second timeout.
+60-second timeout, or 5 minutes for the steps where macOS may wait for the
+user's password (importing into the keychain, trusting the CA).
 
 On enrollment, after the files of 6.4 are saved:
 
@@ -276,8 +277,9 @@ On enrollment, after the files of 6.4 are saved:
    (`~/Library/Keychains/login.keychain-db`):
    1. `security import key.pem -k <kc> -t priv`
    2. `security import cert.pem -k <kc> -t cert`
-   3. `security add-trusted-cert -r trustRoot -p ssl -k <kc> ca.pem`; macOS
-      asks for the user's password here.
+   3. `security add-trusted-cert -r trustRoot -p ssl -s <host> -k <kc> ca.pem`;
+      `-s` limits the trust to the server's host on top of the CA's name
+      constraints. macOS asks for the user's password here.
    4. `security set-identity-preference -Z <SHA-1 of cert> -s <server URL>/ <kc>`
    5. Write `~/Library/LaunchAgents/io.garret.renew.<host>-<port>.plist`
       (mode 0600): `garret renew --server <server URL>`, at load and every

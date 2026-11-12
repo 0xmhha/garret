@@ -21,11 +21,14 @@ import (
 )
 
 const (
-	renewInterval    = 6 * time.Hour
-	defaultCmdLimit  = 60 * time.Second
-	maxCommandOutput = 512
-	goosDarwin       = "darwin"
-	goosLinux        = "linux"
+	renewInterval   = 6 * time.Hour
+	defaultCmdLimit = 60 * time.Second
+	// interactiveTimeout bounds steps where macOS may wait for the user's
+	// password (trusting the CA, a locked keychain).
+	interactiveTimeout = 5 * time.Minute
+	maxCommandOutput   = 512
+	goosDarwin         = "darwin"
+	goosLinux          = "linux"
 )
 
 var safeHost = regexp.MustCompile(`^[A-Za-z0-9.:-]+$`)
@@ -46,7 +49,8 @@ type Step struct {
 	Summary  string
 	Command  []string
 	Do       func(context.Context) error
-	Optional bool // a failure is reported and the installation goes on
+	Optional bool          // a failure is reported and the installation goes on
+	Timeout  time.Duration // overrides the runner's limit when set
 }
 
 // Runner runs a command. ExecRunner is the real one.
@@ -55,7 +59,7 @@ type Runner interface {
 }
 
 // ExecRunner runs commands with exec, each bounded by Timeout (60 seconds
-// when zero).
+// when zero) unless the context already has a deadline.
 type ExecRunner struct{ Timeout time.Duration }
 
 // Run runs name with args and returns an error that includes the start of
@@ -65,8 +69,11 @@ func (r ExecRunner) Run(ctx context.Context, name string, args ...string) error 
 	if limit == 0 {
 		limit = defaultCmdLimit
 	}
-	ctx, cancel := context.WithTimeout(ctx, limit)
-	defer cancel()
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, limit)
+		defer cancel()
+	}
 	cmd := exec.CommandContext(ctx, name, args...) // #nosec G204 -- fixed programs; arguments are never passed to a shell
 	cmd.WaitDelay = time.Second
 	out, err := cmd.CombinedOutput()
@@ -89,13 +96,7 @@ func Apply(ctx context.Context, steps []Step, r Runner, w io.Writer, dryRun bool
 			continue
 		}
 		_, _ = fmt.Fprintf(w, "%s\n", s.Summary)
-		var err error
-		switch {
-		case s.Do != nil:
-			err = s.Do(ctx)
-		case len(s.Command) > 0:
-			err = r.Run(ctx, s.Command[0], s.Command[1:]...)
-		}
+		err := runStep(ctx, s, r)
 		if err != nil && s.Optional {
 			_, _ = fmt.Fprintf(w, "  skipped: %v\n", err)
 			continue
@@ -107,6 +108,21 @@ func Apply(ctx context.Context, steps []Step, r Runner, w io.Writer, dryRun bool
 	return nil
 }
 
+func runStep(ctx context.Context, s Step, r Runner) error {
+	if s.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.Timeout)
+		defer cancel()
+	}
+	switch {
+	case s.Do != nil:
+		return s.Do(ctx)
+	case len(s.Command) > 0:
+		return r.Run(ctx, s.Command[0], s.Command[1:]...)
+	}
+	return nil
+}
+
 // InstallSteps returns the steps that point Git, the keychain and the
 // renewal job at the saved files (transport.md 6.5).
 func InstallSteps(p Platform, f Files, serverURL string, cert *x509.Certificate) ([]Step, error) {
@@ -114,6 +130,8 @@ func InstallSteps(p Platform, f Files, serverURL string, cert *x509.Certificate)
 	if err != nil {
 		return nil, err
 	}
+	u, _ := url.Parse(serverURL) // parsed by jobName
+	host := u.Hostname()
 	var steps []Step
 	for _, args := range GitConfigArgs(serverURL, f) {
 		steps = append(steps, Step{Summary: "git " + strings.Join(args[:3], " "), Command: append([]string{"git"}, args...)})
@@ -122,7 +140,10 @@ func InstallSteps(p Platform, f Files, serverURL string, cert *x509.Certificate)
 	case goosDarwin:
 		steps = append(steps, importSteps(p, f)...)
 		steps = append(steps,
-			Step{Summary: "trust the garret CA for this user", Command: []string{"security", "add-trusted-cert", "-r", "trustRoot", "-p", "ssl", "-k", keychain(p), f.CA}},
+			// -s limits the trust setting to the server's host, on top of
+			// the CA's own name constraints.
+			Step{Summary: "trust the garret CA for " + host + " for this user (macOS asks for your password)", Timeout: interactiveTimeout,
+				Command: []string{"security", "add-trusted-cert", "-r", "trustRoot", "-p", "ssl", "-s", host, "-k", keychain(p), f.CA}},
 			preferenceStep(p, serverURL, cert))
 		steps = append(steps, launchdSteps(p, f, serverURL, name)...)
 	case goosLinux:
@@ -150,8 +171,8 @@ func RenewSteps(p Platform, f Files, serverURL string, newCert, oldCert *x509.Ce
 func importSteps(p Platform, f Files) []Step {
 	kc := keychain(p)
 	return []Step{
-		{Summary: "import the device key into the login keychain", Command: []string{"security", "import", f.Key, "-k", kc, "-t", "priv"}},
-		{Summary: "import the certificate into the login keychain", Command: []string{"security", "import", f.Cert, "-k", kc, "-t", "cert"}},
+		{Summary: "import the device key into the login keychain", Timeout: interactiveTimeout, Command: []string{"security", "import", f.Key, "-k", kc, "-t", "priv"}},
+		{Summary: "import the certificate into the login keychain", Timeout: interactiveTimeout, Command: []string{"security", "import", f.Cert, "-k", kc, "-t", "cert"}},
 	}
 }
 

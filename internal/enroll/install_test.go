@@ -88,7 +88,7 @@ func TestInstallStepsDarwin(t *testing.T) {
 		"git config --global http." + testURL + "/.sslCAInfo " + files.CA,
 		"security import " + files.Key + " -k " + kc + " -t priv",
 		"security import " + files.Cert + " -k " + kc + " -t cert",
-		"security add-trusted-cert -r trustRoot -p ssl -k " + kc + " " + files.CA,
+		"security add-trusted-cert -r trustRoot -p ssl -s review.local -k " + kc + " " + files.CA,
 		"security set-identity-preference -Z " + certSHA1(cert) + " -s " + testURL + "/ " + kc,
 		"launchctl bootout gui/501/io.garret.renew.review.local-8443",
 		"launchctl bootstrap gui/501 " + plist,
@@ -216,5 +216,36 @@ func TestExecRunner(t *testing.T) {
 	start := time.Now()
 	if err := r.Run(context.Background(), "sleep", "5"); err == nil || time.Since(start) > 3*time.Second {
 		t.Fatalf("timeout not applied: %v after %v", err, time.Since(start))
+	}
+}
+
+func TestInteractiveStepsGetLongerTimeout(t *testing.T) {
+	steps, err := InstallSteps(Platform{GOOS: "darwin", Home: t.TempDir()}, FilesIn(t.TempDir()), testURL, testCert(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range steps {
+		long := len(s.Command) > 1 && s.Command[0] == "security" && (s.Command[1] == "add-trusted-cert" || s.Command[1] == "import")
+		if long != (s.Timeout == interactiveTimeout) {
+			t.Errorf("%q timeout %v", s.Summary, s.Timeout)
+		}
+	}
+}
+
+// deadlineRunner records whether the context had a deadline.
+type deadlineRunner struct{ left time.Duration }
+
+func (d *deadlineRunner) Run(ctx context.Context, _ string, _ ...string) error {
+	if dl, ok := ctx.Deadline(); ok {
+		d.left = time.Until(dl)
+	}
+	return nil
+}
+
+func TestApplyPassesStepTimeout(t *testing.T) {
+	d := &deadlineRunner{}
+	_ = Apply(context.Background(), []Step{{Summary: "s", Command: []string{"x"}, Timeout: time.Hour}}, d, &bytes.Buffer{}, false)
+	if d.left < 59*time.Minute {
+		t.Fatalf("deadline in %v", d.left)
 	}
 }

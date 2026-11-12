@@ -36,9 +36,12 @@ func TestKeychainStepsOnMacOS(t *testing.T) {
 		}
 		return string(out)
 	}
-	run("create-keychain", "-p", "", kc)
+	// A throwaway keychain needs some password; an empty one fails to
+	// unlock on the CI runner.
+	const pass = "garret-test-keychain"
+	run("create-keychain", "-p", pass, kc)
 	t.Cleanup(func() { _ = exec.CommandContext(context.Background(), "security", "delete-keychain", kc).Run() })
-	run("unlock-keychain", "-p", "", kc)
+	run("unlock-keychain", "-p", pass, kc)
 
 	_, ca := testServer(t, enrollHandler)
 	files := FilesIn(filepath.Join(home, "client"))
