@@ -117,6 +117,9 @@ func TestAppRequiresClientCertificates(t *testing.T) {
 func TestAppServesWithCertificatesOff(t *testing.T) {
 	cfg := testConfig(t, false)
 	a, out, stop := start(t, cfg)
+	if !strings.Contains(out.String(), "web interface: not built") {
+		t.Errorf("no placeholder notice:\n%s", out.String())
+	}
 	if !strings.Contains(out.String(), "client certificates are off") {
 		t.Errorf("no warning:\n%s", out.String())
 	}
