@@ -1,6 +1,6 @@
 # Transport and CLI specification
 
-Status: draft for review. Transport turns network requests into service calls
+Status: approved. Transport turns network requests into service calls
 ([services.md](services.md)) and never touches the store directly. The CLI
 starts the server and sets up client devices.
 
@@ -256,9 +256,12 @@ fingerprint at start. It no longer prints a setup link: `garret admin setup`
 proves authority by direct access to the data directory, which is private
 to the server's user (security.md, Data at rest).
 
-## 8. Open questions
+## 8. Settled values
 
-| # | Question | Proposed answer |
+These were open questions in the draft and were accepted as proposed during
+review.
+
+| # | Question | Value |
 |---|---|---|
 | Q1 | Periodic refresh of active serials | Every 30 seconds |
 | Q2 | JSON request body limit | 1 MiB |
@@ -266,3 +269,18 @@ to the server's user (security.md, Data at rest).
 | Q4 | Renewal check interval on clients | Every 6 hours |
 | Q5 | Wordlist for invitation codes | EFF large wordlist (7,776 words), embedded with its CC BY 3.0 attribution |
 | Q6 | Default host name in certificates | The computer's name with `.local` when `--host` is not given |
+
+## 9. Done criteria for stage 5
+
+Accepted during review:
+
+- every package's tests pass with `-race`, and `make check` and the required
+  macOS CI job pass;
+- Go integration tests run steps 1, 2, 3, 7 and 8 of the end-to-end scenario
+  in [testing.md](../design/testing.md) automatically: start the server,
+  enroll two members, push and open a review, reject what must be rejected,
+  and keep every record across a restart;
+- every pull request gets its own security review.
+
+The web interface (stage 6) and the three-machine run (stage 7) are outside
+this stage.
