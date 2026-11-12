@@ -225,13 +225,15 @@ func (r *Runner) FileAt(ctx context.Context, dir, commit, path string, max int64
 	if !isObjectName(commit) || path == "" {
 		return nil, fmt.Errorf("%w: cat-file", ErrBadArgument)
 	}
-	// cat-file -e exits non-zero, without output, when the object does not
-	// exist; any other failure (timeout, missing repository) stays an error.
-	if _, err := r.run(ctx, false, "--git-dir", dir, "cat-file", "-e", commit+":"+path); err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
-			return nil, fmt.Errorf("%w: %s at %s", ErrNotFound, path, commit)
-		}
+	// cat-file -t exits non-zero when the object does not exist; any other
+	// failure (timeout, missing repository) stays an error. A directory is
+	// a tree, not a file.
+	typ, err := r.run(ctx, false, "--git-dir", dir, "cat-file", "-t", commit+":"+path)
+	var exit *exec.ExitError
+	switch {
+	case errors.As(err, &exit), err == nil && strings.TrimSpace(string(typ)) != "blob":
+		return nil, fmt.Errorf("%w: no file %s at %s", ErrNotFound, path, commit)
+	case err != nil:
 		return nil, err
 	}
 	sizeOut, err := r.run(ctx, false, "--git-dir", dir, "cat-file", "-s", commit+":"+path)

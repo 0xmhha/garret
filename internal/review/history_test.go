@@ -3,6 +3,8 @@ package review
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -38,11 +40,18 @@ func TestFile(t *testing.T) {
 	}
 
 	old := rev.HeadSHA
+	if err := os.MkdirAll(filepath.Join(f.wt, "dir"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	withDir := f.commit(t, "dir/x.txt", "x\n", "directory")
 	bin := f.commit(t, "bin.dat", "a\x00b", "binary")
 	big := f.commit(t, "big.txt", strings.Repeat("x", 3<<20), "big")
 	f.run(t, "push", "-q", f.repo, "fix")
 	if err := f.svc.HandlePush(ctx, "libfoo", bob, []RefChange{{Ref: "refs/heads/fix", Old: old, New: big}}); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := f.svc.File(ctx, carol, "libfoo", r.Number, withDir, "dir"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a directory: %v", err)
 	}
 	if _, err := f.svc.File(ctx, carol, "libfoo", r.Number, bin, "bin.dat"); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("binary file: %v", err)
