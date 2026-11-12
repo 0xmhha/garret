@@ -17,6 +17,7 @@ import (
 	"net/netip"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,6 +32,12 @@ type wall struct{}
 
 func (wall) Now() time.Time { return time.Now() }
 
+// shifted is the wall clock moved forward by a settable offset.
+type shifted struct{ off atomic.Int64 }
+
+func (s *shifted) Now() time.Time          { return time.Now().Add(time.Duration(s.off.Load())) }
+func (s *shifted) advance(d time.Duration) { s.off.Add(int64(d)) }
+
 const origin = "https://review.local:8443"
 
 const password = "correct horse battery staple"
@@ -42,6 +49,7 @@ type env struct {
 	active  *pki.ActiveSerials
 	admin   auth.Issued
 	ca      *pki.CA
+	clock   *shifted
 }
 
 func newEnv(t *testing.T, clientCerts bool) *env {
@@ -58,7 +66,8 @@ func newEnv(t *testing.T, clientCerts bool) *env {
 	tmpl, _ := pki.CATemplate(serial, time.Now(), pki.Names{Host: "review.local", Networks: []netip.Prefix{netip.MustParsePrefix("192.168.1.0/24")}})
 	caCert, _ := pki.Sign(tmpl, tmpl, &key.PublicKey, key, rand.Reader)
 	active := &pki.ActiveSerials{}
-	svc, err := auth.NewService(auth.Config{DB: db, Audit: audit.NewRecorder(ids, wall{}), IDs: ids, Clock: wall{}, Rand: rand.Reader,
+	clk := &shifted{}
+	svc, err := auth.NewService(auth.Config{DB: db, Audit: audit.NewRecorder(ids, wall{}), IDs: ids, Clock: clk, Rand: rand.Reader,
 		CA: &pki.CA{Cert: caCert, Key: key}, Active: active,
 		Password: auth.Params{Memory: 64, Time: 1, Threads: 1, SaltLen: 16, KeyLen: 32}, ClientCertsOff: !clientCerts})
 	if err != nil {
@@ -70,7 +79,7 @@ func newEnv(t *testing.T, clientCerts bool) *env {
 		t.Fatal(err)
 	}
 	api := New(Config{Auth: svc, Origin: origin, ClientCerts: clientCerts, Active: active, Log: slog.New(slog.DiscardHandler)})
-	return &env{api: api, storeDB: db, auth: svc, active: active, admin: admin, ca: &pki.CA{Cert: caCert, Key: key}}
+	return &env{api: api, storeDB: db, auth: svc, active: active, admin: admin, ca: &pki.CA{Cert: caCert, Key: key}, clock: clk}
 }
 
 func csr(t *testing.T) []byte {
@@ -252,7 +261,9 @@ func TestRenewUsesHandshakeSerial(t *testing.T) {
 	e := newEnv(t, true)
 	c := &client{e: e, cert: e.admin.Certificate}
 	c.login(t)
-	w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))}, nil)
+	e.clock.advance(4 * 24 * time.Hour) // renewal is accepted in the second half of the validity
+	w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))},
+		map[string]string{"Content-Type": "application/json"})
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "BEGIN CERTIFICATE") {
 		t.Fatalf("renew %d %s", w.Code, w.Body)
 	}
@@ -265,5 +276,30 @@ func TestRenewUsesHandshakeSerial(t *testing.T) {
 	o.login(t)
 	if w := o.do(t, http.MethodPost, basePath+"/me/certificates/renew", map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))}, nil); w.Code != http.StatusForbidden {
 		t.Fatalf("renew without a certificate on the connection %d", w.Code)
+	}
+}
+
+func TestRenewWithTheCertificateAlone(t *testing.T) {
+	e := newEnv(t, true)
+	c := &client{e: e, cert: e.admin.Certificate} // no login
+	e.clock.advance(4 * 24 * time.Hour)
+	body := map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))}
+	jsonType := map[string]string{"Content-Type": "application/json"}
+	if w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", body, jsonType); w.Code != http.StatusOK {
+		t.Fatalf("renew without a session %d %s", w.Code, w.Body)
+	}
+	if w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", body, jsonType); w.Code != http.StatusConflict || errorCode(t, w) != "renewal_refused" {
+		t.Fatalf("second renewal from the same certificate %d %s", w.Code, w.Body)
+	}
+	if w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", body, map[string]string{"Content-Type": "text/plain"}); w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("renew as a simple request %d", w.Code)
+	}
+	if w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", body,
+		map[string]string{"Content-Type": "application/json", "Origin": "https://evil.example"}); w.Code != http.StatusForbidden {
+		t.Fatalf("cross-origin renew %d", w.Code)
+	}
+	noCert := &client{e: newEnv(t, false)}
+	if w := noCert.do(t, http.MethodPost, basePath+"/me/certificates/renew", body, jsonType); w.Code != http.StatusForbidden {
+		t.Fatalf("renew without a certificate %d", w.Code)
 	}
 }

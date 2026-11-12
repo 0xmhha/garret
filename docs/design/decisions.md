@@ -136,7 +136,10 @@ client certificate (mutual TLS), valid for 7 days:
 
 - a device gets its first certificate only through an invitation link;
 - a device renews only by presenting its current, valid certificate;
-- a background job on the device renews automatically.
+- a background job on the device renews automatically;
+- renewal follows one line per device: the server renews only once less
+  than half of the validity remains, only the newest certificate of the
+  line, and revoking any certificate revokes the whole line.
 
 `--client-cert=off` disables mutual TLS for access points the team fully
 controls, with a warning at every start. Supported browsers are the latest
@@ -153,6 +156,16 @@ are in [security.md](security.md#transport-security-and-device-certificates).
   enrollment cost on teams with a private access point); a self-signed server
   certificate re-trusted every 7 days (every member reconfigures weekly);
   mutual TLS for Git only (the web UI shows the same code and comments).
+- **Why one line per device**: renewal needs no password, because the
+  background job has none. Without these limits a stolen device key could
+  renew without end, and revoking one certificate would leave the
+  certificates renewed from it valid. With them, the thief and the owner
+  cannot both keep renewing (the second renewal from the same certificate
+  fails, which the owner sees), and one revocation ends the device.
+- **Rejected**: revoking the previous certificate at renewal (a renewal job
+  that crashes after the response and before saving locks the device out);
+  no limits, relying on disabling the user (a single device could not be
+  revoked).
 
 Data at rest is not encrypted by garret in the first release. Files are
 created with owner-only permissions, garret warns at startup when disk

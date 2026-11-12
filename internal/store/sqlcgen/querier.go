@@ -17,6 +17,7 @@ type Querier interface {
 	ChangeReviewState(ctx context.Context, arg ChangeReviewStateParams) (int64, error)
 	CountActiveAdmins(ctx context.Context) (int64, error)
 	CountAttachmentsWithDigest(ctx context.Context, arg CountAttachmentsWithDigestParams) (int64, error)
+	CountRenewals(ctx context.Context, renewedFrom sql.NullString) (int64, error)
 	CountReplies(ctx context.Context, threadRootID sql.NullString) (int64, error)
 	DeleteAttachment(ctx context.Context, id string) error
 	DeleteComment(ctx context.Context, id string) error
@@ -44,6 +45,7 @@ type Querier interface {
 	GetInvitationByDigest(ctx context.Context, tokenSha256 []byte) (Invitation, error)
 	GetProjectByID(ctx context.Context, id string) (Project, error)
 	GetProjectByName(ctx context.Context, name string) (Project, error)
+	GetRenewalOf(ctx context.Context, renewedFrom sql.NullString) (ClientCertificate, error)
 	GetReviewByDescriptionDoc(ctx context.Context, descriptionDocID string) (Review, error)
 	GetReviewByNumber(ctx context.Context, arg GetReviewByNumberParams) (Review, error)
 	GetReviewByNumberOrID(ctx context.Context, id string) (Review, error)

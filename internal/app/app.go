@@ -62,6 +62,9 @@ type System struct {
 	GitPath    string
 	Log        *slog.Logger
 	Out        io.Writer // the startup banner and warnings
+	// ActiveRefresh overrides the 30-second refresh of active serials;
+	// zero keeps it. Tests shorten it.
+	ActiveRefresh time.Duration
 }
 
 // App is an assembled garret server. New builds it and opens the main
@@ -205,7 +208,7 @@ func (a *App) build(ctx context.Context, dir *datadir.Dir, runner *gitrepo.Runne
 	a.main = &http.Server{Handler: router(api, git, placeholder()), ReadHeaderTimeout: readHeaderTimeout, IdleTimeout: idleTimeout,
 		ErrorLog: slog.NewLogLogger(sys.Log.Handler(), slog.LevelWarn)}
 	if !cfg.InsecureHTTP {
-		a.main.TLSConfig = server.MainTLS(mainCert, a.ca.Cert, active, cfg.ClientCerts)
+		a.main.TLSConfig = server.MainTLS(mainCert, a.ca.Cert, active, cfg.ClientCerts, sys.Clock.Now)
 	}
 	return nil
 }
@@ -265,7 +268,11 @@ func (a *App) Run(ctx context.Context) error {
 	wg.Go(func() { a.hub.Run(bg) })
 	wg.Go(func() { a.collab.Run(bg) })
 	wg.Go(func() { a.certs.Run(bg, certificateCheck) })
-	wg.Go(func() { every(bg, activeRefresh, a.refreshActive) })
+	refresh := activeRefresh
+	if a.sys.ActiveRefresh > 0 {
+		refresh = a.sys.ActiveRefresh
+	}
+	wg.Go(func() { every(bg, refresh, a.refreshActive) })
 	wg.Go(func() { every(bg, sessionSweep, a.sweepSessions) })
 	wg.Go(func() { every(bg, notificationSweep, a.sweepNotifications) })
 	gateCtx, stopGate := context.WithCancel(bg)

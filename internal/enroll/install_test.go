@@ -105,7 +105,7 @@ func TestInstallStepsDarwin(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, s := range []string{"<string>/opt/a&amp;b/garret</string>", "<string>--server</string>", "<string>" + testURL + "</string>",
-		"<integer>21600</integer>", "<key>RunAtLoad</key>", filepath.Join(files.Dir, "renew.log")} {
+		"<integer>21600</integer>", "<key>RunAtLoad</key>", files.Dir + ".renew.log"} {
 		if !strings.Contains(string(data), s) {
 			t.Errorf("plist lacks %q:\n%s", s, data)
 		}
@@ -247,5 +247,50 @@ func TestApplyPassesStepTimeout(t *testing.T) {
 	_ = Apply(context.Background(), []Step{{Summary: "s", Command: []string{"x"}, Timeout: time.Hour}}, d, &bytes.Buffer{}, false)
 	if d.left < 59*time.Minute {
 		t.Fatalf("deadline in %v", d.left)
+	}
+}
+
+func TestInstallStepsWithoutCertificateUsePlaceholder(t *testing.T) {
+	steps, err := InstallSteps(Platform{GOOS: "darwin", Home: t.TempDir()}, FilesIn(t.TempDir()), testURL, nil)
+	if err != nil || !strings.Contains(strings.Join(commands(steps), "\n"), "-Z "+certPlaceholder+" ") {
+		t.Fatalf("dry-run steps %q %v", commands(steps), err)
+	}
+}
+
+func TestSaveReplacesAllFilesTogether(t *testing.T) {
+	_, ca := testServer(t, enrollHandler)
+	dir := filepath.Join(t.TempDir(), "client", "review.local-8443")
+	files := FilesIn(dir)
+	k1, _ := NewKey()
+	c1 := signFor(t, ca, k1)
+	if err := files.Save(k1, c1, ca.Cert); err != nil {
+		t.Fatal(err)
+	}
+	// A failed save leaves the previous set in place.
+	if err := os.WriteFile(dir+stagingSuffix, nil, 0o600); err != nil { // a file where the staging directory goes
+		t.Fatal(err)
+	}
+	k2, _ := NewKey()
+	c2 := signFor(t, ca, k2)
+	if err := files.Save(k2, c2, ca.Cert); err == nil {
+		t.Fatal("save over a blocked staging path succeeded")
+	}
+	if k, c, err := files.Load(); err != nil || !k.Equal(k1) || !c.Equal(c1) {
+		t.Fatalf("previous set lost: %v", err)
+	}
+	_ = os.Remove(dir + stagingSuffix)
+	// Interrupted after the old set moved aside and before the new one
+	// moved in: Load finishes the swap.
+	if err := files.Save(k2, c2, ca.Cert); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(dir, dir+stagingSuffix); err != nil {
+		t.Fatal(err)
+	}
+	if k, c, err := files.Load(); err != nil || !k.Equal(k2) || !c.Equal(c2) {
+		t.Fatalf("interrupted swap not recovered: %v", err)
+	}
+	if fi, err := os.Stat(dir); err != nil || fi.Mode().Perm() != 0o700 {
+		t.Fatalf("directory after recovery: %v", err)
 	}
 }

@@ -268,3 +268,24 @@ func TestSerialString(t *testing.T) {
 		t.Fatalf("SerialString(255) = %q", got)
 	}
 }
+
+func TestLoadCA(t *testing.T) {
+	d := openDir(t)
+	if _, err := LoadCA(d); !errors.Is(err, ErrNoCA) {
+		t.Fatalf("empty directory: %v", err)
+	}
+	ca, err := LoadOrCreateCA(d, &fakeClock{now: now}, names, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadCA(d)
+	if err != nil || Fingerprint(got.Cert) != Fingerprint(ca.Cert) || !got.Key.Equal(ca.Key) {
+		t.Fatalf("LoadCA = %v", err)
+	}
+	if err := os.Remove(filepath.Join(d.TLSDir(), "ca.key")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadCA(d); !errors.Is(err, ErrCAIncomplete) {
+		t.Fatalf("missing key: %v", err)
+	}
+}

@@ -23,6 +23,8 @@ import (
 )
 
 var (
+	// ErrNoCA is returned by LoadCA when the data directory has no CA yet.
+	ErrNoCA = errors.New("pki: no CA in the data directory; start garret serve once first")
 	// ErrCAIncomplete is returned when only one of the CA key and
 	// certificate exists.
 	ErrCAIncomplete = errors.New("pki: CA key or certificate is missing")
@@ -44,6 +46,33 @@ const (
 type CA struct {
 	Cert *x509.Certificate
 	Key  *ecdsa.PrivateKey
+}
+
+// LoadCA loads the CA without creating one, for commands that run beside
+// the server. It returns ErrNoCA when neither file exists and
+// ErrCAIncomplete when only one does.
+func LoadCA(dir *datadir.Dir) (*CA, error) {
+	keyPEM, keyErr := dir.ReadFile(caKeyFile)
+	certPEM, certErr := dir.ReadFile(caCertFile)
+	keyMissing, certMissing := errors.Is(keyErr, fs.ErrNotExist), errors.Is(certErr, fs.ErrNotExist)
+	switch {
+	case keyMissing && certMissing:
+		return nil, ErrNoCA
+	case keyMissing || certMissing:
+		return nil, ErrCAIncomplete
+	case keyErr != nil:
+		return nil, keyErr
+	case certErr != nil:
+		return nil, certErr
+	}
+	key, cert, err := parsePair(keyPEM, certPEM)
+	if err != nil {
+		return nil, fmt.Errorf("pki: load CA: %w", err)
+	}
+	if !cert.IsCA {
+		return nil, ErrCAMismatch
+	}
+	return &CA{Cert: cert, Key: key}, nil
 }
 
 // LoadOrCreateCA loads the CA from the data directory, or creates it when

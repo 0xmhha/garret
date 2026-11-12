@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -132,5 +133,64 @@ func TestMigrate(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestRenewalLineMigrationResolvesDuplicates covers a database written
+// before renewals were limited to one per certificate: two certificates
+// renewed from C0. The newest stays the line's successor; the other is
+// revoked and detached, so the unique index can be created.
+func TestRenewalLineMigrationResolvesDuplicates(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+	p, err := newProvider(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.UpTo(ctx, 2); err != nil {
+		t.Fatal(err)
+	}
+	key := strings.Repeat("k", 32)
+	for _, q := range []string{
+		`INSERT INTO users VALUES ('u1', 'bob', 'Bob', 'x', 'member', 1, NULL)`,
+		`INSERT INTO client_certificates VALUES ('c0', 'u1', 'laptop', CAST('` + key + `' AS BLOB), 'invitation', NULL, 1, 100, NULL)`,
+		`INSERT INTO client_certificates VALUES ('c1', 'u1', 'laptop', CAST('` + key + `' AS BLOB), 'renewal', 'c0', 50, 150, NULL)`,
+		`INSERT INTO client_certificates VALUES ('c2', 'u1', 'laptop', CAST('` + key + `' AS BLOB), 'renewal', 'c0', 60, 160, NULL)`,
+	} {
+		if _, err := db.ExecContext(ctx, q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if err := Migrate(ctx, db); err != nil {
+		t.Fatalf("migrate over duplicate renewals: %v", err)
+	}
+	rows := map[string]struct {
+		from    sql.NullString
+		revoked bool
+	}{}
+	r, err := db.QueryContext(ctx, `SELECT serial, renewed_from, revoked_at IS NOT NULL FROM client_certificates`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = r.Close() }()
+	for r.Next() {
+		var s string
+		var v struct {
+			from    sql.NullString
+			revoked bool
+		}
+		if err := r.Scan(&s, &v.from, &v.revoked); err != nil {
+			t.Fatal(err)
+		}
+		rows[s] = v
+	}
+	if rows["c2"].from.String != "c0" || rows["c2"].revoked {
+		t.Errorf("newest renewal changed: %+v", rows["c2"])
+	}
+	if rows["c1"].from.Valid || !rows["c1"].revoked {
+		t.Errorf("older duplicate not detached and revoked: %+v", rows["c1"])
+	}
+	if rows["c0"].revoked {
+		t.Errorf("the parent was revoked: %+v", rows["c0"])
 	}
 }

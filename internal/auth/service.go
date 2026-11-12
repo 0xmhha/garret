@@ -14,10 +14,13 @@ import (
 
 // Service errors. Transport maps them to API error codes.
 var (
-	ErrNotFound          = errors.New("auth: not found")
-	ErrForbidden         = errors.New("auth: not allowed")
-	ErrInvalid           = errors.New("auth: invalid input")
-	ErrConflict          = errors.New("auth: conflict")
+	ErrNotFound  = errors.New("auth: not found")
+	ErrForbidden = errors.New("auth: not allowed")
+	ErrInvalid   = errors.New("auth: invalid input")
+	ErrConflict  = errors.New("auth: conflict")
+	// ErrRenewalRefused is returned when a certificate may not be renewed
+	// now: it is not due, or it was renewed already.
+	ErrRenewalRefused    = errors.New("auth: renewal refused")
 	ErrInvalidInvitation = errors.New("auth: invitation is not valid")
 	ErrSetupClosed       = errors.New("auth: setup is not available")
 )

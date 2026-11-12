@@ -46,6 +46,12 @@ SELECT * FROM client_certificates WHERE serial = ?;
 -- name: ListUserCertificates :many
 SELECT * FROM client_certificates WHERE user_id = ? ORDER BY not_before DESC;
 
+-- name: CountRenewals :one
+SELECT count(*) FROM client_certificates WHERE renewed_from = ?;
+
+-- name: GetRenewalOf :one
+SELECT * FROM client_certificates WHERE renewed_from = ?;
+
 -- name: RevokeCertificate :execrows
 UPDATE client_certificates SET revoked_at = ? WHERE serial = ? AND revoked_at IS NULL;
 

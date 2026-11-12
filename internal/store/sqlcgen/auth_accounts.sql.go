@@ -21,6 +21,17 @@ func (q *Queries) CountActiveAdmins(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countRenewals = `-- name: CountRenewals :one
+SELECT count(*) FROM client_certificates WHERE renewed_from = ?
+`
+
+func (q *Queries) CountRenewals(ctx context.Context, renewedFrom sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countRenewals, renewedFrom)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const earliestOpenInvitationExpiry = `-- name: EarliestOpenInvitationExpiry :one
 SELECT CAST(COALESCE(min(expires_at), 0) AS INTEGER) FROM invitations
 WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at > ?
@@ -71,6 +82,27 @@ func (q *Queries) GetInvitationByDigest(ctx context.Context, tokenSha256 []byte)
 		&i.RevokedAt,
 		&i.UsedAt,
 		&i.UsedBy,
+	)
+	return i, err
+}
+
+const getRenewalOf = `-- name: GetRenewalOf :one
+SELECT serial, user_id, device_name, public_key_sha256, issued_via, renewed_from, not_before, not_after, revoked_at FROM client_certificates WHERE renewed_from = ?
+`
+
+func (q *Queries) GetRenewalOf(ctx context.Context, renewedFrom sql.NullString) (ClientCertificate, error) {
+	row := q.db.QueryRowContext(ctx, getRenewalOf, renewedFrom)
+	var i ClientCertificate
+	err := row.Scan(
+		&i.Serial,
+		&i.UserID,
+		&i.DeviceName,
+		&i.PublicKeySha256,
+		&i.IssuedVia,
+		&i.RenewedFrom,
+		&i.NotBefore,
+		&i.NotAfter,
+		&i.RevokedAt,
 	)
 	return i, err
 }

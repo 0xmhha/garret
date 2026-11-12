@@ -124,7 +124,7 @@ func TestMainTLSWithClientCertificates(t *testing.T) {
 	good := clientCert(t, k.ca)
 	revoked := clientCert(t, k.ca)
 	k.active.Replace([]string{pki.SerialString(good.Leaf.SerialNumber)})
-	url := serve(t, MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, true), true)
+	url := serve(t, MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, true, time.Now), true)
 
 	body, err := get(t, url, k.ca.Cert, &good)
 	if err != nil {
@@ -148,7 +148,7 @@ func TestMainTLSWithClientCertificates(t *testing.T) {
 
 func TestMainTLSWithoutClientCertificates(t *testing.T) {
 	k := newKit(t)
-	url := serve(t, MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, false), false)
+	url := serve(t, MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, false, time.Now), false)
 	body, err := get(t, url, k.ca.Cert, nil)
 	if err != nil || !strings.HasPrefix(body, " 127.0.0.1") {
 		t.Fatalf("certificates off: %q, %v", body, err)
@@ -157,7 +157,7 @@ func TestMainTLSWithoutClientCertificates(t *testing.T) {
 
 func TestMainTLSVersion(t *testing.T) {
 	k := newKit(t)
-	cfg := MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, false)
+	cfg := MainTLS(k.certs.GetCertificate, k.ca.Cert, k.active, false, time.Now)
 	if cfg.MinVersion != tls.VersionTLS13 {
 		t.Fatalf("min version %x", cfg.MinVersion)
 	}
@@ -202,5 +202,13 @@ func TestStaticCertificate(t *testing.T) {
 	}
 	if _, err := StaticCertificate(certPath, filepath.Join(dir, "missing.pem")); err == nil {
 		t.Fatal("missing key accepted")
+	}
+}
+
+func TestMainTLSUsesTheGivenClock(t *testing.T) {
+	at := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	cfg := MainTLS(nil, nil, &pki.ActiveSerials{}, false, func() time.Time { return at })
+	if cfg.Time == nil || !cfg.Time().Equal(at) {
+		t.Fatal("handshakes do not use the injected clock")
 	}
 }

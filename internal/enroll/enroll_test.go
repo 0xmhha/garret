@@ -229,10 +229,11 @@ func TestEnrollTrustsOnlyTheFetchedCA(t *testing.T) {
 }
 
 func TestRenewPresentsTheCurrentCertificate(t *testing.T) {
-	var path string
+	var path, origin, ctype string
 	var peers int
 	link, ca := testServer(t, func(w http.ResponseWriter, r *http.Request, ca *pki.CA) {
 		path, peers = r.URL.Path, len(r.TLS.PeerCertificates)
+		origin, ctype = r.Header.Get("Origin"), r.Header.Get("Content-Type")
 		issue(w, r, ca, nil)
 	}, true)
 	ctx := context.Background()
@@ -245,6 +246,9 @@ func TestRenewPresentsTheCurrentCertificate(t *testing.T) {
 	res, err := Renew(ctx, link.Base(), ca.Cert, current, newKey)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if origin != link.Base() || ctype != "application/json" {
+		t.Fatalf("renew headers Origin %q Content-Type %q", origin, ctype)
 	}
 	if path != "/api/v1/me/certificates/renew" || peers != 1 || !res.Certificate.PublicKey.(*ecdsa.PublicKey).Equal(&newKey.PublicKey) {
 		t.Fatalf("renew path %q peers %d", path, peers)

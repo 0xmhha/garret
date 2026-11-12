@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/netip"
+	"time"
 
 	"github.com/0xmhha/garret/internal/pki"
 )
@@ -26,11 +27,13 @@ type GetCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
 // MainTLS returns the TLS configuration of the main listener, presenting
 // the certificate from get. With clientCerts, the handshake requires a
 // certificate that chains to ca alone and whose serial is in active
-// (transport.md 2.1).
-func MainTLS(get GetCertificate, ca *x509.Certificate, active *pki.ActiveSerials, clientCerts bool) *tls.Config {
+// (transport.md 2.1). now is the clock that certificate validity is checked
+// against, the same one the services use.
+func MainTLS(get GetCertificate, ca *x509.Certificate, active *pki.ActiveSerials, clientCerts bool, now func() time.Time) *tls.Config {
 	cfg := &tls.Config{
 		MinVersion:     tls.VersionTLS13,
 		GetCertificate: get,
+		Time:           now,
 		ClientAuth:     tls.NoClientCert,
 	}
 	if !clientCerts {
