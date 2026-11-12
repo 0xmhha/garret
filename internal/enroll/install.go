@@ -172,7 +172,7 @@ func RenewSteps(p Platform, f Files, serverURL string, newCert, oldCert *x509.Ce
 func importSteps(p Platform, f Files) []Step {
 	kc := keychain(p)
 	return []Step{
-		{Summary: "import the device key into the login keychain", Timeout: interactiveTimeout, Command: []string{"security", "import", f.Key, "-k", kc, "-t", "priv"}},
+		{Summary: "import the device key into the login keychain", Timeout: interactiveTimeout, Command: []string{"security", "import", f.Key, "-k", kc, "-t", "priv", "-f", "openssl"}},
 		{Summary: "import the certificate into the login keychain", Timeout: interactiveTimeout, Command: []string{"security", "import", f.Cert, "-k", kc, "-t", "cert"}},
 	}
 }

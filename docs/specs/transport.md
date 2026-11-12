@@ -275,7 +275,8 @@ On enrollment, after the files of 6.4 are saved:
 1. `git config --global` for `sslCert`, `sslKey` and `sslCAInfo` (6.4).
 2. macOS only, with `<kc>` the login keychain
    (`~/Library/Keychains/login.keychain-db`):
-   1. `security import key.pem -k <kc> -t priv`
+   1. `security import key.pem -k <kc> -t priv -f openssl`; `key.pem` is
+      SEC1 (`EC PRIVATE KEY`), which `security` accepts and Git reads
    2. `security import cert.pem -k <kc> -t cert`
    3. `security add-trusted-cert -r trustRoot -p ssl -s <host> -k <kc> ca.pem`;
       `-s` limits the trust to the server's host on top of the CA's name

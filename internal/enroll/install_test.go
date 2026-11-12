@@ -86,7 +86,7 @@ func TestInstallStepsDarwin(t *testing.T) {
 		"git config --global http." + testURL + "/.sslCert " + files.Cert,
 		"git config --global http." + testURL + "/.sslKey " + files.Key,
 		"git config --global http." + testURL + "/.sslCAInfo " + files.CA,
-		"security import " + files.Key + " -k " + kc + " -t priv",
+		"security import " + files.Key + " -k " + kc + " -t priv -f openssl",
 		"security import " + files.Cert + " -k " + kc + " -t cert",
 		"security add-trusted-cert -r trustRoot -p ssl -s review.local -k " + kc + " " + files.CA,
 		"security set-identity-preference -Z " + certSHA1(cert) + " -s " + testURL + "/ " + kc,
