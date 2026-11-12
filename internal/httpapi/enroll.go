@@ -17,6 +17,9 @@ type EnrollConfig struct {
 	Auth *auth.Service
 	CA   *pki.CA
 	Log  *slog.Logger
+	// MainURL is the main service's URL, returned so the client can
+	// configure Git and the browser (for example https://host:8443).
+	MainURL string
 	// OnEnrolled lets the server re-check whether invitations remain open.
 	OnEnrolled func()
 }
@@ -72,6 +75,7 @@ func enroll(w http.ResponseWriter, r *http.Request, cfg EnrollConfig) error {
 		"user":        toUserJSON(issued.User),
 		"certificate": string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: issued.Certificate.Raw})),
 		"ca":          string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: issued.CA.Raw})),
+		"server_url":  cfg.MainURL,
 	})
 	return nil
 }
