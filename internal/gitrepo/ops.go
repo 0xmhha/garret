@@ -242,3 +242,20 @@ func validInternalRef(ref string) bool {
 	rest, ok := strings.CutPrefix(ref, internalRefPrefix)
 	return ok && ValidBranchRef(branchPrefix+rest) == nil
 }
+
+// ResolveRef returns the commit ref points at, or "" when ref does not
+// exist. ref must be a branch ref or under refs/garret/.
+func (r *Runner) ResolveRef(ctx context.Context, dir, ref string) (string, error) {
+	if ValidBranchRef(ref) != nil && !validInternalRef(ref) {
+		return "", fmt.Errorf("%w: rev-parse", ErrBadArgument)
+	}
+	out, err := r.run(ctx, false, "--git-dir", dir, "for-each-ref", "--format=%(objectname)", ref)
+	if err != nil {
+		return "", err
+	}
+	sha := strings.TrimSpace(string(out))
+	if sha != "" && !isObjectName(sha) {
+		return "", fmt.Errorf("%w: for-each-ref output", ErrRawFormat)
+	}
+	return sha, nil
+}

@@ -9,6 +9,8 @@ import (
 )
 
 type Querier interface {
+	AllocateReviewNumber(ctx context.Context, id string) (int64, error)
+	ChangeReviewState(ctx context.Context, arg ChangeReviewStateParams) (int64, error)
 	CountActiveAdmins(ctx context.Context) (int64, error)
 	DeleteExpiredSessions(ctx context.Context, arg DeleteExpiredSessionsParams) (int64, error)
 	DeleteSession(ctx context.Context, idSha256 []byte) error
@@ -21,20 +23,34 @@ type Querier interface {
 	GetInvitationByDigest(ctx context.Context, tokenSha256 []byte) (Invitation, error)
 	GetProjectByID(ctx context.Context, id string) (Project, error)
 	GetProjectByName(ctx context.Context, name string) (Project, error)
+	GetReviewByNumber(ctx context.Context, arg GetReviewByNumberParams) (Review, error)
 	GetSession(ctx context.Context, idSha256 []byte) (Session, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertCertificate(ctx context.Context, arg InsertCertificateParams) error
+	InsertCollabDocument(ctx context.Context, arg InsertCollabDocumentParams) error
 	InsertInvitation(ctx context.Context, arg InsertInvitationParams) error
 	InsertProject(ctx context.Context, arg InsertProjectParams) error
+	InsertReview(ctx context.Context, arg InsertReviewParams) error
+	InsertRevision(ctx context.Context, arg InsertRevisionParams) error
+	InsertRevisionCommit(ctx context.Context, arg InsertRevisionCommitParams) error
 	InsertSession(ctx context.Context, arg InsertSessionParams) error
+	InsertStateChange(ctx context.Context, arg InsertStateChangeParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
+	InsertVerdict(ctx context.Context, arg InsertVerdictParams) error
+	LatestRevision(ctx context.Context, reviewID string) (Revision, error)
+	LatestVerdicts(ctx context.Context, reviewID string) ([]Verdict, error)
 	ListActiveSerials(ctx context.Context) ([]string, error)
 	ListInvitations(ctx context.Context) ([]Invitation, error)
+	ListOpenReviewsOnBranch(ctx context.Context, arg ListOpenReviewsOnBranchParams) ([]Review, error)
 	ListProjectNames(ctx context.Context) ([]string, error)
 	ListProjects(ctx context.Context) ([]Project, error)
+	ListReviews(ctx context.Context, projectID string) ([]Review, error)
+	ListRevisionCommits(ctx context.Context, revisionID string) ([]RevisionCommit, error)
+	ListRevisionPins(ctx context.Context) ([]ListRevisionPinsRow, error)
+	ListRevisions(ctx context.Context, reviewID string) ([]Revision, error)
 	ListUserAccessTokens(ctx context.Context, userID string) ([]AccessToken, error)
 	ListUserCertificates(ctx context.Context, userID string) ([]ClientCertificate, error)
 	ListUsers(ctx context.Context) ([]User, error)
@@ -44,6 +60,7 @@ type Querier interface {
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	RevokeUserCertificates(ctx context.Context, arg RevokeUserCertificatesParams) error
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
+	TouchReview(ctx context.Context, arg TouchReviewParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error
 	UseInvitation(ctx context.Context, arg UseInvitationParams) (int64, error)
