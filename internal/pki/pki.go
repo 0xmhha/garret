@@ -211,7 +211,7 @@ func isP256(pub crypto.PublicKey) bool {
 }
 
 func (n Names) check() error {
-	if !validHost(n.Host) {
+	if !ValidHost(n.Host) {
 		return fmt.Errorf("%w: host %q", ErrNames, n.Host)
 	}
 	if len(n.Networks) == 0 {
@@ -240,9 +240,9 @@ func inAny(a netip.Addr, prefixes []netip.Prefix) bool {
 	return false
 }
 
-// validHost accepts a DNS host name: dot-separated labels of letters, digits
+// ValidHost reports whether h is a DNS host name: dot-separated labels of letters, digits
 // and inner hyphens, each 1-63 bytes, 253 bytes in total.
-func validHost(h string) bool {
+func ValidHost(h string) bool {
 	if h == "" || len(h) > maxHostBytes {
 		return false
 	}
