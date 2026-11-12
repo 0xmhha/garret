@@ -73,6 +73,26 @@ func (q *Queries) GetReviewByNumber(ctx context.Context, arg GetReviewByNumberPa
 	return i, err
 }
 
+const getRevisionByID = `-- name: GetRevisionByID :one
+SELECT id, review_id, number, base_sha, head_sha, commits_omitted, pushed_by, pushed_at FROM revisions WHERE id = ?
+`
+
+func (q *Queries) GetRevisionByID(ctx context.Context, id string) (Revision, error) {
+	row := q.db.QueryRowContext(ctx, getRevisionByID, id)
+	var i Revision
+	err := row.Scan(
+		&i.ID,
+		&i.ReviewID,
+		&i.Number,
+		&i.BaseSha,
+		&i.HeadSha,
+		&i.CommitsOmitted,
+		&i.PushedBy,
+		&i.PushedAt,
+	)
+	return i, err
+}
+
 const insertCollabDocument = `-- name: InsertCollabDocument :exec
 INSERT INTO collab_documents (id, project_id, kind, created_at) VALUES (?, ?, ?, ?)
 `
@@ -476,6 +496,35 @@ func (q *Queries) ListRevisions(ctx context.Context, reviewID string) ([]Revisio
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const reviewParticipants = `-- name: ReviewParticipants :many
+SELECT v.user_id FROM verdicts v WHERE v.review_id = ?1
+UNION
+SELECT c.author_id FROM comments c WHERE c.review_id = ?1
+`
+
+func (q *Queries) ReviewParticipants(ctx context.Context, review string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, reviewParticipants, review)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

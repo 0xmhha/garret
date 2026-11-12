@@ -31,6 +31,7 @@ type Querier interface {
 	GetProjectByName(ctx context.Context, name string) (Project, error)
 	GetReviewByNumber(ctx context.Context, arg GetReviewByNumberParams) (Review, error)
 	GetReviewByNumberOrID(ctx context.Context, id string) (Review, error)
+	GetRevisionByID(ctx context.Context, id string) (Revision, error)
 	GetRevisionByNumber(ctx context.Context, arg GetRevisionByNumberParams) (Revision, error)
 	GetSession(ctx context.Context, idSha256 []byte) (Session, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
@@ -74,6 +75,7 @@ type Querier interface {
 	ListUsers(ctx context.Context) ([]User, error)
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
 	RenameDiscussion(ctx context.Context, arg RenameDiscussionParams) (int64, error)
+	ReviewParticipants(ctx context.Context, review string) ([]string, error)
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) (int64, error)
 	RevokeCertificate(ctx context.Context, arg RevokeCertificateParams) (int64, error)
 	RevokeInvitation(ctx context.Context, arg RevokeInvitationParams) (int64, error)

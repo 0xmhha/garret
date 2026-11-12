@@ -175,7 +175,15 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
   later revision than the anchor, unresolved code comments are ported with
   `ChangeBlocks` and `Port` over the diff from the anchor's head to the
   requested head (old-side comments over the bases). Porting is computed on
-  read and never stored.
+  read and never stored. A renamed file keeps its comments under the new
+  path; a deleted file drops them from later revisions; a binary file or
+  one over the diff limits makes them file-level comments.
+- Commits named in a view or a file diff must belong to the review: a
+  revision's base, head or one of its commits. A range must lie inside one
+  revision, in order.
+- Notifications: a verdict notifies the review's author; a new revision
+  notifies everyone who gave a verdict or commented on the review, except
+  the pusher.
 
 ## 6. Comments and discussions (`internal/comment`, `internal/discussion`)
 
