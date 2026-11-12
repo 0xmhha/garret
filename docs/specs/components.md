@@ -234,7 +234,10 @@ renames the file to `attachments/<project-id>/<sha256-hex>`. Storing the same
 content twice keeps one file. `Open(projectID, sha256)` opens it for reading.
 `RemoveProject(projectID)` removes the project's directory (purge).
 
-The project ID is checked to be a ULID before it becomes a path segment.
+The project ID must be a ULID in canonical uppercase form before it becomes
+a path segment. A read error or an oversized upload removes the temporary
+file, so nothing partial is ever visible. `Inline(mediaType)` reports whether
+a type may be shown in the page (Q8).
 
 ## 8. Settled values
 
