@@ -33,6 +33,13 @@ jobs:
         run: make build
       - name: Test
         run: make test
+      - name: Keychain installation
+        # Runs the real security commands against a temporary keychain;
+        # skipped elsewhere so go test never creates a keychain on a
+        # developer's machine.
+        env:
+          GARRET_KEYCHAIN_TEST: "1"
+        run: go test -count=1 -run TestKeychainStepsOnMacOS -v ./internal/enroll/
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
