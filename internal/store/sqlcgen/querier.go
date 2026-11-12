@@ -14,7 +14,15 @@ type Querier interface {
 	BumpCommentVersion(ctx context.Context, arg BumpCommentVersionParams) (int64, error)
 	ChangeReviewState(ctx context.Context, arg ChangeReviewStateParams) (int64, error)
 	CountActiveAdmins(ctx context.Context) (int64, error)
+	CountAttachmentsWithDigest(ctx context.Context, arg CountAttachmentsWithDigestParams) (int64, error)
+	CountReplies(ctx context.Context, threadRootID sql.NullString) (int64, error)
+	DeleteAttachment(ctx context.Context, id string) error
+	DeleteComment(ctx context.Context, id string) error
+	DeleteCommentAttachmentsOfAttachment(ctx context.Context, attachmentID string) error
+	DeleteCommentAttachmentsOfComment(ctx context.Context, commentID string) error
+	DeleteCommentVersions(ctx context.Context, commentID string) error
 	DeleteExpiredSessions(ctx context.Context, arg DeleteExpiredSessionsParams) (int64, error)
+	DeleteNotificationsAbout(ctx context.Context, subjectID string) error
 	DeleteOldNotifications(ctx context.Context, createdAt int64) (int64, error)
 	DeleteSession(ctx context.Context, idSha256 []byte) error
 	DeleteUserSessions(ctx context.Context, userID string) error
@@ -46,6 +54,7 @@ type Querier interface {
 	InsertCommentAttachment(ctx context.Context, arg InsertCommentAttachmentParams) error
 	InsertCommentVersion(ctx context.Context, arg InsertCommentVersionParams) error
 	InsertDiscussion(ctx context.Context, arg InsertDiscussionParams) error
+	InsertErasure(ctx context.Context, arg InsertErasureParams) error
 	InsertInvitation(ctx context.Context, arg InsertInvitationParams) error
 	InsertNotification(ctx context.Context, arg InsertNotificationParams) error
 	InsertProject(ctx context.Context, arg InsertProjectParams) error
@@ -56,6 +65,8 @@ type Querier interface {
 	InsertStateChange(ctx context.Context, arg InsertStateChangeParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertVerdict(ctx context.Context, arg InsertVerdictParams) error
+	LatestProjectEvent(ctx context.Context, projectID sql.NullString) (string, error)
+	LatestProjectEventID(ctx context.Context, projectID sql.NullString) (string, error)
 	LatestRevision(ctx context.Context, reviewID string) (Revision, error)
 	LatestVerdicts(ctx context.Context, reviewID string) ([]Verdict, error)
 	ListActiveSerials(ctx context.Context) ([]string, error)
@@ -77,7 +88,26 @@ type Querier interface {
 	ListUserAccessTokens(ctx context.Context, userID string) ([]AccessToken, error)
 	ListUserCertificates(ctx context.Context, userID string) ([]ClientCertificate, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	MakeCommentPlaceholder(ctx context.Context, arg MakeCommentPlaceholderParams) error
 	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
+	PurgeAttachments(ctx context.Context, projectID string) error
+	PurgeAuditEvents(ctx context.Context, projectID sql.NullString) error
+	PurgeCheckpoints(ctx context.Context, projectID string) error
+	PurgeCollabDocuments(ctx context.Context, projectID string) error
+	PurgeCommentAttachments(ctx context.Context, projectID string) error
+	PurgeCommentVersions(ctx context.Context, projectID string) error
+	PurgeComments(ctx context.Context, projectID string) error
+	PurgeDiscussions(ctx context.Context, projectID string) error
+	// Purge deletes children before parents (data.md 6.6).
+	PurgeNotifications(ctx context.Context, projectID string) error
+	PurgeProject(ctx context.Context, id string) error
+	PurgeReplies(ctx context.Context, projectID string) error
+	PurgeReviews(ctx context.Context, projectID string) error
+	PurgeRevisionCommits(ctx context.Context, projectID string) error
+	PurgeRevisions(ctx context.Context, projectID string) error
+	PurgeStateChanges(ctx context.Context, projectID string) error
+	PurgeUpdates(ctx context.Context, projectID string) error
+	PurgeVerdicts(ctx context.Context, projectID string) error
 	RenameDiscussion(ctx context.Context, arg RenameDiscussionParams) (int64, error)
 	ReviewParticipants(ctx context.Context, review string) ([]string, error)
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) (int64, error)
