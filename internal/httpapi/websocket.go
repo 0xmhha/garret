@@ -83,6 +83,18 @@ func (a *API) stillActive(r *http.Request) bool {
 	return !a.cfg.ClientCerts || a.cfg.Active.Active(identity(r).Serial)
 }
 
+// sessionValid re-authenticates the session that opened the socket. It runs
+// on every ping, so a logout, an expired session or a disabled user ends the
+// socket within one ping interval, with client certificates on or off.
+func (a *API) sessionValid(ctx context.Context, r *http.Request) bool {
+	c, err := r.Cookie(sessionCookie)
+	if err != nil {
+		return false
+	}
+	_, err = a.cfg.Auth.Authenticate(ctx, c.Value, identity(r).Serial)
+	return err == nil
+}
+
 // events streams the hub's events to the browser as JSON text messages.
 func (a *API) events(w http.ResponseWriter, r *http.Request) error {
 	if err := a.websocketOK(r); err != nil {
@@ -121,7 +133,7 @@ func (a *API) events(w http.ResponseWriter, r *http.Request) error {
 				return nil
 			}
 		case <-ping.C:
-			if !a.stillActive(r) || pingConn(ctx, conn) != nil {
+			if !a.stillActive(r) || !a.sessionValid(ctx, r) || pingConn(ctx, conn) != nil {
 				return nil
 			}
 		}
@@ -215,7 +227,7 @@ func (a *API) collabDocument(w http.ResponseWriter, r *http.Request) error {
 					return
 				}
 			case <-ping.C:
-				if !a.stillActive(r) || pingConn(ctx, conn) != nil {
+				if !a.stillActive(r) || !a.sessionValid(ctx, r) || pingConn(ctx, conn) != nil {
 					return
 				}
 			}
