@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 
 	"github.com/0xmhha/garret/internal/admin"
@@ -96,6 +97,9 @@ const (
 	keyIdentity
 )
 
+// jsonMediaType is the media type of every JSON request and response.
+const jsonMediaType = "application/json"
+
 // handler is an API handler that returns an error to be mapped.
 type handler func(w http.ResponseWriter, r *http.Request) error
 
@@ -141,6 +145,31 @@ func (a *API) authed(h handler) http.Handler {
 	})
 }
 
+// deviceAuthed wraps a handler that a device calls with its client
+// certificate alone, without a session: certificate renewal, run by the
+// background job that has no password. The user is the certificate's
+// owner. Besides public's origin check, the body must be declared
+// application/json, which a cross-site page cannot send without a CORS
+// preflight that garret never grants; so a browser that presents the
+// certificate automatically cannot be made to renew it.
+func (a *API) deviceAuthed(h handler) http.Handler {
+	return a.public(func(w http.ResponseWriter, r *http.Request) error {
+		serial := identity(r).Serial
+		if serial == "" {
+			return fmt.Errorf("%w: this request needs a client certificate on the connection", auth.ErrForbidden)
+		}
+		if mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mt != jsonMediaType {
+			return errNotJSON
+		}
+		u, err := a.cfg.Auth.CertificateUser(r.Context(), serial)
+		if err != nil {
+			return err
+		}
+		r = r.WithContext(context.WithValue(r.Context(), keyUser, u))
+		return h(w, r)
+	})
+}
+
 func changesState(r *http.Request) bool {
 	switch r.Method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:
@@ -179,7 +208,7 @@ func decode(w http.ResponseWriter, r *http.Request, v any) error {
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", jsonMediaType+"; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }

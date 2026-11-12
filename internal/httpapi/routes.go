@@ -13,7 +13,7 @@ func (a *API) routes() {
 	h("DELETE "+basePath+"/me/tokens/{id}", a.authed(a.revokeToken))
 	h("GET "+basePath+"/me/certificates", a.authed(a.listCertificates))
 	h("DELETE "+basePath+"/me/certificates/{serial}", a.authed(a.revokeCertificate))
-	h("POST "+basePath+"/me/certificates/renew", a.authed(a.renewCertificate))
+	h("POST "+basePath+"/me/certificates/renew", a.deviceAuthed(a.renewCertificate))
 
 	p := basePath + "/projects"
 	h("GET "+p, a.authed(a.listProjects))

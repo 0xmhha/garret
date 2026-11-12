@@ -242,7 +242,14 @@ func keychain(p Platform) string {
 	return filepath.Join(p.Home, "Library", "Keychains", "login.keychain-db")
 }
 
+// certPlaceholder stands for the certificate's hash in a dry run, before
+// the server has issued it.
+const certPlaceholder = "<certificate SHA-1>"
+
 func certSHA1(c *x509.Certificate) string {
+	if c == nil {
+		return certPlaceholder
+	}
 	sum := sha1.Sum(c.Raw) //nolint:gosec // see the import
 	return strings.ToUpper(hex.EncodeToString(sum[:]))
 }

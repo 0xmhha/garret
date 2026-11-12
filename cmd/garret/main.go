@@ -30,23 +30,49 @@ const (
 const usage = `usage: garret <command> [flags]
 
 commands:
-  serve     start the server (garret serve --help for flags)
-  version   print the version and Git commit
+  serve          start the server
+  admin setup    create the first administrator, on the server's machine
+  enroll <link>  join a server with an invitation link
+  renew          renew this device's certificates
+  version        print the version and Git commit
 `
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-// run dispatches a command and returns the process exit code.
+// run dispatches a command with the real machine and returns the process
+// exit code.
 func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "serve" {
+		return serve(args[1:], stdout, stderr)
+	}
+	d, err := realDeps(stdout, stderr)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "garret: %v\n", err)
+		return exitError
+	}
+	return runWith(args, d)
+}
+
+// runWith dispatches a command other than serve with the given machine.
+func runWith(args []string, d deps) int {
+	stdout, stderr := d.stdout, d.stderr
 	if len(args) == 0 {
 		_, _ = fmt.Fprint(stderr, usage)
 		return exitUsage
 	}
 	switch args[0] {
-	case "serve":
-		return serve(args[1:], stdout, stderr)
+	case "enroll":
+		return enrollCmd(args[1:], d)
+	case "renew":
+		return renewCmd(args[1:], d)
+	case "admin":
+		if len(args) > 1 && args[1] == "setup" {
+			return adminSetup(args[2:], d)
+		}
+		_, _ = fmt.Fprint(stderr, usage)
+		return exitUsage
 	case "version":
 		_, _ = fmt.Fprintln(stdout, version())
 		return exitOK

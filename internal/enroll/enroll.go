@@ -156,7 +156,7 @@ func Enroll(ctx context.Context, l Link, ca *x509.Certificate, req Request, key 
 		Certificate string `json:"certificate"`
 		ServerURL   string `json:"server_url"`
 	}
-	if err := post(ctx, ClientFor(ca, l.Host, nil), l.Base()+"/enroll", payload, &out); err != nil {
+	if err := post(ctx, ClientFor(ca, l.Host, nil), l.Base()+"/enroll", payload, &out, ""); err != nil {
 		return Result{}, err
 	}
 	if err := checkServerURL(out.ServerURL, l.Host); err != nil {
@@ -183,8 +183,10 @@ func Renew(ctx context.Context, serverURL string, ca *x509.Certificate, current 
 	var out struct {
 		Certificate string `json:"certificate"`
 	}
+	// The server takes the certificate alone and checks the origin, as it
+	// does for every state-changing request.
 	if err := post(ctx, ClientFor(ca, u.Hostname(), &current), serverURL+"/api/v1/me/certificates/renew",
-		map[string]any{"csr": csr}, &out); err != nil {
+		map[string]any{"csr": csr}, &out, serverURL); err != nil {
 		return Result{}, err
 	}
 	return parseResult(out.Certificate, ca, serverURL, newKey)
@@ -242,7 +244,8 @@ func get(ctx context.Context, client *http.Client, u string, limit int64) ([]byt
 	return io.ReadAll(io.LimitReader(resp.Body, limit))
 }
 
-func post(ctx context.Context, client *http.Client, u string, payload, out any) error {
+// post sends payload as JSON, with an Origin header when origin is set.
+func post(ctx context.Context, client *http.Client, u string, payload, out any, origin string) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -252,6 +255,9 @@ func post(ctx context.Context, client *http.Client, u string, payload, out any) 
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if origin != "" {
+		req.Header.Set("Origin", origin)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("enroll: connect: %w", err)

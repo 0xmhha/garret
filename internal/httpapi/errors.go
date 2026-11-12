@@ -41,6 +41,7 @@ var errorMapping = []struct {
 	{[]error{auth.ErrInvalidCredentials, auth.ErrUnauthenticated}, http.StatusUnauthorized, codeUnauthenticated, "sign in again"},
 	{[]error{auth.ErrInvalidInvitation}, http.StatusBadRequest, codeInvalidInvitation, "the invitation code is not valid"},
 	{[]error{admin.ErrExportRequired}, http.StatusConflict, codeExportRequired, "export the project first"},
+	{[]error{errNotJSON}, http.StatusUnsupportedMediaType, "unsupported_media_type", "send application/json"},
 	{[]error{errTooManyConnections}, http.StatusTooManyRequests, "too_many_connections", "too many open connections"},
 	{[]error{auth.ErrForbidden, project.ErrForbidden, review.ErrForbidden, comment.ErrForbidden, discussion.ErrForbidden,
 		attachment.ErrForbidden, admin.ErrForbidden}, http.StatusForbidden, codeForbidden, "not allowed"},
@@ -56,6 +57,7 @@ var errorMapping = []struct {
 var (
 	errBadRequest   = errors.New("httpapi: malformed request")
 	errBodyTooLarge = errors.New("httpapi: request body too large")
+	errNotJSON      = errors.New("httpapi: content type must be application/json")
 )
 
 type errorBody struct {
