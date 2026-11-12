@@ -17,6 +17,7 @@ import (
 	"github.com/0xmhha/garret/internal/app"
 	"github.com/0xmhha/garret/internal/clock"
 	"github.com/0xmhha/garret/internal/config"
+	"github.com/0xmhha/garret/internal/diskcrypt"
 	"github.com/0xmhha/garret/internal/netguard"
 )
 
@@ -125,8 +126,9 @@ func serve(args []string, stdout, stderr io.Writer) int {
 	log := slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	probe := &diskcrypt.Probe{GOOS: runtime.GOOS, Root: os.DirFS("/"), FileVault: fileVaultStatus}
 	a, err := app.New(ctx, cfg, app.System{Clock: clock.System{}, Rand: rand.Reader, Interfaces: netguard.Interfaces,
-		GitPath: git, Log: log, Out: stdout})
+		GitPath: git, Log: log, Out: stdout, DiskProbe: probe})
 	if err != nil {
 		log.Error("startup failed", "err", err)
 		return exitError
@@ -136,6 +138,13 @@ func serve(args []string, stdout, stderr io.Writer) int {
 		return exitError
 	}
 	return exitOK
+}
+
+// fileVaultStatus runs `fdesetup status`, which reports FileVault without
+// needing administrator rights.
+func fileVaultStatus(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, "/usr/bin/fdesetup", "status").Output()
+	return string(out), err
 }
 
 func environment() (config.Environment, error) {
