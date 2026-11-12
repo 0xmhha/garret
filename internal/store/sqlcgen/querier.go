@@ -22,6 +22,7 @@ type Querier interface {
 	EarliestOpenInvitationExpiry(ctx context.Context, expiresAt int64) (int64, error)
 	GetAccessToken(ctx context.Context, id string) (AccessToken, error)
 	GetAccessTokenByDigest(ctx context.Context, tokenSha256 []byte) (AccessToken, error)
+	GetAttachment(ctx context.Context, id string) (Attachment, error)
 	GetCertificate(ctx context.Context, serial string) (ClientCertificate, error)
 	GetComment(ctx context.Context, id string) (Comment, error)
 	GetCommentBody(ctx context.Context, arg GetCommentBodyParams) (string, error)
@@ -37,10 +38,12 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
+	InsertAttachment(ctx context.Context, arg InsertAttachmentParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertCertificate(ctx context.Context, arg InsertCertificateParams) error
 	InsertCollabDocument(ctx context.Context, arg InsertCollabDocumentParams) error
 	InsertComment(ctx context.Context, arg InsertCommentParams) error
+	InsertCommentAttachment(ctx context.Context, arg InsertCommentAttachmentParams) error
 	InsertCommentVersion(ctx context.Context, arg InsertCommentVersionParams) error
 	InsertDiscussion(ctx context.Context, arg InsertDiscussionParams) error
 	InsertInvitation(ctx context.Context, arg InsertInvitationParams) error
@@ -56,6 +59,7 @@ type Querier interface {
 	LatestRevision(ctx context.Context, reviewID string) (Revision, error)
 	LatestVerdicts(ctx context.Context, reviewID string) ([]Verdict, error)
 	ListActiveSerials(ctx context.Context) ([]string, error)
+	ListCommentAttachments(ctx context.Context, commentID string) ([]Attachment, error)
 	ListCommentVersions(ctx context.Context, commentID string) ([]CommentVersion, error)
 	ListDiscussionComments(ctx context.Context, discussionID sql.NullString) ([]ListDiscussionCommentsRow, error)
 	ListDiscussions(ctx context.Context, projectID string) ([]Discussion, error)
@@ -82,6 +86,7 @@ type Querier interface {
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	RevokeUserCertificates(ctx context.Context, arg RevokeUserCertificatesParams) error
 	SetCommentResolved(ctx context.Context, arg SetCommentResolvedParams) (int64, error)
+	SoftDeleteAttachment(ctx context.Context, arg SoftDeleteAttachmentParams) (int64, error)
 	SoftDeleteComment(ctx context.Context, arg SoftDeleteCommentParams) (int64, error)
 	SoftDeleteDiscussion(ctx context.Context, arg SoftDeleteDiscussionParams) (int64, error)
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
