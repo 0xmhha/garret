@@ -126,3 +126,17 @@ func TestSubscriptionsCloseOnShutdown(t *testing.T) {
 		t.Fatal("subscription open after the hub stopped")
 	}
 }
+
+func TestUserTargetedEvents(t *testing.T) {
+	h := runHub(t)
+	a := h.Subscribe(context.Background(), "U1", all, 4)
+	b := h.Subscribe(context.Background(), "U2", all, 4)
+	h.Publish(Event{Type: "notification.created", Project: "p", ID: "N1", User: "U2"})
+	h.Publish(Event{Type: "comment.created", Project: "p", ID: "C1"})
+	if e, _ := recv(t, a); e.ID != "C1" {
+		t.Fatalf("U1 got %+v, want only the untargeted event", e)
+	}
+	if e, _ := recv(t, b); e.ID != "N1" {
+		t.Fatalf("U2 got %+v, want its notification first", e)
+	}
+}

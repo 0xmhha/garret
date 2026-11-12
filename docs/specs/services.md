@@ -46,7 +46,8 @@ Carried requirements from earlier security reviews:
 - `realtime.Hub` implements data.md 7.6: one goroutine owns the connection
   set; `Publish(Event)` is non-blocking (a full hub channel drops the event
   and counts it); each connection has a bounded buffer and is closed when it
-  is full. Events carry only the type and the resource identifiers
+  is full. An event with a target user (notifications) reaches only that
+  user's connections. Events carry only the type and the resource identifiers
   (api.md, WebSocket channels). The hub delivers an event only to
   connections of users who can see its project.
 
@@ -180,13 +181,22 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
 
 - `CreateComment(ctx, user, parent, anchor, body, attachmentIDs)`: an anchor
   is accepted only on a review root comment; its path must exist at the
-  anchored side's commit and its lines must lie inside that file. Mentions
-  (Q5) and replies create notifications in the same transaction.
+  anchored side's commit and its lines must lie inside that file. The
+  anchor's commits must fit its view: `revision` is the revision's base and
+  head; `commit` is a commit of the revision and its parent; `range` is two
+  points of the revision in order. Mentions (Q5) and replies create
+  notifications in the same transaction. Each user is notified at most once
+  per comment, never for their own action, in this order: mention, reply to
+  their thread, comment on their review. Replies go to a thread's root only
+  and are never anchored.
 - `EditComment(ctx, user, id, expectedVersion, body)`: author only,
   optimistic (`ErrConflict` on a stale version).
 - `ResolveThread(ctx, user, rootID, resolved)`: who may resolve is Q3.
 - `DeleteComment`: author or administrator; soft delete.
-- `CreateDiscussion`, `RenameDiscussion`, `DeleteDiscussion` (soft).
+- `CreateDiscussion`, `RenameDiscussion`, `DeleteDiscussion` (soft). Rename
+  and delete are for the author or an administrator.
+- Edits notify only users mentioned in the new body and not in the previous
+  version.
 - Body limits from data.md: 1–65,536 bytes of UTF-8.
 
 ## 7. Collaborative documents (`internal/collab`)

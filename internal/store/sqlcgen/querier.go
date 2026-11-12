@@ -6,13 +6,16 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
 	AllocateReviewNumber(ctx context.Context, id string) (int64, error)
+	BumpCommentVersion(ctx context.Context, arg BumpCommentVersionParams) (int64, error)
 	ChangeReviewState(ctx context.Context, arg ChangeReviewStateParams) (int64, error)
 	CountActiveAdmins(ctx context.Context) (int64, error)
 	DeleteExpiredSessions(ctx context.Context, arg DeleteExpiredSessionsParams) (int64, error)
+	DeleteOldNotifications(ctx context.Context, createdAt int64) (int64, error)
 	DeleteSession(ctx context.Context, idSha256 []byte) error
 	DeleteUserSessions(ctx context.Context, userID string) error
 	DisableUser(ctx context.Context, arg DisableUserParams) (int64, error)
@@ -20,10 +23,15 @@ type Querier interface {
 	GetAccessToken(ctx context.Context, id string) (AccessToken, error)
 	GetAccessTokenByDigest(ctx context.Context, tokenSha256 []byte) (AccessToken, error)
 	GetCertificate(ctx context.Context, serial string) (ClientCertificate, error)
+	GetComment(ctx context.Context, id string) (Comment, error)
+	GetCommentBody(ctx context.Context, arg GetCommentBodyParams) (string, error)
+	GetDiscussion(ctx context.Context, arg GetDiscussionParams) (Discussion, error)
 	GetInvitationByDigest(ctx context.Context, tokenSha256 []byte) (Invitation, error)
 	GetProjectByID(ctx context.Context, id string) (Project, error)
 	GetProjectByName(ctx context.Context, name string) (Project, error)
 	GetReviewByNumber(ctx context.Context, arg GetReviewByNumberParams) (Review, error)
+	GetReviewByNumberOrID(ctx context.Context, id string) (Review, error)
+	GetRevisionByNumber(ctx context.Context, arg GetRevisionByNumberParams) (Revision, error)
 	GetSession(ctx context.Context, idSha256 []byte) (Session, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
@@ -31,7 +39,11 @@ type Querier interface {
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertCertificate(ctx context.Context, arg InsertCertificateParams) error
 	InsertCollabDocument(ctx context.Context, arg InsertCollabDocumentParams) error
+	InsertComment(ctx context.Context, arg InsertCommentParams) error
+	InsertCommentVersion(ctx context.Context, arg InsertCommentVersionParams) error
+	InsertDiscussion(ctx context.Context, arg InsertDiscussionParams) error
 	InsertInvitation(ctx context.Context, arg InsertInvitationParams) error
+	InsertNotification(ctx context.Context, arg InsertNotificationParams) error
 	InsertProject(ctx context.Context, arg InsertProjectParams) error
 	InsertReview(ctx context.Context, arg InsertReviewParams) error
 	InsertRevision(ctx context.Context, arg InsertRevisionParams) error
@@ -43,10 +55,16 @@ type Querier interface {
 	LatestRevision(ctx context.Context, reviewID string) (Revision, error)
 	LatestVerdicts(ctx context.Context, reviewID string) ([]Verdict, error)
 	ListActiveSerials(ctx context.Context) ([]string, error)
+	ListCommentVersions(ctx context.Context, commentID string) ([]CommentVersion, error)
+	ListDiscussionComments(ctx context.Context, discussionID sql.NullString) ([]ListDiscussionCommentsRow, error)
+	ListDiscussions(ctx context.Context, projectID string) ([]Discussion, error)
+	ListEnabledUsersByName(ctx context.Context, names []string) ([]ListEnabledUsersByNameRow, error)
 	ListInvitations(ctx context.Context) ([]Invitation, error)
+	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error)
 	ListOpenReviewsOnBranch(ctx context.Context, arg ListOpenReviewsOnBranchParams) ([]Review, error)
 	ListProjectNames(ctx context.Context) ([]string, error)
 	ListProjects(ctx context.Context) ([]Project, error)
+	ListReviewComments(ctx context.Context, reviewID sql.NullString) ([]ListReviewCommentsRow, error)
 	ListReviews(ctx context.Context, projectID string) ([]Review, error)
 	ListRevisionCommits(ctx context.Context, revisionID string) ([]RevisionCommit, error)
 	ListRevisionPins(ctx context.Context) ([]ListRevisionPinsRow, error)
@@ -54,12 +72,18 @@ type Querier interface {
 	ListUserAccessTokens(ctx context.Context, userID string) ([]AccessToken, error)
 	ListUserCertificates(ctx context.Context, userID string) ([]ClientCertificate, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	MarkNotificationRead(ctx context.Context, arg MarkNotificationReadParams) error
+	RenameDiscussion(ctx context.Context, arg RenameDiscussionParams) (int64, error)
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) (int64, error)
 	RevokeCertificate(ctx context.Context, arg RevokeCertificateParams) (int64, error)
 	RevokeInvitation(ctx context.Context, arg RevokeInvitationParams) (int64, error)
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	RevokeUserCertificates(ctx context.Context, arg RevokeUserCertificatesParams) error
+	SetCommentResolved(ctx context.Context, arg SetCommentResolvedParams) (int64, error)
+	SoftDeleteComment(ctx context.Context, arg SoftDeleteCommentParams) (int64, error)
+	SoftDeleteDiscussion(ctx context.Context, arg SoftDeleteDiscussionParams) (int64, error)
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
+	TouchDiscussion(ctx context.Context, arg TouchDiscussionParams) error
 	TouchReview(ctx context.Context, arg TouchReviewParams) error
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
 	UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error
