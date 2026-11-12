@@ -134,6 +134,10 @@ blocking after an invitation is created, revoked or used), the earliest
 expiry, or the end of the server context. A failed check keeps the current
 state and is retried after 30 seconds.
 
+Tests may replace how sockets are opened (`System.Listen`) to present
+connections from other peer addresses to the network filter; production
+uses `net.ListenConfig`.
+
 The main handler routes `/api/` to the JSON API, `/git/` to the Git
 endpoint and every other path to the web interface (a placeholder page
 until stage 6). The main URL is `https://<host>:<port>` (`http://` with

@@ -62,6 +62,10 @@ type System struct {
 	GitPath    string
 	Log        *slog.Logger
 	Out        io.Writer // the startup banner and warnings
+	// Listen opens a listening socket; nil means net.ListenConfig. Tests
+	// use it to present connections from other peer addresses to the
+	// network filter.
+	Listen func(ctx context.Context, address string) (net.Listener, error)
 	// ActiveRefresh overrides the 30-second refresh of active serials;
 	// zero keeps it. Tests shorten it.
 	ActiveRefresh time.Duration
@@ -178,7 +182,7 @@ func (a *App) build(ctx context.Context, dir *datadir.Dir, runner *gitrepo.Runne
 	}
 	mainAddrs := listenAt(cfg.Listen, addrs, cfg.Port)
 	for _, ap := range mainAddrs {
-		l, err := new(net.ListenConfig).Listen(ctx, "tcp", ap.String())
+		l, err := a.listen(ctx, ap.String())
 		if err != nil {
 			return fmt.Errorf("app: listen on %s: %w", ap, err)
 		}
@@ -189,7 +193,8 @@ func (a *App) build(ctx context.Context, dir *datadir.Dir, runner *gitrepo.Runne
 	enrollURL := "https://" + net.JoinHostPort(cfg.Host, strconv.Itoa(int(enrollPort(cfg))))
 
 	enroll := &enrollListeners{
-		addrs: listenAt(cfg.EnrollListen, addrs, cfg.EnrollPort), allowed: a.allowed, log: sys.Log,
+		listen: a.listen,
+		addrs:  listenAt(cfg.EnrollListen, addrs, cfg.EnrollPort), allowed: a.allowed, log: sys.Log,
 		tls: server.EnrollTLS(a.certs),
 	}
 	a.gate = newGate(a.auth.OpenInvitationsUntil, enroll, sys.Clock, sys.Log)
@@ -211,6 +216,13 @@ func (a *App) build(ctx context.Context, dir *datadir.Dir, runner *gitrepo.Runne
 		a.main.TLSConfig = server.MainTLS(mainCert, a.ca.Cert, active, cfg.ClientCerts, sys.Clock.Now)
 	}
 	return nil
+}
+
+func (a *App) listen(ctx context.Context, address string) (net.Listener, error) {
+	if a.sys.Listen != nil {
+		return a.sys.Listen(ctx, address)
+	}
+	return new(net.ListenConfig).Listen(ctx, "tcp", address)
 }
 
 // repair runs the startup checks that finish work a crash interrupted.
@@ -383,6 +395,7 @@ func enrollPort(cfg config.Serve) uint16 {
 // enrollListeners are the enrollment listeners the gate opens and closes.
 // Only the gate's goroutine calls Open and Close.
 type enrollListeners struct {
+	listen  func(ctx context.Context, address string) (net.Listener, error)
 	addrs   []netip.AddrPort
 	allowed []netip.Prefix
 	tls     *tls.Config
@@ -399,7 +412,7 @@ func (e *enrollListeners) Open() error {
 		ErrorLog: slog.NewLogLogger(e.log.Handler(), slog.LevelWarn)}
 	var lns []net.Listener
 	for _, ap := range e.addrs {
-		l, err := new(net.ListenConfig).Listen(context.Background(), "tcp", ap.String())
+		l, err := e.listen(context.Background(), ap.String())
 		if err != nil {
 			for _, o := range lns {
 				_ = o.Close()
