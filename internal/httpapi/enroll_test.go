@@ -20,7 +20,7 @@ func TestEnrollHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 	enrolled := 0
-	h := NewEnrollHandler(EnrollConfig{Auth: e.auth, CA: e.ca, Log: slog.New(slog.DiscardHandler), OnEnrolled: func() { enrolled++ }})
+	h := NewEnrollHandler(EnrollConfig{Auth: e.auth, CA: e.ca, MainURL: origin, Log: slog.New(slog.DiscardHandler), OnEnrolled: func() { enrolled++ }})
 	do := func(method, path string, body any) *httptest.ResponseRecorder {
 		var buf bytes.Buffer
 		if body != nil {
@@ -37,7 +37,7 @@ func TestEnrollHandler(t *testing.T) {
 	}
 	req := map[string]string{"code": strings.ToUpper(strings.ReplaceAll(code, "-", " ")), "username": "bob", "display_name": "Bob",
 		"password": password, "device": "laptop", "csr": base64.StdEncoding.EncodeToString(csr(t))}
-	if w := do(http.MethodPost, "/enroll", req); w.Code != http.StatusCreated || !strings.Contains(w.Body.String(), `"username":"bob"`) || enrolled != 1 {
+	if w := do(http.MethodPost, "/enroll", req); w.Code != http.StatusCreated || !strings.Contains(w.Body.String(), `"username":"bob"`) || !strings.Contains(w.Body.String(), `"server_url":"`+origin+`"`) || enrolled != 1 {
 		t.Fatalf("enroll %d %s", w.Code, w.Body)
 	}
 	if w := do(http.MethodPost, "/enroll", req); w.Code != http.StatusBadRequest || errorCode(t, w) != codeInvalidInvitation {
