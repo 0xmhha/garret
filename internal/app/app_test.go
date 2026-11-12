@@ -20,6 +20,7 @@ import (
 
 	"github.com/0xmhha/garret/internal/clock"
 	"github.com/0xmhha/garret/internal/config"
+	"github.com/0xmhha/garret/internal/diskcrypt"
 	"github.com/0xmhha/garret/internal/netguard"
 )
 
@@ -168,5 +169,32 @@ func TestNewFailsWhenThePortIsTaken(t *testing.T) {
 	cfg.Listen = netip.MustParseAddrPort(l.Addr().String())
 	if _, err := New(context.Background(), cfg, testSystem(t, io.Discard)); err == nil {
 		t.Fatal("New succeeded on a port in use")
+	}
+}
+
+func TestBannerReportsDiskEncryption(t *testing.T) {
+	for out, want := range map[string]string{
+		"FileVault is Off.": "warning: disk encryption appears to be off",
+		"FileVault is On.":  "",
+		"":                  "could not tell whether disk encryption is on",
+	} {
+		sys := testSystem(t, &strings.Builder{})
+		var banner strings.Builder
+		sys.Out = &banner
+		sys.DiskProbe = &diskcrypt.Probe{GOOS: "darwin", FileVault: func(context.Context) (string, error) {
+			if out == "" {
+				return "", errors.New("fdesetup not found")
+			}
+			return out, nil
+		}}
+		a, err := New(context.Background(), testConfig(t, true), sys)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a.closeAll()
+		got := banner.String()
+		if want == "" && strings.Contains(got, "disk encryption") || want != "" && !strings.Contains(got, want) {
+			t.Errorf("FileVault %q: banner\n%s", out, got)
+		}
 	}
 }

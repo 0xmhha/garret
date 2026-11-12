@@ -112,7 +112,12 @@ Startup, in order; any failure stops the process before a listener opens:
    logged.
 6. `RefreshActive` once, then print the main URL, the allowed networks and
    the CA fingerprint, and the warnings for `--client-cert=off` and
-   `--insecure-http`.
+   `--insecure-http`. Warn when disk encryption appears to be off
+   (security.md, Data at rest): on macOS when `fdesetup status` does not
+   report `FileVault is On`; on Linux when no device-mapper device under
+   `/sys/block/dm-*/dm/uuid` has a `CRYPT-` UUID. The check is best effort,
+   bounded by 5 seconds, and never stops startup; when it cannot tell, it
+   says so instead of warning.
 7. Open the main listeners and start the background work.
 
 Background work, each in its own goroutine that ends with the server

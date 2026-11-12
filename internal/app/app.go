@@ -26,6 +26,7 @@ import (
 	"github.com/0xmhha/garret/internal/config"
 	"github.com/0xmhha/garret/internal/datadir"
 	"github.com/0xmhha/garret/internal/discussion"
+	"github.com/0xmhha/garret/internal/diskcrypt"
 	"github.com/0xmhha/garret/internal/gitrepo"
 	"github.com/0xmhha/garret/internal/gitserver"
 	"github.com/0xmhha/garret/internal/httpapi"
@@ -51,6 +52,7 @@ const (
 	readHeaderTimeout = 10 * time.Second
 	idleTimeout       = 2 * time.Minute
 	maxGitCommands    = 4
+	diskProbeLimit    = 5 * time.Second
 )
 
 // System holds what the app takes from the machine. Tests replace the
@@ -66,6 +68,9 @@ type System struct {
 	// use it to present connections from other peer addresses to the
 	// network filter.
 	Listen func(ctx context.Context, address string) (net.Listener, error)
+	// DiskProbe checks whether disk encryption appears to be on; nil skips
+	// the check.
+	DiskProbe *diskcrypt.Probe
 	// ActiveRefresh overrides the 30-second refresh of active serials;
 	// zero keeps it. Tests shorten it.
 	ActiveRefresh time.Duration
@@ -143,6 +148,7 @@ func (a *App) open(ctx context.Context) error {
 		return err
 	}
 	a.banner()
+	a.diskWarning(ctx)
 	return nil
 }
 
@@ -259,6 +265,22 @@ func (a *App) banner() {
 	}
 	if a.cfg.InsecureHTTP {
 		_, _ = fmt.Fprintln(w, "warning: plain HTTP is on; passwords and code cross the network unencrypted")
+	}
+}
+
+// diskWarning prints whether disk encryption appears to be off. It never
+// stops startup.
+func (a *App) diskWarning(ctx context.Context) {
+	if a.sys.DiskProbe == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, diskProbeLimit)
+	defer cancel()
+	switch diskcrypt.Check(ctx, *a.sys.DiskProbe) {
+	case diskcrypt.Off:
+		_, _ = fmt.Fprintln(a.sys.Out, "warning: disk encryption appears to be off; garret does not encrypt its data directory")
+	case diskcrypt.Unknown:
+		_, _ = fmt.Fprintln(a.sys.Out, "note: could not tell whether disk encryption is on")
 	}
 }
 
