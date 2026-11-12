@@ -47,6 +47,20 @@ func TestKeychainStepsOnMacOS(t *testing.T) {
 	run("create-keychain", "-p", pass, kc)
 	t.Cleanup(func() { _ = exec.CommandContext(context.Background(), "security", "delete-keychain", kc).Run() })
 	run("unlock-keychain", "-p", pass, kc)
+	// Identity preferences live in the keychain search list, as the login
+	// keychain does on a real machine. Put the throwaway keychain first for
+	// the test and restore the list afterwards.
+	before := strings.Fields(strings.ReplaceAll(run("list-keychains", "-d", "user"), `"`, ""))
+	defaultKC := strings.TrimSpace(strings.ReplaceAll(run("default-keychain", "-d", "user"), `"`, ""))
+	run(append([]string{"list-keychains", "-d", "user", "-s", kc + "-db"}, before...)...)
+	run("default-keychain", "-d", "user", "-s", kc+"-db")
+	t.Cleanup(func() {
+		ctx := context.Background()
+		_ = exec.CommandContext(ctx, "security", append([]string{"list-keychains", "-d", "user", "-s"}, before...)...).Run()
+		if defaultKC != "" {
+			_ = exec.CommandContext(ctx, "security", "default-keychain", "-d", "user", "-s", defaultKC).Run()
+		}
+	})
 
 	_, ca := testServer(t, enrollHandler)
 	files := FilesIn(filepath.Join(home, "client"))
