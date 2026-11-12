@@ -104,7 +104,12 @@ func server(t *testing.T) (*app.App, string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- a.Run(ctx) }()
-	t.Cleanup(func() { cancel(); <-done })
+	t.Cleanup(func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Errorf("server: %v", err)
+		}
+	})
 	return a, dataDir
 }
 
@@ -191,7 +196,28 @@ func invite(t *testing.T, a *app.App, c *http.Client, cookie *http.Cookie, csrf 
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || resp.StatusCode != http.StatusCreated {
 		t.Fatalf("invite %d %v", resp.StatusCode, err)
 	}
+	waitOpen(t, out.Link)
 	return out.Link, out.Code
+}
+
+// waitOpen waits until the enrollment listener in link accepts: the gate
+// opens it shortly after the invitation is created.
+func waitOpen(t *testing.T, link string) {
+	t.Helper()
+	l, err := enroll.ParseLink(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(int(l.Port)))
+	for range 200 {
+		c, err := (&net.Dialer{Timeout: time.Second}).DialContext(context.Background(), "tcp", addr)
+		if err == nil {
+			_ = c.Close()
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("enrollment listener did not open")
 }
 
 func TestSetupEnrollRenew(t *testing.T) {
@@ -241,8 +267,10 @@ func TestSetupEnrollRenew(t *testing.T) {
 	}
 	session(t, a, files.Dir, "bob")
 
+	// Leftovers of an interrupted save are not servers.
+	_ = os.MkdirAll(files.Dir+".old", 0o700)
 	d, _, _, out = depsFor(t, memberHome)
-	if code := runWith([]string{"renew"}, d); code != exitOK || !strings.Contains(out.String(), "not due") {
+	if code := runWith([]string{"renew"}, d); code != exitOK || !strings.Contains(out.String(), "not due") || strings.Contains(out.String(), ".old") {
 		t.Fatalf("renew when not due exit %d:\n%s", code, out)
 	}
 	d, _, _, out = depsFor(t, memberHome)

@@ -187,7 +187,7 @@ func preferenceStep(p Platform, serverURL string, cert *x509.Certificate) Step {
 func launchdSteps(p Platform, f Files, serverURL, name string) []Step {
 	label := "io.garret.renew." + name
 	plist := filepath.Join(p.Home, "Library", "LaunchAgents", label+".plist")
-	data := launchdPlist(label, p.Executable, serverURL, filepath.Join(f.Dir, "renew.log"))
+	data := launchdPlist(label, p.Executable, serverURL, f.Dir+".renew.log")
 	domain := "gui/" + strconv.Itoa(p.UID)
 	return []Step{
 		{Summary: "write the renewal job " + plist, Do: func(context.Context) error { return writeIn(plist, data) }},

@@ -308,7 +308,9 @@ validity remains (`pki.RenewalDue`), checked every 6 hours (Q4).
 
 - Files under `~/Library/Application Support/garret/client/<host>-<port>/`
   (macOS) or `$XDG_CONFIG_HOME/garret/client/<host>-<port>/` (Linux):
-  `key.pem`, `cert.pem`, `ca.pem`, mode `0600`, directory `0700`.
+  `key.pem`, `cert.pem`, `ca.pem`, mode `0600`, directory `0700`. The three
+  files are replaced together: written to `<dir>.new`, then swapped in by
+  renaming, and a crash between the renames is finished on the next load.
 - Git: `git config --global http.https://<host>:8443/.sslCert`, `.sslKey` and
   `.sslCAInfo` pointing at those files, scoped to the server's URL only.
 - macOS: the key and certificate are imported into the login keychain with
@@ -347,7 +349,8 @@ On enrollment, after the files of 6.4 are saved:
    4. `security set-identity-preference -Z <SHA-1 of cert> -s <server URL>/ <kc>`
    5. Write `~/Library/LaunchAgents/io.garret.renew.<host>-<port>.plist`
       (mode 0600): `garret renew --server <server URL>`, at load and every
-      6 hours, output to `renew.log` in the client directory.
+      6 hours, output to `<host>-<port>.renew.log` beside the client directory
+      (outside it, because a renewal swaps the directory).
    6. `launchctl bootout gui/<uid>/io.garret.renew.<host>-<port>`
       (optional: the job may not exist yet), then
       `launchctl bootstrap gui/<uid> <plist>`.

@@ -246,7 +246,11 @@ func installedServers(d deps, serverURL string) ([]string, error) {
 		if !e.IsDir() || i <= 0 {
 			continue
 		}
-		out = append(out, "https://"+net.JoinHostPort(e.Name()[:i], e.Name()[i+1:]))
+		port, err := strconv.ParseUint(e.Name()[i+1:], 10, 16)
+		if err != nil || port == 0 {
+			continue // a staging directory or something garret did not write
+		}
+		out = append(out, "https://"+net.JoinHostPort(e.Name()[:i], strconv.FormatUint(port, 10)))
 	}
 	return out, nil
 }
