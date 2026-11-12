@@ -246,7 +246,10 @@ update pull request reviews the upstream changes before merging.
 
 `Upload(ctx, user, project, filename, r)`: stores the file
 (`Store.Put`, 25 MiB), inserts the row with the detected media type and the
-filename stripped of path separators and control characters. `Download`
+filename stripped of path separators and control characters, cut to 255
+bytes on a character boundary, or `file` when nothing is left. A comment can
+link attachments of its own project that are not deleted; lists show only
+links whose attachment is not deleted. `Download`
 checks that the user may see the project and serves the type only if
 `Inline` allows it. `Delete` is a soft delete by the uploader or an
 administrator.
