@@ -189,6 +189,17 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
 - Commits named in a view or a file diff must belong to the review: a
   revision's base, head or one of its commits. A range must lie inside one
   revision, in order.
+- `File(ctx, user, review, commit, path)` returns one file's content at a
+  commit of the review, for expanding diff context. The commit must belong
+  to the review as above. The path is a repository path: not empty, no NUL,
+  no leading `/`, and no `.` or `..` component. Content over 2 MiB (the diff
+  limit) is `ErrTooLarge`; content that is not valid UTF-8 or contains NUL
+  is `ErrInvalid` (binary files are not shown as text).
+- `History(ctx, user, review, after, limit)` returns the review's audit
+  trail oldest first: events whose subject is the review, one of its
+  revisions or one of its comments. `after` is the last event ID of the
+  previous page; `limit` is 1 to 100. Event data never contains comment or
+  description text, so erased content does not reappear here.
 - Notifications: a verdict notifies the review's author; a new revision
   notifies everyone who gave a verdict or commented on the review, except
   the pusher.
@@ -211,6 +222,11 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
 - `DeleteComment`: author or administrator; soft delete.
 - `CreateDiscussion`, `RenameDiscussion`, `DeleteDiscussion` (soft). Rename
   and delete are for the author or an administrator.
+- `History(ctx, user, project, discussionID, after, limit)` returns the
+  body document's checkpoints oldest first: each with its text, its
+  contributors and when it was taken. `after` is the last checkpoint's
+  sequence number of the previous page; `limit` is 1 to 100. Erasing the
+  document removes its checkpoints, so the history is then empty.
 - Edits notify only users mentioned in the new body and not in the previous
   version.
 - Body limits from data.md: 1–65,536 bytes of UTF-8.

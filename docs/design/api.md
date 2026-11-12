@@ -62,9 +62,9 @@ stated otherwise.
 | `GET` | `/projects/{project}/reviews/{n}/revisions` | Revisions with their commits |
 | `GET` | `/projects/{project}/reviews/{n}/diff` | Structured diff. Query: `rev`, or `commit`, or `from`+`to` (commit range or revision pair) |
 | `GET` | `/projects/{project}/reviews/{n}/diff/file` | One file's hunks. Query: `from`, `to` (commits of the review), `old`, `new` (paths; empty for a side that does not exist). A file over the size limits answers 413 |
-| `GET` | `/projects/{project}/reviews/{n}/file` | File content at a commit, for expanding context |
+| `GET` | `/projects/{project}/reviews/{n}/file` | File content at a commit, for expanding context. Query: `commit`, `path`. Text up to 2 MiB; binary files answer 400 |
 | `POST` | `/projects/{project}/reviews/{n}/verdicts` | Record `approve` or `request_changes` on the latest revision |
-| `GET` | `/projects/{project}/reviews/{n}/history` | Audit trail of the review |
+| `GET` | `/projects/{project}/reviews/{n}/history` | Audit trail of the review: the review, its revisions and its comments. Paginated by `cursor` |
 
 ## Comments
 
@@ -84,7 +84,7 @@ stated otherwise.
 |---|---|---|
 | `GET` `POST` | `/projects/{project}/discussions` | List or create discussion posts |
 | `GET` `PATCH` `DELETE` | `/projects/{project}/discussions/{id}` | Read, rename or soft delete |
-| `GET` | `/projects/{project}/discussions/{id}/history` | Text checkpoints over time with their contributors |
+| `GET` | `/projects/{project}/discussions/{id}/history` | Text checkpoints over time with their contributors. Paginated by `cursor` |
 
 ## Attachments
 
