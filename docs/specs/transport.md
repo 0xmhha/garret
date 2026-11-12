@@ -147,16 +147,25 @@ so the project always comes from the path **(review)**; api.md is updated.
   access token, checked by `AuthenticateToken` with the certificate serial
   and remote address. Failures answer 401 with `WWW-Authenticate: Basic` and
   a body that does not say whether the user exists **(review)**.
-- The request runs `git http-backend` through `net/http/cgi` with an explicit
-  environment: `GIT_PROJECT_ROOT` (the repositories directory),
-  `GIT_HTTP_EXPORT_ALL=1`, `REMOTE_USER`, `PATH_INFO`, `QUERY_STRING`,
-  `CONTENT_TYPE`, and the minimal environment of the runner. The project name
-  is validated before any path is built.
+- Only the smart protocol is served: `GET info/refs?service=...` and `POST
+  git-upload-pack` or `git-receive-pack`; anything else is 404. Each runs
+  `git upload-pack` or `git receive-pack --stateless-rpc` through
+  `Runner.Serve`, with the runner's minimal environment, the client's
+  `Git-Protocol` header (validated) as `GIT_PROTOCOL`, the semaphore, and the
+  long timeout; the process is killed when the request ends. `git
+  http-backend` was dropped because `net/http/cgi` in Go 1.26 starts it
+  without a context. The project name is validated before any path is
+  built.
 - Pushes to `refs/garret/*` are rejected by Git itself through
   `receive.hideRefs` (an update or delete of a hidden ref is refused).
-- Push detection: a per-project lock serializes `git-receive-pack`; branch
-  heads are read before and after, and the moved refs go to
-  `review.HandlePush` with the pusher.
+- Push detection: a per-project repository lock serializes
+  `git-receive-pack`; branch heads are read before and after, and the moved
+  refs go to `review.HandlePush` with the pusher. Export and purge take the
+  same lock. Once the lock is held, the push runs on a context the client
+  cannot cancel (still bounded by the long timeout): otherwise a client
+  could disconnect right after git moved a branch and the move would never
+  become a revision. A crash of the whole server in that window is not
+  covered; the next push to the branch records its head.
 - Limits: a push body over 500 MiB (components.md Q6) is refused; the whole
   request runs under the 60-second long timeout of components.md Q3.
 

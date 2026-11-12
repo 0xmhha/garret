@@ -77,10 +77,13 @@ through constructors. There is no package-level mutable state.
 
 ### Serving the protocol
 
-garret delegates the wire protocol to `git http-backend`, run through Go's
-`net/http/cgi` with an explicit environment. This reuses Git's own
-implementation instead of re-implementing pack negotiation. Git must be
-installed on the host.
+garret delegates pack negotiation to Git: each smart HTTP request runs
+`git upload-pack` or `git receive-pack` in stateless RPC mode with an
+explicit environment, under a context and a timeout. This reuses Git's own
+implementation instead of re-implementing it. `git http-backend` through
+Go's `net/http/cgi` was the first plan; it was dropped because `net/http/cgi`
+starts the process without a context, so a stuck request could not be
+stopped. Git must be installed on the host.
 
 Each repository is a bare repository at `data/repos/<project>.git`, created
 with:

@@ -77,6 +77,7 @@ type Querier interface {
 	LatestCheckpoint(ctx context.Context, documentID string) (CollabCheckpoint, error)
 	LatestProjectEvent(ctx context.Context, projectID sql.NullString) (string, error)
 	LatestProjectEventID(ctx context.Context, projectID sql.NullString) (string, error)
+	LatestProjectEventWithData(ctx context.Context, projectID sql.NullString) (LatestProjectEventWithDataRow, error)
 	LatestRevision(ctx context.Context, reviewID string) (Revision, error)
 	LatestVerdicts(ctx context.Context, reviewID string) ([]Verdict, error)
 	ListActiveSerials(ctx context.Context) ([]string, error)

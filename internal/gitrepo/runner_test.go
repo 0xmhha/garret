@@ -1,6 +1,7 @@
 package gitrepo
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -360,5 +361,23 @@ func TestResolveRef(t *testing.T) {
 	}
 	if _, err := r.ResolveRef(ctx, f.bare, "--all"); !errors.Is(err, ErrBadArgument) {
 		t.Fatalf("option as ref: %v", err)
+	}
+}
+
+func TestServeAdvertisesAndRejectsBadInput(t *testing.T) {
+	r := newRunner(t, 2)
+	f := newFixture(t, r)
+	var out bytes.Buffer
+	if err := r.Serve(context.Background(), ServiceUploadPack, f.bare, true, "", nil, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), f.c3+" refs/heads/main") && !strings.Contains(out.String(), f.c3+" HEAD") {
+		t.Fatalf("advertisement %q", out.String())
+	}
+	if err := r.Serve(context.Background(), Service("git-shell"), f.bare, true, "", nil, &out); !errors.Is(err, ErrBadArgument) {
+		t.Fatalf("unknown service: %v", err)
+	}
+	if err := r.Serve(context.Background(), ServiceUploadPack, f.bare, true, "version=2;evil=$(x)", nil, &out); !errors.Is(err, ErrBadArgument) {
+		t.Fatalf("bad protocol header: %v", err)
 	}
 }

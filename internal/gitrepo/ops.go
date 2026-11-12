@@ -56,6 +56,27 @@ func (r *Runner) Refs(ctx context.Context, dir string) (map[string]string, error
 	return refs, nil
 }
 
+// AllRefs returns every ref of the repository at dir, hidden ones included:
+// the same set a bundle of --all contains.
+func (r *Runner) AllRefs(ctx context.Context, dir string) (map[string]string, error) {
+	out, err := r.run(ctx, false, "--git-dir", dir, "for-each-ref", "--format=%(objectname) %(refname)")
+	if err != nil {
+		return nil, err
+	}
+	refs := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+		sha, ref, ok := strings.Cut(line, " ")
+		if !ok || !isObjectName(sha) {
+			return nil, fmt.Errorf("%w: for-each-ref line %q", ErrRawFormat, line)
+		}
+		refs[ref] = sha
+	}
+	return refs, nil
+}
+
 // UpdateRef points ref, which must be under refs/garret/, at newSHA if it
 // currently points at oldSHA; an empty oldSHA requires that ref does not
 // exist yet.

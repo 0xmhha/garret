@@ -298,7 +298,11 @@ administrator.
   file beside the repositories, not to the system temporary directory, and
   removed afterwards. Export remembers the project's latest audit event when
   it starts reading; if a newer event exists when it records the export, it
-  fails with `ErrConflict`, so the archive never misses a write.
+  fails with `ErrConflict`, so the archive never misses a write. A push to a
+  branch without a review writes no event, so export also holds the
+  project's repository lock and records a digest of every ref (branches,
+  tags and hidden refs, the set the bundle holds); purge takes the same lock
+  and refuses unless the refs still match.
 - `Purge(ctx, admin, project, typedName)`: requires `typedName` to equal the
   project name and a `project.exported` event newer than every other
   project event (Q8). Then data.md 6.6. Purge does not take the project's

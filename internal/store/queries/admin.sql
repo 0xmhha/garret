@@ -88,3 +88,6 @@ DELETE FROM projects WHERE id = ?;
 
 -- name: LatestProjectEventID :one
 SELECT CAST(COALESCE(max(id), '') AS TEXT) FROM audit_events WHERE project_id = ?;
+
+-- name: LatestProjectEventWithData :one
+SELECT action, data FROM audit_events WHERE project_id = ? ORDER BY id DESC LIMIT 1;

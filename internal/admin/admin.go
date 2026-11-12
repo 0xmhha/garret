@@ -6,11 +6,13 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -181,6 +183,17 @@ func (s *Service) Export(ctx context.Context, actor auth.User, projectName strin
 	if err != nil {
 		return "", err
 	}
+	// Pushes wait while the archive is written, and the branch heads it
+	// contains are recorded, so a purge can tell whether anything moved.
+	unlock, err := s.cfg.Projects.LockRepo(ctx, projectName)
+	if err != nil {
+		return "", err
+	}
+	defer unlock()
+	refsDigest, err := s.refsDigest(ctx, dir)
+	if err != nil {
+		return "", err
+	}
 	bundle, err := os.CreateTemp(filepath.Dir(dir), ".export-*.bundle")
 	if err != nil {
 		return "", fmt.Errorf("admin: temporary bundle: %w", err)
@@ -235,7 +248,7 @@ func (s *Service) Export(ctx context.Context, actor auth.User, projectName strin
 			return ErrConflict
 		}
 		return s.cfg.Audit.Record(ctx, tx, audit.Event{ProjectID: p.ID, ActorID: actor.ID, Action: exportedAction,
-			SubjectKind: "project", SubjectID: p.ID, Data: map[string]any{"sha256": sum}})
+			SubjectKind: "project", SubjectID: p.ID, Data: map[string]any{"sha256": sum, "refs": refsDigest}})
 	})
 	return sum, err
 }
@@ -255,10 +268,19 @@ func (s *Service) Purge(ctx context.Context, actor auth.User, projectName, typed
 	if err != nil {
 		return err
 	}
+	unlock, err := s.cfg.Projects.LockRepo(ctx, projectName)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	refsDigest, err := s.refsDigest(ctx, dir)
+	if err != nil {
+		return err
+	}
 	err = s.cfg.DB.WriteTx(ctx, func(tx *sql.Tx) error {
 		q := sqlcgen.New(tx)
-		last, err := q.LatestProjectEvent(ctx, sql.NullString{String: p.ID, Valid: true})
-		if errors.Is(err, sql.ErrNoRows) || err == nil && last != exportedAction {
+		last, err := q.LatestProjectEventWithData(ctx, sql.NullString{String: p.ID, Valid: true})
+		if errors.Is(err, sql.ErrNoRows) || err == nil && !exportCovers(last, refsDigest) {
 			return ErrExportRequired
 		}
 		if err != nil {
@@ -355,4 +377,37 @@ func addFile(zw *zip.Writer, name, path string) error {
 	}
 	_, err = io.Copy(w, f)
 	return err
+}
+
+// refsDigest is the SHA-256 of every ref of the repository (branches, tags,
+// hidden refs: what the bundle holds), sorted, so any push changes it. A
+// push to a branch without a review, or of a tag, writes no audit event,
+// so the event order alone cannot tell that the export is stale.
+func (s *Service) refsDigest(ctx context.Context, dir string) (string, error) {
+	refs, err := s.cfg.Runner.AllRefs(ctx, dir)
+	if err != nil {
+		return "", err
+	}
+	names := make([]string, 0, len(refs))
+	for ref := range refs {
+		names = append(names, ref)
+	}
+	slices.Sort(names)
+	h := sha256.New()
+	for _, ref := range names {
+		_, _ = fmt.Fprintf(h, "%s %s\n", refs[ref], ref)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// exportCovers reports whether the project's latest event is an export
+// taken with the branch heads it has now.
+func exportCovers(last sqlcgen.LatestProjectEventWithDataRow, refsDigest string) bool {
+	if last.Action != exportedAction {
+		return false
+	}
+	var data struct {
+		Refs string `json:"refs"`
+	}
+	return json.Unmarshal([]byte(last.Data), &data) == nil && data.Refs == refsDigest
 }
