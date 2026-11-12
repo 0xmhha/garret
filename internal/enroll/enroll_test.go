@@ -152,6 +152,9 @@ func TestEnrollAndSave(t *testing.T) {
 	if fi, _ := os.Stat(dir); fi.Mode().Perm() != 0o700 {
 		t.Fatalf("directory mode %v", fi.Mode())
 	}
+	if data, _ := os.ReadFile(files.Key); !strings.HasPrefix(string(data), "-----BEGIN EC PRIVATE KEY-----") {
+		t.Fatalf("key file is not SEC1: %.40s", data)
+	}
 	k2, c2, err := files.Load()
 	if err != nil || !k2.Equal(key) || !c2.Equal(res.Certificate) {
 		t.Fatalf("Load = %v", err)

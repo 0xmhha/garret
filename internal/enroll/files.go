@@ -46,12 +46,14 @@ func (f Files) Save(key *ecdsa.PrivateKey, cert, ca *x509.Certificate) error {
 	if err := os.Chmod(f.Dir, 0o700); err != nil { //nolint:gosec // a directory needs the search bit; 0700 is owner-only
 		return err
 	}
-	der, err := x509.MarshalPKCS8PrivateKey(key)
+	// SEC1 ("EC PRIVATE KEY") rather than PKCS#8: macOS security import
+	// rejects a PKCS#8 PEM as an unknown format, and Git reads both.
+	der, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
 		return err
 	}
 	for path, block := range map[string]*pem.Block{
-		f.Key:  {Type: "PRIVATE KEY", Bytes: der},
+		f.Key:  {Type: "EC PRIVATE KEY", Bytes: der},
 		f.Cert: {Type: "CERTIFICATE", Bytes: cert.Raw},
 		f.CA:   {Type: "CERTIFICATE", Bytes: ca.Raw},
 	} {
@@ -77,13 +79,9 @@ func (f Files) Load() (*ecdsa.PrivateKey, *x509.Certificate, error) {
 	if kb == nil || cb == nil {
 		return nil, nil, errors.New("enroll: malformed key or certificate file")
 	}
-	k, err := x509.ParsePKCS8PrivateKey(kb.Bytes)
+	key, err := x509.ParseECPrivateKey(kb.Bytes)
 	if err != nil {
-		return nil, nil, err
-	}
-	key, ok := k.(*ecdsa.PrivateKey)
-	if !ok {
-		return nil, nil, errors.New("enroll: the key is not ECDSA")
+		return nil, nil, fmt.Errorf("enroll: read %s: %w", f.Key, err)
 	}
 	cert, err := x509.ParseCertificate(cb.Bytes)
 	return key, cert, err

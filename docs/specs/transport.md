@@ -260,6 +260,59 @@ validity remains (`pki.RenewalDue`), checked every 6 hours (Q4).
 - Every step reports what it changed, and `garret enroll --dry-run` prints
   the steps without changing anything.
 
+### 6.5 Installation steps
+
+`internal/enroll` builds the installation as a list of steps before running
+any of them. Each step has a one-line summary and is either a command run
+without a shell or an action in the process (writing a file). `--dry-run`
+prints the summaries; a real run prints each summary as it runs it and stops
+at the first failure, except for steps marked optional. Every command has a
+60-second timeout, or 5 minutes for the steps where macOS may wait for the
+user's password (importing into the keychain, trusting the CA).
+
+On enrollment, after the files of 6.4 are saved:
+
+1. `git config --global` for `sslCert`, `sslKey` and `sslCAInfo` (6.4).
+2. macOS only, with `<kc>` the login keychain
+   (`~/Library/Keychains/login.keychain-db`):
+   1. `security import key.pem -k <kc> -t priv -f openssl`; `key.pem` is
+      SEC1 (`EC PRIVATE KEY`), which `security` accepts and Git reads
+   2. `security import cert.pem -k <kc> -t cert`
+   3. `security add-trusted-cert -r trustRoot -p ssl -s <host> -k <kc> ca.pem`;
+      `-s` limits the trust to the server's host on top of the CA's name
+      constraints. macOS asks for the user's password here.
+   4. `security set-identity-preference -Z <SHA-1 of cert> -s <server URL>/ <kc>`
+   5. Write `~/Library/LaunchAgents/io.garret.renew.<host>-<port>.plist`
+      (mode 0600): `garret renew --server <server URL>`, at load and every
+      6 hours, output to `renew.log` in the client directory.
+   6. `launchctl bootout gui/<uid>/io.garret.renew.<host>-<port>`
+      (optional: the job may not exist yet), then
+      `launchctl bootstrap gui/<uid> <plist>`.
+3. Linux only, with `<units>` `$XDG_CONFIG_HOME/systemd/user` (default
+   `~/.config/systemd/user`):
+   1. Write `garret-renew-<host>-<port>.service` (one-shot,
+      `garret renew --server <server URL>`) and `.timer` (5 minutes after
+      boot, then every 6 hours).
+   2. `systemctl --user daemon-reload`, then
+      `systemctl --user enable --now garret-renew-<host>-<port>.timer`.
+4. Other systems: Git only.
+
+On renewal, after the new files are saved, macOS imports the new key and
+certificate (steps 2.1 and 2.2), points the identity preference at the new
+certificate (2.4), and removes the old identity with
+`security delete-identity -Z <SHA-1 of the old cert> <kc>` (optional: the
+user may have removed it). Linux and other systems need no step, because
+Git reads the files.
+
+Host names in file names and labels come from the parsed link, which
+`net/url` has already restricted; a value outside `[A-Za-z0-9.:-]` is
+refused before any step is built. Values written into the plist are XML
+escaped and values in unit files are quoted with systemd's rules.
+
+Whether a browser asks permission to use the new key after each renewal
+(the keychain's access list) is checked on real machines in stage 7
+before the access list is changed.
+
 ## 7. CLI
 
 | Command | Purpose |
