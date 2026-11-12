@@ -347,3 +347,22 @@ func TestPurgeRefusesAfterAPushWithoutReview(t *testing.T) {
 		t.Fatalf("purge after an unrecorded push: %v", err)
 	}
 }
+
+func TestPurgeRefusesAfterATagPush(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	if _, err := f.svc.Export(ctx, root, "libfoo", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Join(f.reposDir, "libfoo.git")
+	head, err := exec.CommandContext(ctx, "git", "--git-dir", repo, "rev-parse", "refs/heads/fix").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.CommandContext(ctx, "git", "--git-dir", repo, "update-ref", "refs/tags/v1", strings.TrimSpace(string(head))).CombinedOutput(); err != nil {
+		t.Fatalf("%v %s", err, out)
+	}
+	if err := f.svc.Purge(ctx, root, "libfoo", "libfoo"); !errors.Is(err, ErrExportRequired) {
+		t.Fatalf("purge after a tag push: %v", err)
+	}
+}

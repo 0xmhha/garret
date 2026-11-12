@@ -379,11 +379,12 @@ func addFile(zw *zip.Writer, name, path string) error {
 	return err
 }
 
-// refsDigest is the SHA-256 of the repository's branch heads, sorted, so
-// any push changes it. A push to a branch without a review writes no audit
-// event, so the event order alone cannot tell that the export is stale.
+// refsDigest is the SHA-256 of every ref of the repository (branches, tags,
+// hidden refs: what the bundle holds), sorted, so any push changes it. A
+// push to a branch without a review, or of a tag, writes no audit event,
+// so the event order alone cannot tell that the export is stale.
 func (s *Service) refsDigest(ctx context.Context, dir string) (string, error) {
-	refs, err := s.cfg.Runner.Refs(ctx, dir)
+	refs, err := s.cfg.Runner.AllRefs(ctx, dir)
 	if err != nil {
 		return "", err
 	}

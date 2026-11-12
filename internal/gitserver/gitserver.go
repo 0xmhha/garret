@@ -2,6 +2,7 @@ package gitserver
 
 import (
 	"compress/gzip"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -169,12 +170,17 @@ func (h *Handler) exchange(w http.ResponseWriter, r *http.Request, u auth.User, 
 		return
 	}
 	defer unlock()
-	before, err := h.cfg.Runner.Refs(r.Context(), dir)
+	// From here the push must run to its end and be recorded even if the
+	// client disconnects: otherwise a client could drop the connection right
+	// after git moves a branch and the move would never become a revision.
+	// The runner's long timeout still bounds every step.
+	ctx := context.WithoutCancel(r.Context())
+	before, err := h.cfg.Runner.Refs(ctx, dir)
 	if err != nil {
 		http.Error(w, "repository unavailable", http.StatusInternalServerError)
 		return
 	}
-	if err := h.cfg.Runner.Serve(r.Context(), svc, dir, false, protocol, body, w); err != nil {
+	if err := h.cfg.Runner.Serve(ctx, svc, dir, false, protocol, body, w); err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
 			h.cfg.Log.Warn("push over the size limit", "project", name)
@@ -182,13 +188,13 @@ func (h *Handler) exchange(w http.ResponseWriter, r *http.Request, u auth.User, 
 			h.cfg.Log.Warn("git push failed", "project", name, "err", err)
 		}
 	}
-	after, err := h.cfg.Runner.Refs(r.Context(), dir)
+	after, err := h.cfg.Runner.Refs(ctx, dir)
 	if err != nil {
 		h.cfg.Log.Error("reading refs after a push failed", "project", name, "err", err)
 		return
 	}
 	if changes := moved(before, after); len(changes) > 0 {
-		if err := h.cfg.Reviews.HandlePush(r.Context(), name, u, changes); err != nil {
+		if err := h.cfg.Reviews.HandlePush(ctx, name, u, changes); err != nil {
 			h.cfg.Log.Error("recording a push failed", "project", name, "err", err)
 		}
 	}

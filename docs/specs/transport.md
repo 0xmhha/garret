@@ -161,7 +161,11 @@ so the project always comes from the path **(review)**; api.md is updated.
 - Push detection: a per-project repository lock serializes
   `git-receive-pack`; branch heads are read before and after, and the moved
   refs go to `review.HandlePush` with the pusher. Export and purge take the
-  same lock.
+  same lock. Once the lock is held, the push runs on a context the client
+  cannot cancel (still bounded by the long timeout): otherwise a client
+  could disconnect right after git moved a branch and the move would never
+  become a revision. A crash of the whole server in that window is not
+  covered; the next push to the branch records its head.
 - Limits: a push body over 500 MiB (components.md Q6) is refused; the whole
   request runs under the 60-second long timeout of components.md Q3.
 
