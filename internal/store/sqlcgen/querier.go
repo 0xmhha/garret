@@ -11,6 +11,7 @@ import (
 
 type Querier interface {
 	AllocateReviewNumber(ctx context.Context, id string) (int64, error)
+	AllocateUpdateSeq(ctx context.Context, id string) (int64, error)
 	BumpCommentVersion(ctx context.Context, arg BumpCommentVersionParams) (int64, error)
 	ChangeReviewState(ctx context.Context, arg ChangeReviewStateParams) (int64, error)
 	CountActiveAdmins(ctx context.Context) (int64, error)
@@ -24,12 +25,15 @@ type Querier interface {
 	GetAccessTokenByDigest(ctx context.Context, tokenSha256 []byte) (AccessToken, error)
 	GetAttachment(ctx context.Context, id string) (Attachment, error)
 	GetCertificate(ctx context.Context, serial string) (ClientCertificate, error)
+	GetCollabDocument(ctx context.Context, id string) (CollabDocument, error)
 	GetComment(ctx context.Context, id string) (Comment, error)
 	GetCommentBody(ctx context.Context, arg GetCommentBodyParams) (string, error)
 	GetDiscussion(ctx context.Context, arg GetDiscussionParams) (Discussion, error)
+	GetDiscussionByBodyDoc(ctx context.Context, bodyDocID string) (Discussion, error)
 	GetInvitationByDigest(ctx context.Context, tokenSha256 []byte) (Invitation, error)
 	GetProjectByID(ctx context.Context, id string) (Project, error)
 	GetProjectByName(ctx context.Context, name string) (Project, error)
+	GetReviewByDescriptionDoc(ctx context.Context, descriptionDocID string) (Review, error)
 	GetReviewByNumber(ctx context.Context, arg GetReviewByNumberParams) (Review, error)
 	GetReviewByNumberOrID(ctx context.Context, id string) (Review, error)
 	GetRevisionByID(ctx context.Context, id string) (Revision, error)
@@ -41,7 +45,9 @@ type Querier interface {
 	InsertAttachment(ctx context.Context, arg InsertAttachmentParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertCertificate(ctx context.Context, arg InsertCertificateParams) error
+	InsertCheckpoint(ctx context.Context, arg InsertCheckpointParams) error
 	InsertCollabDocument(ctx context.Context, arg InsertCollabDocumentParams) error
+	InsertCollabUpdate(ctx context.Context, arg InsertCollabUpdateParams) error
 	InsertComment(ctx context.Context, arg InsertCommentParams) error
 	InsertCommentAttachment(ctx context.Context, arg InsertCommentAttachmentParams) error
 	InsertCommentVersion(ctx context.Context, arg InsertCommentVersionParams) error
@@ -56,6 +62,7 @@ type Querier interface {
 	InsertStateChange(ctx context.Context, arg InsertStateChangeParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertVerdict(ctx context.Context, arg InsertVerdictParams) error
+	LatestCheckpoint(ctx context.Context, documentID string) (CollabCheckpoint, error)
 	LatestRevision(ctx context.Context, reviewID string) (Revision, error)
 	LatestVerdicts(ctx context.Context, reviewID string) ([]Verdict, error)
 	ListActiveSerials(ctx context.Context) ([]string, error)
@@ -74,6 +81,7 @@ type Querier interface {
 	ListRevisionCommits(ctx context.Context, revisionID string) ([]RevisionCommit, error)
 	ListRevisionPins(ctx context.Context) ([]ListRevisionPinsRow, error)
 	ListRevisions(ctx context.Context, reviewID string) ([]Revision, error)
+	ListUpdatesAfter(ctx context.Context, arg ListUpdatesAfterParams) ([]CollabUpdate, error)
 	ListUserAccessTokens(ctx context.Context, userID string) ([]AccessToken, error)
 	ListUserCertificates(ctx context.Context, userID string) ([]ClientCertificate, error)
 	ListUsers(ctx context.Context) ([]User, error)

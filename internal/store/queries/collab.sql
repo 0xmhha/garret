@@ -1,0 +1,24 @@
+-- name: GetCollabDocument :one
+SELECT * FROM collab_documents WHERE id = ?;
+
+-- name: LatestCheckpoint :one
+SELECT * FROM collab_checkpoints WHERE document_id = ? ORDER BY up_to_seq DESC LIMIT 1;
+
+-- name: ListUpdatesAfter :many
+SELECT * FROM collab_updates WHERE document_id = ? AND seq > ? ORDER BY seq;
+
+-- name: AllocateUpdateSeq :one
+UPDATE collab_documents SET next_seq = next_seq + 1 WHERE id = ? RETURNING next_seq - 1;
+
+-- name: InsertCollabUpdate :exec
+INSERT INTO collab_updates (document_id, seq, user_id, received_at, payload) VALUES (?, ?, ?, ?, ?);
+
+-- name: InsertCheckpoint :exec
+INSERT INTO collab_checkpoints (document_id, up_to_seq, state, text, contributors, created_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+-- name: GetReviewByDescriptionDoc :one
+SELECT * FROM reviews WHERE description_doc_id = ?;
+
+-- name: GetDiscussionByBodyDoc :one
+SELECT * FROM discussions WHERE body_doc_id = ?;
