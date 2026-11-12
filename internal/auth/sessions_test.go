@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"net/netip"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -281,5 +283,50 @@ func TestDisableUser(t *testing.T) {
 	}
 	if _, err := e.svc.Login(ctx, LoginInput{Username: "bob", Password: goodPassword, CertSerial: serialOf(bob), Remote: addr}); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("disabled user logged in: %v", err)
+	}
+}
+
+func TestLimiterAttemptIsAtomic(t *testing.T) {
+	l := newLimiter(&testClock{now: start})
+	var wg sync.WaitGroup
+	var allowed atomic.Int64
+	for range 50 {
+		wg.Go(func() {
+			if l.attempt("user:bob", "addr:a") {
+				allowed.Add(1)
+			}
+		})
+	}
+	wg.Wait()
+	if n := allowed.Load(); n != maxFailures {
+		t.Fatalf("%d of 50 concurrent attempts allowed, want %d", n, maxFailures)
+	}
+}
+
+func TestSuccessfulLoginsDoNotExhaustTheAddress(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	bob := e.member(t, admin, "bob")
+	for range maxFailures + 5 {
+		e.login(t, "bob", bob)
+	}
+}
+
+func TestConcurrentWrongPasswordsAreCapped(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	bob := e.member(t, admin, "bob")
+	var wg sync.WaitGroup
+	for range 30 {
+		wg.Go(func() {
+			_, _ = e.svc.Login(context.Background(), LoginInput{Username: "bob", Password: "wrong password here", CertSerial: serialOf(bob), Remote: addr})
+		})
+	}
+	wg.Wait()
+	if !e.svc.limiter.blocked("user:bob") {
+		t.Fatal("username not blocked after a burst of failures")
+	}
+	if _, err := e.svc.Login(context.Background(), LoginInput{Username: "bob", Password: goodPassword, CertSerial: serialOf(bob), Remote: addr}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("login allowed after the burst: %v", err)
 	}
 }

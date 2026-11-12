@@ -50,18 +50,15 @@ type Session struct {
 // Login checks the credentials and opens a session. Every failure returns
 // ErrInvalidCredentials and counts against the username and the address.
 func (s *Service) Login(ctx context.Context, in LoginInput) (Session, error) {
-	keys := []string{"user:" + in.Username, "addr:" + in.Remote.String()}
-	if s.limiter.blocked(keys...) {
+	userKey, addrKey := "user:"+in.Username, "addr:"+in.Remote.String()
+	if !s.limiter.attempt(userKey, addrKey) {
 		return Session{}, ErrInvalidCredentials
 	}
 	user, err := s.verifyLogin(ctx, in)
-	if errors.Is(err, ErrInvalidCredentials) {
-		s.limiter.fail(keys...)
-	}
 	if err != nil {
 		return Session{}, err
 	}
-	s.limiter.reset(keys[0])
+	s.limiter.succeeded(userKey, addrKey)
 	return s.openSession(ctx, user, in.CertSerial)
 }
 
@@ -309,17 +306,15 @@ type TokenInput struct {
 // Basic authentication. Every failure returns ErrInvalidCredentials and is
 // rate-limited like a login.
 func (s *Service) AuthenticateToken(ctx context.Context, in TokenInput) (User, error) {
-	keys := []string{"user:" + in.Username, "addr:" + in.Remote.String()}
-	if s.limiter.blocked(keys...) {
+	userKey, addrKey := "user:"+in.Username, "addr:"+in.Remote.String()
+	if !s.limiter.attempt(userKey, addrKey) {
 		return User{}, ErrInvalidCredentials
 	}
 	u, tokenID, err := s.verifyToken(ctx, in)
-	if errors.Is(err, ErrInvalidCredentials) {
-		s.limiter.fail(keys...)
-	}
 	if err != nil {
 		return User{}, err
 	}
+	s.limiter.succeeded(userKey, addrKey)
 	now := s.clock.Now()
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		return sqlcgen.New(tx).TouchAccessToken(ctx, sqlcgen.TouchAccessTokenParams{

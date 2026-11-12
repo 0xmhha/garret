@@ -81,7 +81,10 @@ the response does not reveal which.
 
 ### 3.4 Sessions
 
-- `Login(ctx, username, password, certSerial, remote)`: rate-limited (Q1);
+- `Login(ctx, username, password, certSerial, remote)`: rate-limited (Q1).
+  The limiter reserves the attempt under one lock before the password is
+  checked and gives it back on success, so concurrent requests cannot all
+  pass the limit before any failure is counted;
   the user must exist, be enabled and match the client certificate's user
   when certificates are on. Creates a session (cookie secret and CSRF
   secret, digests stored). If `VerifyPassword` asks for a rehash, the new
