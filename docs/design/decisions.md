@@ -127,6 +127,25 @@ The web UI uses React, TypeScript and Vite. The build output is embedded with
   templates with htmx (collaborative editing and rich diffs need a client
   application anyway).
 
+Libraries and build (decided at the start of stage 6):
+
+| Concern | Choice | Rejected |
+|---|---|---|
+| Routing | react-router | TanStack Router (ten packages), wouter (single maintainer), a hand-written router |
+| Server data and cache | TanStack Query | SWR, hand-written hooks |
+| Interface strings (English and Korean) | A small module of our own: one JSON catalog per language and the browser's `Intl` APIs; keys are checked by TypeScript and a test fails on any missing translation | i18next, react-intl, Lingui |
+| Markdown | marked with raw HTML off, then DOMPurify with an allow-list; one function does both and is the only place that writes HTML | react-markdown (unified ecosystem), markdown-it, a hand-written renderer |
+| Interactive components (menus, tabs, combo boxes, tooltips) | React Aria Components; native `<dialog>` where it is enough | Base UI, Radix, hand-written ARIA patterns |
+| Embedding | A placeholder page is committed and embedded by default; `make build` and release builds run Vite and embed the real build with the `webui` build tag | committing the build output (unreviewable, grows the repository), requiring Node for every Go build |
+
+- **Why**: preventing incidents comes before dependency count where a
+  mistake is an incident: script injection through comments, and screens
+  that cannot be used with a keyboard or a screen reader. There garret
+  uses proven libraries. Everywhere else it keeps dependencies minimal.
+- A binary built without the web interface says so at startup and in
+  `garret version`, release builds refuse the placeholder, and CI tests the
+  real build.
+
 ## D11. HTTPS by default, device certificates on by default
 
 garret runs a private certificate authority. The server certificate is valid

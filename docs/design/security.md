@@ -214,6 +214,10 @@ the popularity of the top-level package.
   organization or a single person), its latest release, its license, and how
   many modules it adds to `go list -deps`. Unmaintained modules (no release in
   over a year) and single-maintainer forks in the runtime path are avoided.
+- **Where a library is worth it.** Code whose mistakes are incidents
+  (sanitizing member content, keyboard and screen reader behaviour) uses a
+  proven library even when that adds packages. Everything else prefers no
+  dependency.
 - **Pinning.** `go.mod` and `go.sum` pin every module and the Go checksum
   database verifies them. Build-time tools such as sqlc are pinned with the
   `tool` directive in `go.mod`. The frontend uses a lockfile and `npm ci`.

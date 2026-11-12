@@ -16,6 +16,17 @@ go.work.sum
 node_modules/
 /web/dist/
 /web/.vite/
+/internal/webui/dist/
+/web/test-results/
+/web/playwright-report/
+
+# --- Design tooling: keep product context and surface briefs only ---
+/.impeccable/mocks/
+/.impeccable/questions/
+/.impeccable/review/
+/.impeccable/build/
+/.impeccable/hook.cache.json
+/.impeccable/config.local.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
