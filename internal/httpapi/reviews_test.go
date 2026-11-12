@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/0xmhha/garret/internal/admin"
+	"github.com/0xmhha/garret/internal/attachment"
 	"github.com/0xmhha/garret/internal/audit"
 	"github.com/0xmhha/garret/internal/comment"
 	"github.com/0xmhha/garret/internal/discussion"
@@ -49,8 +51,15 @@ func fullEnv(t *testing.T) (*env, string) {
 	_ = os.Mkdir(repos, 0o700)
 	projects := project.New(store, rec, ids, wall{}, runner, repos)
 	notifier := inbox.NewNotifier(ids, wall{})
+	attachDir := filepath.Join(base, "attachments")
+	_ = os.Mkdir(attachDir, 0o700)
+	files := attachment.New(attachDir)
 	e.api = New(Config{
 		Auth: e.auth, Projects: projects,
+		Attachments: attachment.NewService(store, rec, ids, wall{}, files, attachment.DefaultMaxSize),
+		Inbox:       inbox.NewService(store, notifier, wall{}),
+		Admin:       admin.New(admin.Config{DB: store, Audit: rec, IDs: ids, Clock: wall{}, Runner: runner, Projects: projects, Files: files}),
+		EnrollURL:   "https://review.local:8444", CAFingerprint: strings.Repeat("ab", 32),
 		Reviews:     review.NewService(store, rec, ids, wall{}, runner, projects, nopEvents{}, notifier),
 		Comments:    comment.New(store, rec, ids, wall{}, runner, projects, nopEvents{}, notifier),
 		Discussions: discussion.New(store, rec, ids, wall{}, nopEvents{}),

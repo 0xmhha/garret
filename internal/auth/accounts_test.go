@@ -394,3 +394,23 @@ func TestEnrollRateLimitedPerAddress(t *testing.T) {
 		t.Fatalf("another address blocked: %v", err)
 	}
 }
+
+func TestListUsers(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	bob := e.member(t, admin, "bob").User
+	if err := e.svc.DisableUser(context.Background(), admin, bob.ID); err != nil {
+		t.Fatal(err)
+	}
+	asAdmin, err := e.svc.ListUsers(context.Background(), admin)
+	if err != nil || len(asAdmin) != 2 || !asAdmin[0].Disabled || asAdmin[0].Username != "bob" {
+		t.Fatalf("admin view %+v, %v", asAdmin, err)
+	}
+	carol := e.member(t, admin, "carol").User
+	asMember, _ := e.svc.ListUsers(context.Background(), carol)
+	for _, u := range asMember {
+		if u.Disabled {
+			t.Fatalf("member sees disabled flag: %+v", u)
+		}
+	}
+}
