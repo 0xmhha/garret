@@ -156,3 +156,19 @@ func (p *prefix) Write(b []byte) (int, error) {
 	}
 	return len(b), nil
 }
+
+// Remove deletes the file with the given digest from projectID. Removing a
+// file that does not exist is not an error.
+func (s *Store) Remove(projectID string, sum [sha256.Size]byte) error {
+	dir, err := s.projectDir(projectID)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(filepath.Join(dir, hex.EncodeToString(sum[:]))); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("attachment: remove file: %w", err)
+	}
+	return nil
+}
+
+// Root returns the directory the store keeps project directories in.
+func (s *Store) Root() string { return s.root }
