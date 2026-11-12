@@ -65,6 +65,10 @@ TLS handshake, so it learns nothing beyond the fact that a port is open.
   Project purge does not remove it; resetting the server does.
 - The CA's SHA-256 fingerprint is printed at every start and embedded in every
   invitation link, so new members verify the CA without comparing it by eye.
+  The fingerprint is not secret; the link carries no secret at all. The
+  invitation code travels through a different channel and is typed at a
+  hidden prompt, so it never sits in chat history, browser history, shell
+  history or the process list (see [specs/transport.md](../specs/transport.md)).
 
 ### Server certificate
 
@@ -81,7 +85,7 @@ device of one user and is valid for 7 days.
 
 | Case | How a device gets a certificate |
 |---|---|
-| New member | `garret enroll <invitation link>` generates a key on the device, verifies the CA fingerprint from the link, sends a certificate signing request with the invitation token over the enrollment listener, and receives a certificate. The private key never leaves the device |
+| New member | `garret enroll <invitation link>` generates a key on the device, verifies the CA fingerprint from the link, asks for the invitation code at a hidden prompt, sends a certificate signing request with the code over the enrollment listener, and receives a certificate. The private key never leaves the device |
 | Existing member | `garret renew` connects with the current, still valid certificate and requests a new one for the same key or a new key. A device without a valid certificate cannot renew |
 | Expired certificate | The device must be enrolled again with a new invitation |
 | First administrator | `garret admin setup` runs on the host, reads the data directory directly, and issues the administrator's certificate locally |
@@ -131,7 +135,7 @@ start while client certificates are off.
 | Credential | Storage | Lifetime (proposed default) |
 |---|---|---|
 | Password | Argon2id hash with per-user salt | Until changed |
-| Invitation token | SHA-256 hash, single use | 24 hours |
+| Invitation code | SHA-256 hash, single use; six random words, given to the member separately from the link | 30 minutes |
 | Session cookie | SHA-256 hash; cookie is `HttpOnly`, `Secure`, `SameSite=Strict` | 7 days idle, 30 days maximum |
 | Personal access token | SHA-256 hash, shown once at creation | Until revoked |
 | First-administrator setup token | Printed to the terminal, single use | Until used or the server restarts |
