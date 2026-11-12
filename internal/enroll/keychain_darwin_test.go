@@ -23,16 +23,21 @@ func TestKeychainStepsOnMacOS(t *testing.T) {
 		t.Skip("set " + keychainTestEnv + "=1 to run against a temporary keychain")
 	}
 	home := t.TempDir()
-	p := Platform{GOOS: goosDarwin, Home: home}
-	kc := keychain(p)
-	if err := os.MkdirAll(filepath.Dir(kc), 0o700); err != nil {
-		t.Fatal(err)
-	}
+	// security adds "-db" to a name ending in .keychain and resolves the
+	// short name afterwards, so the test names it the way users' keychains
+	// are named by the system.
+	kc := filepath.Join(home, "garret-test.keychain")
+	p := Platform{GOOS: goosDarwin, Home: home, Keychain: kc}
 	run := func(args ...string) string {
 		t.Helper()
 		out, err := exec.CommandContext(context.Background(), "security", args...).CombinedOutput()
 		if err != nil {
-			t.Fatalf("security %s: %v: %s", strings.Join(args, " "), err, out)
+			entries, _ := os.ReadDir(home)
+			var names []string
+			for _, e := range entries {
+				names = append(names, e.Name())
+			}
+			t.Fatalf("security %s: %v: %s (home has %v)", strings.Join(args, " "), err, out, names)
 		}
 		return string(out)
 	}

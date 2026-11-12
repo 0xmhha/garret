@@ -41,6 +41,7 @@ type Platform struct {
 	XDGConfig  string // $XDG_CONFIG_HOME, empty when unset
 	Executable string // the garret binary the renewal job runs
 	UID        int
+	Keychain   string // macOS keychain path; empty means the login keychain
 }
 
 // Step is one installation step: either a command, run without a shell, or
@@ -235,6 +236,9 @@ func jobName(serverURL string) (string, error) {
 }
 
 func keychain(p Platform) string {
+	if p.Keychain != "" {
+		return p.Keychain
+	}
 	return filepath.Join(p.Home, "Library", "Keychains", "login.keychain-db")
 }
 
