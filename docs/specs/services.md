@@ -119,8 +119,11 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
 ## 4. Projects (`internal/project`)
 
 - `Create(ctx, admin, name, description)`: validates the name, creates the
-  bare repository with `Runner.InitBare` first, then inserts the row. If the
-  insert fails, the new repository directory is removed. A repository
+  repository directory exclusively (`os.Mkdir`, under a per-name lock), runs
+  `Runner.InitBare` in it, then inserts the row. If the insert fails, the new
+  directory is removed. Creating the directory exclusively matters because
+  `git init --bare` succeeds on an existing repository: without it, a
+  failed duplicate create would remove the first project's repository. A repository
   directory that exists without a row (left by a crash) is removed at start
   (data.md 6.6).
 - `List`, `Get` (with the clone URL), `Branches` (`Runner.Refs`).
