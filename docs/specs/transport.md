@@ -213,7 +213,8 @@ goroutine per connection.
 
 ### 6.2 `garret enroll <link>`
 
-1. Parse the link; refuse anything but `https`, port, and a 64-hex `ca`.
+1. Parse the link; refuse anything but `https`, a port, the path `/enroll`
+   and a 64-hex `ca`. A link with user information or a query is refused.
 2. Fetch `https://<host>:8444/ca.crt` without verification, compute its
    SHA-256, and refuse unless it equals the link's `ca`. From here on the
    fetched CA is the only trusted root, and the server certificate must
@@ -223,8 +224,13 @@ goroutine per connection.
    secret is taken as a command-line argument, so it never reaches shell
    history or `ps`.
 4. Generate an ECDSA P-256 key, build a CSR, and `POST /enroll` with the code,
-   account fields and CSR. The response holds the client certificate and the
-   CA.
+   account fields and CSR. The response holds the client certificate, the
+   CA and `server_url`, the main service's URL that Git and the browser use.
+   The client checks that the certificate is for its key and is signed by
+   the CA pinned in step 2, and ignores the CA in the response. It accepts
+   `server_url` only as `https://<link host>:<port>` with no path, query or
+   user information, because the URL scopes the Git settings. Redirects are
+   never followed, so the code and password go only to the link's host.
 5. Install (6.4).
 
 ### 6.3 `garret renew`

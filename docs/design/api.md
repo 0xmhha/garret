@@ -147,7 +147,7 @@ URL, so the `-c` option above is only needed on a machine configured by hand.
 
 | Listener | Method | Path | Purpose |
 |---|---|---|---|
-| Enrollment | `POST` | `/enroll` | Invitation code, CSR, username and password in; client certificate and CA certificate out |
+| Enrollment | `POST` | `/enroll` | Invitation code, CSR, username and password in; client certificate, CA certificate and the main service URL out |
 | Main | `POST` | `/api/v1/me/certificates/renew` | CSR in; new client certificate out. Requires the current valid client certificate |
 | Main | `GET` | `/api/v1/me/certificates` | The user's device certificates |
 | Main | `DELETE` | `/api/v1/me/certificates/{serial}` | Revoke one of the user's device certificates |
