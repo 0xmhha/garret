@@ -60,6 +60,7 @@ stated otherwise.
 | `POST` | `/projects/{project}/reviews/{n}/state` | Complete, abandon or reopen |
 | `GET` | `/projects/{project}/reviews/{n}/revisions` | Revisions with their commits |
 | `GET` | `/projects/{project}/reviews/{n}/diff` | Structured diff. Query: `rev`, or `commit`, or `from`+`to` (commit range or revision pair) |
+| `GET` | `/projects/{project}/reviews/{n}/diff/file` | One file's hunks. Query: `from`, `to` (commits of the review), `old`, `new` (paths; empty for a side that does not exist). A file over the size limits answers 413 |
 | `GET` | `/projects/{project}/reviews/{n}/file` | File content at a commit, for expanding context |
 | `POST` | `/projects/{project}/reviews/{n}/verdicts` | Record `approve` or `request_changes` on the latest revision |
 | `GET` | `/projects/{project}/reviews/{n}/history` | Audit trail of the review |

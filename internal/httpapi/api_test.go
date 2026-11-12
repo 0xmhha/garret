@@ -36,10 +36,11 @@ const origin = "https://review.local:8443"
 const password = "correct horse battery staple"
 
 type env struct {
-	api    *API
-	auth   *auth.Service
-	active *pki.ActiveSerials
-	admin  auth.Issued
+	api     *API
+	storeDB *store.DB
+	auth    *auth.Service
+	active  *pki.ActiveSerials
+	admin   auth.Issued
 }
 
 func newEnv(t *testing.T, clientCerts bool) *env {
@@ -68,7 +69,7 @@ func newEnv(t *testing.T, clientCerts bool) *env {
 		t.Fatal(err)
 	}
 	api := New(Config{Auth: svc, Origin: origin, ClientCerts: clientCerts, Active: active, Log: slog.New(slog.DiscardHandler)})
-	return &env{api: api, auth: svc, active: active, admin: admin}
+	return &env{api: api, storeDB: db, auth: svc, active: active, admin: admin}
 }
 
 func csr(t *testing.T) []byte {
