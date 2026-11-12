@@ -14,6 +14,9 @@ import (
 // one stuck operation cannot hold the write lock.
 const WriteTimeout = 5 * time.Second
 
+// compactTimeout bounds Compact, which rewrites the whole file.
+const compactTimeout = 5 * time.Minute
+
 const (
 	minReaders = 2
 	maxReaders = 8
@@ -121,6 +124,22 @@ func runTx(ctx context.Context, conn *sql.DB, fn func(*sql.Tx) error) (err error
 	}
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("store: commit: %w", err)
+	}
+	return nil
+}
+
+// Compact truncates the write-ahead log and rebuilds the database file, so
+// erased content no longer lingers in free pages or the log. It runs on the
+// writer connection outside any transaction; project purge calls it after
+// its commit.
+func (db *DB) Compact(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, compactTimeout)
+	defer cancel()
+	if _, err := db.writer.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		return fmt.Errorf("store: checkpoint: %w", err)
+	}
+	if _, err := db.writer.ExecContext(ctx, "VACUUM"); err != nil {
+		return fmt.Errorf("store: vacuum: %w", err)
 	}
 	return nil
 }

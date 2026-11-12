@@ -212,3 +212,16 @@ func TestReadTxRejectsWrites(t *testing.T) {
 		t.Fatal("write through ReadTx succeeded")
 	}
 }
+
+func TestCompact(t *testing.T) {
+	db := openDB(t)
+	if err := db.WriteTx(context.Background(), func(tx *sql.Tx) error { return insertUser(tx, "a") }); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Compact(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if n := countUsers(t, db); n != 1 {
+		t.Fatalf("users = %d after compact", n)
+	}
+}

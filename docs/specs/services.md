@@ -282,9 +282,20 @@ administrator.
 - `Export(ctx, admin, project, w)` writes one archive (Q7): a Git bundle with
   every ref, one JSON file per table with the project's rows, and the
   attachment files. It records `project.exported` with the archive's SHA-256.
+  The users table is exported as ID, username, display name, role and
+  dates only, never password hashes. The bundle is written to a temporary
+  file beside the repositories, not to the system temporary directory, and
+  removed afterwards. Export remembers the project's latest audit event when
+  it starts reading; if a newer event exists when it records the export, it
+  fails with `ErrConflict`, so the archive never misses a write.
 - `Purge(ctx, admin, project, typedName)`: requires `typedName` to equal the
   project name and a `project.exported` event newer than every other
-  project event (Q8). Then data.md 6.6 under the project's exclusive lock.
+  project event (Q8). Then data.md 6.6. Purge does not take the project's
+  exclusive lock: every write goes through the one writer connection, and
+  the purge transaction itself checks that the export is the project's last
+  event, so a write that commits first makes the purge refuse, and a write
+  that commits after finds no project and fails on its foreign key. The
+  per-project lock stays available for later operations that need it.
 
 ## 11. Settled values
 
