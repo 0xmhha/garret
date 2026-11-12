@@ -295,8 +295,13 @@ goroutine per connection.
 
 Connects to the main port with the current certificate and calls
 `POST /api/v1/me/certificates/renew` with a CSR for a new key; the renewal
-serial is the handshake's, never a request field **(review)**. Installs the
-new certificate. Run by the background job when less than half of the
+serial is the handshake's, never a request field **(review)**. The request
+carries no session: the background job has no password, so the user is the
+certificate's owner (`CertificateUser`). Because a browser presents the
+certificate on its own, the endpoint also requires `Origin` equal to the
+server's URL and `Content-Type: application/json`; a cross-site page can
+send neither without a CORS preflight, which garret never grants. Installs
+the new certificate. Run by the background job when less than half of the
 validity remains (`pki.RenewalDue`), checked every 6 hours (Q4).
 
 ### 6.4 Installation on the client
@@ -380,6 +385,33 @@ before the access list is changed.
 | `garret enroll <link>` | 6.2 |
 | `garret renew [--server <url>]` | 6.3; without `--server`, renews every installed server that is due |
 | `garret version` | Version and Git commit of the build |
+
+### 7.1 Client commands
+
+- Prompts read from the terminal; secrets (invitation code, password) are
+  read without echo through `golang.org/x/term`. When standard input is not
+  a terminal, each prompt reads one line, so scripts and tests can pipe
+  answers. No secret is ever a flag or an argument.
+- The password is asked twice and must match; `ValidPassword` runs on the
+  client before anything is sent, and the server checks again.
+- `garret enroll [--dry-run] <link>`: 6.2, then saves the files of 6.4 under
+  the client directory for the link's host and the main port from
+  `server_url`, and applies 6.5. `--dry-run` parses the link, fetches and
+  verifies the CA, and prints the steps with placeholders for the values the
+  server would return; it sends no code and changes nothing.
+- `garret renew [--server <url>] [--force]`: for the given server, or every
+  directory under the client directory, loads `cert.pem`; when
+  `pki.RenewalDue` says so (or with `--force`) it renews with a new key,
+  saves the files and applies the renewal steps of 6.5. A server whose
+  certificate has expired is reported with the instruction to enroll again,
+  and the others are still renewed. The exit code is non-zero if any server
+  failed.
+- `garret admin setup [--data <dir>] [--host <name>] [--port <n>]`: opens the
+  data directory, loads the CA that `garret serve` created (it refuses if
+  there is none), prompts for the account, creates the first administrator
+  and its certificate, then installs it like `enroll` for
+  `https://<host>:<port>`. It refuses once an administrator exists. The
+  running server picks the new certificate up within 30 seconds (Q1).
 
 `serve` prints the listen addresses, the allowed networks and the CA
 fingerprint at start. It no longer prints a setup link: `garret admin setup`
