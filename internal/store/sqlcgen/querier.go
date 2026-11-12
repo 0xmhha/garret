@@ -10,21 +10,37 @@ import (
 
 type Querier interface {
 	CountActiveAdmins(ctx context.Context) (int64, error)
+	DeleteExpiredSessions(ctx context.Context, arg DeleteExpiredSessionsParams) (int64, error)
+	DeleteSession(ctx context.Context, idSha256 []byte) error
+	DeleteUserSessions(ctx context.Context, userID string) error
+	DisableUser(ctx context.Context, arg DisableUserParams) (int64, error)
 	EarliestOpenInvitationExpiry(ctx context.Context, expiresAt int64) (int64, error)
+	GetAccessToken(ctx context.Context, id string) (AccessToken, error)
+	GetAccessTokenByDigest(ctx context.Context, tokenSha256 []byte) (AccessToken, error)
 	GetCertificate(ctx context.Context, serial string) (ClientCertificate, error)
 	GetInvitationByDigest(ctx context.Context, tokenSha256 []byte) (Invitation, error)
+	GetSession(ctx context.Context, idSha256 []byte) (Session, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
 	InsertCertificate(ctx context.Context, arg InsertCertificateParams) error
 	InsertInvitation(ctx context.Context, arg InsertInvitationParams) error
+	InsertSession(ctx context.Context, arg InsertSessionParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	ListActiveSerials(ctx context.Context) ([]string, error)
 	ListInvitations(ctx context.Context) ([]Invitation, error)
+	ListUserAccessTokens(ctx context.Context, userID string) ([]AccessToken, error)
 	ListUserCertificates(ctx context.Context, userID string) ([]ClientCertificate, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) (int64, error)
 	RevokeCertificate(ctx context.Context, arg RevokeCertificateParams) (int64, error)
 	RevokeInvitation(ctx context.Context, arg RevokeInvitationParams) (int64, error)
+	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
+	RevokeUserCertificates(ctx context.Context, arg RevokeUserCertificatesParams) error
+	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
+	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	UpdatePasswordHash(ctx context.Context, arg UpdatePasswordHashParams) error
 	UseInvitation(ctx context.Context, arg UseInvitationParams) (int64, error)
 }
 

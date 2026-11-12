@@ -32,6 +32,12 @@ type Config struct {
 	CA       *pki.CA
 	Active   *pki.ActiveSerials
 	Password Params // Default in production
+	// ClientCertsOff disables the binding between sessions or tokens and the
+	// client certificate (--client-cert=off). The zero value keeps it on.
+	ClientCertsOff bool
+	// OnDisable is called with a user ID after the user is disabled, so the
+	// caller can close the user's open connections. It may be nil.
+	OnDisable func(userID string)
 }
 
 // Service manages users, invitations, client certificates, sessions and
@@ -48,6 +54,11 @@ type Service struct {
 
 	setupMu    sync.Mutex
 	setupToken string
+
+	clientCerts bool
+	onDisable   func(string)
+	limiter     *limiter
+	dummyHash   string // verified for unknown users so failures take equal time
 }
 
 // NewService checks cfg and returns a Service.
@@ -56,8 +67,17 @@ func NewService(cfg Config) (*Service, error) {
 		cfg.CA == nil || cfg.Active == nil || !cfg.Password.valid() {
 		return nil, errors.New("auth: incomplete service configuration")
 	}
+	dummy, err := HashPassword("garret-unknown-user-placeholder", cfg.Password, cfg.Rand)
+	if err != nil {
+		return nil, err
+	}
+	onDisable := cfg.OnDisable
+	if onDisable == nil {
+		onDisable = func(string) {}
+	}
 	return &Service{
 		db: cfg.DB, audit: cfg.Audit, ids: cfg.IDs, clock: cfg.Clock, rand: cfg.Rand,
 		ca: cfg.CA, active: cfg.Active, password: cfg.Password,
+		clientCerts: !cfg.ClientCertsOff, onDisable: onDisable, limiter: newLimiter(cfg.Clock), dummyHash: dummy,
 	}, nil
 }
