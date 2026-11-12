@@ -87,21 +87,40 @@ func freePort(t *testing.T) uint16 {
 	return uint16(l.Addr().(*net.TCPAddr).Port)
 }
 
-// server runs a garret server with client certificates on until the test
-// ends and returns it with its data directory.
-func server(t *testing.T) (*app.App, string) {
+// testServer is a running garret server with client certificates on.
+type testServer struct {
+	app        *app.App
+	dataDir    string
+	mainPort   uint16
+	enrollPort uint16
+	out        *bytes.Buffer
+	stop       func() error
+}
+
+// startServer runs a server on dataDir (a new one when empty) until stop
+// or the end of the test. Zero ports are chosen; a restart passes the
+// previous ones. listen, when set, opens the sockets.
+func startServer(t *testing.T, dataDir string, mainPort, enrollPort uint16, listen func(context.Context, string) (net.Listener, error)) *testServer {
 	t.Helper()
 	git, err := exec.LookPath("git")
 	if err != nil {
 		t.Skip("git not installed")
 	}
-	dataDir := filepath.Join(t.TempDir(), "data")
-	enrollPort := freePort(t)
+	if dataDir == "" {
+		dataDir = filepath.Join(t.TempDir(), "data")
+	}
+	if mainPort == 0 {
+		mainPort = freePort(t)
+	}
+	if enrollPort == 0 {
+		enrollPort = freePort(t)
+	}
 	cfg := config.Serve{DataDir: dataDir, Host: "localhost",
-		Listen:       netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), 0),
+		Listen:       netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), mainPort),
 		EnrollListen: netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), enrollPort),
-		Port:         config.DefaultPort, EnrollPort: enrollPort, ClientCerts: true}
-	sys := app.System{Clock: testClock, Rand: rand.Reader, GitPath: git, Log: quiet(), Out: &bytes.Buffer{},
+		Port:         mainPort, EnrollPort: enrollPort, ClientCerts: true}
+	out := &bytes.Buffer{}
+	sys := app.System{Clock: testClock, Rand: rand.Reader, GitPath: git, Log: quiet(), Out: out, Listen: listen,
 		ActiveRefresh: 50 * time.Millisecond,
 		Interfaces: func() ([]netguard.Interface, error) {
 			return []netguard.Interface{{Name: "en0", Up: true, Prefixes: []netip.Prefix{netip.MustParsePrefix("192.168.1.20/24")}}}, nil
@@ -113,13 +132,20 @@ func server(t *testing.T) (*app.App, string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- a.Run(ctx) }()
+	stop := sync.OnceValue(func() error { cancel(); return <-done })
 	t.Cleanup(func() {
-		cancel()
-		if err := <-done; err != nil {
+		if err := stop(); err != nil {
 			t.Errorf("server: %v", err)
 		}
 	})
-	return a, dataDir
+	return &testServer{app: a, dataDir: dataDir, mainPort: mainPort, enrollPort: enrollPort, out: out, stop: stop}
+}
+
+// server runs a new server until the test ends.
+func server(t *testing.T) (*app.App, string) {
+	t.Helper()
+	s := startServer(t, "", 0, 0, nil)
+	return s.app, s.dataDir
 }
 
 func depsFor(t *testing.T, home string, replies ...string) (deps, *answers, *recorder, *bytes.Buffer) {
