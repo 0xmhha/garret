@@ -64,3 +64,16 @@ SELECT c.author_id FROM comments c WHERE c.review_id = sqlc.arg(review);
 
 -- name: GetRevisionByID :one
 SELECT * FROM revisions WHERE id = ?;
+
+-- name: ListReviewHistory :many
+-- The audit trail of one review: events about the review, its revisions
+-- and its comments, in ID (time) order after the cursor.
+SELECT e.* FROM audit_events e
+WHERE e.id > @after
+  AND (
+      (e.subject_kind = 'review' AND e.subject_id = @review_id)
+      OR (e.subject_kind = 'revision' AND e.subject_id IN (SELECT r.id FROM revisions r WHERE r.review_id = @review_id))
+      OR (e.subject_kind = 'comment' AND e.subject_id IN (SELECT c.id FROM comments c WHERE c.review_id = @review_id))
+  )
+ORDER BY e.id
+LIMIT @max_rows;

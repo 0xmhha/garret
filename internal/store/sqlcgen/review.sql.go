@@ -355,6 +355,58 @@ func (q *Queries) ListOpenReviewsOnBranch(ctx context.Context, arg ListOpenRevie
 	return items, nil
 }
 
+const listReviewHistory = `-- name: ListReviewHistory :many
+SELECT e.id, e.project_id, e.actor_id, e."action", e.subject_kind, e.subject_id, e.data, e.created_at FROM audit_events e
+WHERE e.id > ?1
+  AND (
+      (e.subject_kind = 'review' AND e.subject_id = ?2)
+      OR (e.subject_kind = 'revision' AND e.subject_id IN (SELECT r.id FROM revisions r WHERE r.review_id = ?2))
+      OR (e.subject_kind = 'comment' AND e.subject_id IN (SELECT c.id FROM comments c WHERE c.review_id = ?2))
+  )
+ORDER BY e.id
+LIMIT ?3
+`
+
+type ListReviewHistoryParams struct {
+	After    string
+	ReviewID string
+	MaxRows  int64
+}
+
+// The audit trail of one review: events about the review, its revisions
+// and its comments, in ID (time) order after the cursor.
+func (q *Queries) ListReviewHistory(ctx context.Context, arg ListReviewHistoryParams) ([]AuditEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listReviewHistory, arg.After, arg.ReviewID, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditEvent
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ActorID,
+			&i.Action,
+			&i.SubjectKind,
+			&i.SubjectID,
+			&i.Data,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listReviews = `-- name: ListReviews :many
 SELECT id, project_id, number, title, source_branch, target_branch, state, author_id, description_doc_id, created_at, updated_at FROM reviews WHERE project_id = ? ORDER BY updated_at DESC, number DESC
 `

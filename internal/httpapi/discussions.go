@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/0xmhha/garret/internal/discussion"
@@ -104,5 +106,38 @@ func (a *API) createDiscussionComment(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 	writeJSON(w, http.StatusCreated, toCommentJSON(c))
+	return nil
+}
+
+func (a *API) discussionHistory(w http.ResponseWriter, r *http.Request) error {
+	limit, err := pageLimit(r)
+	if err != nil {
+		return err
+	}
+	var after int64
+	if c := r.URL.Query().Get("cursor"); c != "" {
+		if after, err = strconv.ParseInt(c, 10, 64); err != nil || after < 0 {
+			return fmt.Errorf("%w: cursor", errBadRequest)
+		}
+	}
+	list, next, err := a.cfg.Discussions.History(r.Context(), user(r), r.PathValue("project"), r.PathValue("id"), after, limit)
+	if err != nil {
+		return err
+	}
+	type checkpointJSON struct {
+		UpToSeq      int64     `json:"up_to_seq"`
+		Text         string    `json:"text"`
+		Contributors []string  `json:"contributors"`
+		At           time.Time `json:"at"`
+	}
+	out := make([]checkpointJSON, len(list))
+	for i, c := range list {
+		out[i] = checkpointJSON{UpToSeq: c.UpToSeq, Text: c.Text, Contributors: c.Contributors, At: c.At}
+	}
+	cursor := ""
+	if next > 0 {
+		cursor = strconv.FormatInt(next, 10)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"checkpoints": out, "next_cursor": cursor})
 	return nil
 }

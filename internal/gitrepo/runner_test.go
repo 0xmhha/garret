@@ -254,7 +254,7 @@ func TestFileAt(t *testing.T) {
 	if _, err := r.FileAt(ctx, f.bare, f.c2, "a.txt", 4); !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("over max: %v", err)
 	}
-	if _, err := r.FileAt(ctx, f.bare, f.c2, "missing.txt", 1024); err == nil {
+	if _, err := r.FileAt(ctx, f.bare, f.c2, "missing.txt", 1024); !errors.Is(err, ErrNotFound) {
 		t.Fatal("missing file returned content")
 	}
 }

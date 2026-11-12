@@ -3,7 +3,9 @@ package gitrepo
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -222,6 +224,17 @@ func (r *Runner) DiffFile(ctx context.Context, dir, from, to, oldPath, newPath s
 func (r *Runner) FileAt(ctx context.Context, dir, commit, path string, max int64) ([]byte, error) {
 	if !isObjectName(commit) || path == "" {
 		return nil, fmt.Errorf("%w: cat-file", ErrBadArgument)
+	}
+	// cat-file -t exits non-zero when the object does not exist; any other
+	// failure (timeout, missing repository) stays an error. A directory is
+	// a tree, not a file.
+	typ, err := r.run(ctx, false, "--git-dir", dir, "cat-file", "-t", commit+":"+path)
+	var exit *exec.ExitError
+	switch {
+	case errors.As(err, &exit), err == nil && strings.TrimSpace(string(typ)) != "blob":
+		return nil, fmt.Errorf("%w: no file %s at %s", ErrNotFound, path, commit)
+	case err != nil:
+		return nil, err
 	}
 	sizeOut, err := r.run(ctx, false, "--git-dir", dir, "cat-file", "-s", commit+":"+path)
 	if err != nil {

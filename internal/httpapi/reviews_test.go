@@ -216,3 +216,73 @@ func TestDiscussionFlow(t *testing.T) {
 		t.Fatalf("deleted discussion %d", w.Code)
 	}
 }
+
+func TestReviewRevisionsFileAndHistory(t *testing.T) {
+	e, _ := fullEnv(t)
+	c := &client{e: e}
+	c.login(t)
+	p := basePath + "/projects/libfoo/reviews"
+	if w := c.do(t, http.MethodPost, p, map[string]string{"source_branch": "refs/heads/fix", "target_branch": "refs/heads/main", "title": "Fix parsing"}, nil); w.Code != http.StatusCreated {
+		t.Fatalf("open %d %s", w.Code, w.Body)
+	}
+	revs := c.do(t, http.MethodGet, p+"/1/revisions", nil, nil)
+	got := decodeBody[struct {
+		Revisions []struct {
+			HeadSHA string `json:"head_sha"`
+			Commits []struct {
+				SHA string `json:"sha"`
+			} `json:"commits"`
+		} `json:"revisions"`
+	}](t, revs.Body.Bytes())
+	if revs.Code != http.StatusOK || len(got.Revisions) != 1 || len(got.Revisions[0].Commits) != 2 {
+		t.Fatalf("revisions %d %s", revs.Code, revs.Body)
+	}
+	head := got.Revisions[0].HeadSHA
+	file := c.do(t, http.MethodGet, p+"/1/file?commit="+head+"&path=a.txt", nil, nil)
+	if file.Code != http.StatusOK || !strings.Contains(file.Body.String(), `"content":"one\nTWO\nthree\n"`) {
+		t.Fatalf("file %d %s", file.Code, file.Body)
+	}
+	for q, want := range map[string]int{
+		"?commit=" + head + "&path=../a.txt":    http.StatusBadRequest,
+		"?commit=" + head + "&path=missing.txt": http.StatusNotFound,
+		"?path=a.txt":                           http.StatusBadRequest,
+	} {
+		if w := c.do(t, http.MethodGet, p+"/1/file"+q, nil, nil); w.Code != want {
+			t.Errorf("file%s: %d, want %d", q, w.Code, want)
+		}
+	}
+	h := c.do(t, http.MethodGet, p+"/1/history?limit=1", nil, nil)
+	page := decodeBody[struct {
+		Events []struct {
+			ID     string `json:"id"`
+			Action string `json:"action"`
+			Actor  string `json:"actor_id"`
+		} `json:"events"`
+		Next string `json:"next_cursor"`
+	}](t, h.Body.Bytes())
+	if h.Code != http.StatusOK || len(page.Events) != 1 || page.Events[0].Action != "review.created" {
+		t.Fatalf("history %d %s", h.Code, h.Body)
+	}
+	if w := c.do(t, http.MethodGet, p+"/1/history?limit=500", nil, nil); w.Code != http.StatusBadRequest {
+		t.Fatalf("history limit 500: %d", w.Code)
+	}
+}
+
+func TestDiscussionHistoryEndpoint(t *testing.T) {
+	e, _ := fullEnv(t)
+	c := &client{e: e}
+	c.login(t)
+	ds := basePath + "/projects/libfoo/discussions"
+	w := c.do(t, http.MethodPost, ds, map[string]string{"title": "Disclosure plan"}, nil)
+	d := decodeBody[discussionJSON](t, w.Body.Bytes())
+	h := c.do(t, http.MethodGet, ds+"/"+d.ID+"/history", nil, nil)
+	if h.Code != http.StatusOK || !strings.Contains(h.Body.String(), `"checkpoints":[]`) || !strings.Contains(h.Body.String(), `"next_cursor":""`) {
+		t.Fatalf("history %d %s", h.Code, h.Body)
+	}
+	if w := c.do(t, http.MethodGet, ds+"/"+d.ID+"/history?cursor=x", nil, nil); w.Code != http.StatusBadRequest {
+		t.Fatalf("bad cursor %d", w.Code)
+	}
+	if w := c.do(t, http.MethodGet, ds+"/missing/history", nil, nil); w.Code != http.StatusNotFound {
+		t.Fatalf("missing discussion %d", w.Code)
+	}
+}

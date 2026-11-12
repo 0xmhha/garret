@@ -21,6 +21,8 @@ var (
 	// ErrBadArgument is returned before running git when a commit name or
 	// ref does not have the expected form.
 	ErrBadArgument = errors.New("gitrepo: invalid argument")
+	// ErrNotFound is returned when a path does not exist at a commit.
+	ErrNotFound = errors.New("gitrepo: not found")
 )
 
 // Limits from docs/specs/components.md section 8.

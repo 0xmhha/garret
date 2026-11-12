@@ -83,6 +83,7 @@ type Querier interface {
 	LatestRevision(ctx context.Context, reviewID string) (Revision, error)
 	LatestVerdicts(ctx context.Context, reviewID string) ([]Verdict, error)
 	ListActiveSerials(ctx context.Context) ([]string, error)
+	ListCheckpointsAfter(ctx context.Context, arg ListCheckpointsAfterParams) ([]ListCheckpointsAfterRow, error)
 	ListCommentAttachments(ctx context.Context, commentID string) ([]Attachment, error)
 	ListCommentVersions(ctx context.Context, commentID string) ([]CommentVersion, error)
 	ListDiscussionComments(ctx context.Context, discussionID sql.NullString) ([]ListDiscussionCommentsRow, error)
@@ -94,6 +95,9 @@ type Querier interface {
 	ListProjectNames(ctx context.Context) ([]string, error)
 	ListProjects(ctx context.Context) ([]Project, error)
 	ListReviewComments(ctx context.Context, reviewID sql.NullString) ([]ListReviewCommentsRow, error)
+	// The audit trail of one review: events about the review, its revisions
+	// and its comments, in ID (time) order after the cursor.
+	ListReviewHistory(ctx context.Context, arg ListReviewHistoryParams) ([]AuditEvent, error)
 	ListReviews(ctx context.Context, projectID string) ([]Review, error)
 	ListRevisionCommits(ctx context.Context, revisionID string) ([]RevisionCommit, error)
 	ListRevisionPins(ctx context.Context) ([]ListRevisionPinsRow, error)

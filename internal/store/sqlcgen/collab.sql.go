@@ -182,6 +182,54 @@ func (q *Queries) LatestCheckpoint(ctx context.Context, documentID string) (Coll
 	return i, err
 }
 
+const listCheckpointsAfter = `-- name: ListCheckpointsAfter :many
+SELECT up_to_seq, text, contributors, created_at FROM collab_checkpoints
+WHERE document_id = ?1 AND up_to_seq > ?2
+ORDER BY up_to_seq
+LIMIT ?3
+`
+
+type ListCheckpointsAfterParams struct {
+	DocumentID string
+	After      int64
+	MaxRows    int64
+}
+
+type ListCheckpointsAfterRow struct {
+	UpToSeq      int64
+	Text         string
+	Contributors string
+	CreatedAt    int64
+}
+
+func (q *Queries) ListCheckpointsAfter(ctx context.Context, arg ListCheckpointsAfterParams) ([]ListCheckpointsAfterRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCheckpointsAfter, arg.DocumentID, arg.After, arg.MaxRows)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCheckpointsAfterRow
+	for rows.Next() {
+		var i ListCheckpointsAfterRow
+		if err := rows.Scan(
+			&i.UpToSeq,
+			&i.Text,
+			&i.Contributors,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUpdatesAfter = `-- name: ListUpdatesAfter :many
 SELECT document_id, seq, user_id, received_at, payload FROM collab_updates WHERE document_id = ? AND seq > ? ORDER BY seq
 `
