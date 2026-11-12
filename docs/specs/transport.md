@@ -89,6 +89,64 @@ in-flight requests get 10 seconds (data.md Q4), WebSocket connections are
 closed with status 1001, the collaborative document service writes final
 checkpoints, and the database closes last.
 
+### 2.5 Assembly (`internal/app`)
+
+`internal/app` builds every service from the configuration and runs the
+server; `cmd/garret` only parses flags and handles signals.
+
+Startup, in order; any failure stops the process before a listener opens:
+
+1. Resolve the allowed networks from `--allow` or the interfaces. The listen
+   addresses are the addresses of up, non-loopback interfaces inside the
+   allowed networks, sorted, plus `127.0.0.1`; `--listen` and
+   `--enroll-listen` replace them. No address inside the allowed networks
+   is an error.
+2. Open the data directory, the database (migrations run here) and the git
+   runner (`HOME` is the data directory, `max(1, min(GOMAXPROCS-1, 4))`
+   commands at once, components.md 4).
+3. Load or create the CA for the host, the allowed networks and the listen
+   addresses, and load or issue the server certificate.
+4. Build the services. `OnDisable` closes the user's event and document
+   connections.
+5. Repairs: `RemoveOrphanRepositories` and `RepairPins`; each result is
+   logged.
+6. `RefreshActive` once, then print the main URL, the allowed networks and
+   the CA fingerprint, and the warnings for `--client-cert=off` and
+   `--insecure-http`.
+7. Open the main listeners and start the background work.
+
+Background work, each in its own goroutine that ends with the server
+context:
+
+| Work | Interval |
+|---|---|
+| `RefreshActive` | 30 s (Q1) |
+| Server certificate rotation check | 1 h |
+| `SweepSessions` | 1 h |
+| Inbox `Sweep` | 24 h |
+| Event hub and collaborative documents | until shutdown |
+| Enrollment gate | on change and at the earliest expiry |
+
+The enrollment gate owns the enrollment listeners. It asks
+`OpenInvitationsUntil`, opens the listeners when an invitation is open and
+closes them when none is, then waits for a change signal (sent without
+blocking after an invitation is created, revoked or used), the earliest
+expiry, or the end of the server context. A failed check keeps the current
+state and is retried after 30 seconds.
+
+The main handler routes `/api/` to the JSON API, `/git/` to the Git
+endpoint and every other path to the web interface (a placeholder page
+until stage 6). The main URL is `https://<host>:<port>` (`http://` with
+`--insecure-http`), and is the API's origin and the `server_url` given at
+enrollment. With `--tls-cert` the main listener presents that certificate;
+the enrollment listener always presents the certificate from garret's CA,
+because the invitation link pins that CA.
+
+Shutdown follows 2.4: stop the listeners and give requests 10 seconds
+(`http.Server.Shutdown`), close the enrollment listeners, end the server
+context so the hub closes event sockets and the document service writes
+its checkpoints, wait for every goroutine, and close the database last.
+
 ## 3. JSON API (`internal/httpapi`)
 
 ### 3.1 Conventions
