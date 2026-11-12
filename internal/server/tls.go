@@ -20,13 +20,17 @@ var (
 	errInactive = errors.New("server: client certificate is not active")
 )
 
-// MainTLS returns the TLS configuration of the main listener. With
-// clientCerts, the handshake requires a certificate that chains to ca alone
-// and whose serial is in active (transport.md 2.1).
-func MainTLS(certs *pki.ServerCertificates, ca *x509.Certificate, active *pki.ActiveSerials, clientCerts bool) *tls.Config {
+// GetCertificate supplies the server certificate for a handshake.
+type GetCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
+
+// MainTLS returns the TLS configuration of the main listener, presenting
+// the certificate from get. With clientCerts, the handshake requires a
+// certificate that chains to ca alone and whose serial is in active
+// (transport.md 2.1).
+func MainTLS(get GetCertificate, ca *x509.Certificate, active *pki.ActiveSerials, clientCerts bool) *tls.Config {
 	cfg := &tls.Config{
 		MinVersion:     tls.VersionTLS13,
-		GetCertificate: certs.GetCertificate,
+		GetCertificate: get,
 		ClientAuth:     tls.NoClientCert,
 	}
 	if !clientCerts {
@@ -52,6 +56,16 @@ func MainTLS(certs *pki.ServerCertificates, ca *x509.Certificate, active *pki.Ac
 // accepts devices that have no certificate yet.
 func EnrollTLS(certs *pki.ServerCertificates) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, GetCertificate: certs.GetCertificate, ClientAuth: tls.NoClientCert}
+}
+
+// StaticCertificate loads an externally issued certificate and key
+// (--tls-cert, --tls-key) once and always presents them.
+func StaticCertificate(certFile, keyFile string) (GetCertificate, error) {
+	c, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("server: load --tls-cert: %w", err)
+	}
+	return func(*tls.ClientHelloInfo) (*tls.Certificate, error) { return &c, nil }, nil
 }
 
 // Identity is who a request comes from at the transport level.
