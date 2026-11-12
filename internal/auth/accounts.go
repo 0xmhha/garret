@@ -407,7 +407,21 @@ func (s *Service) RenewCertificate(ctx context.Context, actor User, currentSeria
 		return nil, err
 	}
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		if err := s.insertCertificate(ctx, sqlcgen.New(tx), cert, actor.ID, device, viaRenewal, currentSerial); err != nil {
+		q := sqlcgen.New(tx)
+		// Check again under the write lock, so a revocation or a disable that
+		// committed after the read above cannot be bypassed by renewal.
+		c, err := q.GetCertificate(ctx, currentSerial)
+		if err != nil {
+			return err
+		}
+		u, err := q.GetUserByID(ctx, actor.ID)
+		if err != nil {
+			return err
+		}
+		if c.RevokedAt.Valid || u.DisabledAt.Valid {
+			return ErrForbidden
+		}
+		if err := s.insertCertificate(ctx, q, cert, actor.ID, device, viaRenewal, currentSerial); err != nil {
 			return err
 		}
 		return s.recordIssued(ctx, tx, actor.ID, cert, viaRenewal)
