@@ -233,6 +233,15 @@ update pull request reviews the upstream changes before merging.
   on shutdown after a final checkpoint.
 - **Awareness** messages (cursors, names) are relayed to the document's
   other connections and never stored.
+- **Framing**: messages use the y-websocket framing, a first byte of 0 for
+  sync and 1 for awareness. The document's content is the `Y.Text` named
+  `body`; the browser binds the same name.
+- **Validation**: an update is parsed (`EncodeStateVectorFromUpdate`) before
+  it is stored, so a malformed one closes the connection and stores
+  nothing. An oversized update is refused before it reaches the owner.
+- **Mentions in documents**: a user who contributed since the previous
+  checkpoint is not notified, since they may have written the mention
+  themselves.
 
 ## 8. Notifications (`internal/inbox`)
 
