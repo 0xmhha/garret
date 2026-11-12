@@ -41,6 +41,7 @@ type env struct {
 	auth    *auth.Service
 	active  *pki.ActiveSerials
 	admin   auth.Issued
+	ca      *pki.CA
 }
 
 func newEnv(t *testing.T, clientCerts bool) *env {
@@ -69,7 +70,7 @@ func newEnv(t *testing.T, clientCerts bool) *env {
 		t.Fatal(err)
 	}
 	api := New(Config{Auth: svc, Origin: origin, ClientCerts: clientCerts, Active: active, Log: slog.New(slog.DiscardHandler)})
-	return &env{api: api, storeDB: db, auth: svc, active: active, admin: admin}
+	return &env{api: api, storeDB: db, auth: svc, active: active, admin: admin, ca: &pki.CA{Cert: caCert, Key: key}}
 }
 
 func csr(t *testing.T) []byte {
