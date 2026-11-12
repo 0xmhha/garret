@@ -174,7 +174,9 @@ bundled server. A spike confirmed this before stage 4 (see
 
 ## Frontend
 
-The React application is built with Vite into `web/dist` and embedded with
-`go:embed`. Routing happens in the browser; the server returns `index.html`
-for unknown non-API paths. Design work uses the project's UI and UX tooling to
-avoid a generic look.
+The React application lives in `web/` and is built with Vite into
+`internal/webui/dist`, which is embedded with `go:embed` when the binary is
+built with the `webui` tag; without it a committed placeholder page is
+embedded (decision D10). Routing happens in the browser; the server returns
+`index.html` for unknown non-API paths. The plan for this stage is
+[specs/web.md](../specs/web.md).
