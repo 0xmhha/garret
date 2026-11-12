@@ -252,7 +252,8 @@ func TestRenewUsesHandshakeSerial(t *testing.T) {
 	e := newEnv(t, true)
 	c := &client{e: e, cert: e.admin.Certificate}
 	c.login(t)
-	w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))}, nil)
+	w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))},
+		map[string]string{"Content-Type": "application/json"})
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "BEGIN CERTIFICATE") {
 		t.Fatalf("renew %d %s", w.Code, w.Body)
 	}
@@ -265,5 +266,26 @@ func TestRenewUsesHandshakeSerial(t *testing.T) {
 	o.login(t)
 	if w := o.do(t, http.MethodPost, basePath+"/me/certificates/renew", map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))}, nil); w.Code != http.StatusForbidden {
 		t.Fatalf("renew without a certificate on the connection %d", w.Code)
+	}
+}
+
+func TestRenewWithTheCertificateAlone(t *testing.T) {
+	e := newEnv(t, true)
+	c := &client{e: e, cert: e.admin.Certificate} // no login
+	body := map[string]string{"csr": base64.StdEncoding.EncodeToString(csr(t))}
+	jsonType := map[string]string{"Content-Type": "application/json"}
+	if w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", body, jsonType); w.Code != http.StatusOK {
+		t.Fatalf("renew without a session %d %s", w.Code, w.Body)
+	}
+	if w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", body, map[string]string{"Content-Type": "text/plain"}); w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("renew as a simple request %d", w.Code)
+	}
+	if w := c.do(t, http.MethodPost, basePath+"/me/certificates/renew", body,
+		map[string]string{"Content-Type": "application/json", "Origin": "https://evil.example"}); w.Code != http.StatusForbidden {
+		t.Fatalf("cross-origin renew %d", w.Code)
+	}
+	noCert := &client{e: newEnv(t, false)}
+	if w := noCert.do(t, http.MethodPost, basePath+"/me/certificates/renew", body, jsonType); w.Code != http.StatusForbidden {
+		t.Fatalf("renew without a certificate %d", w.Code)
 	}
 }

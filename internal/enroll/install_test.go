@@ -249,3 +249,10 @@ func TestApplyPassesStepTimeout(t *testing.T) {
 		t.Fatalf("deadline in %v", d.left)
 	}
 }
+
+func TestInstallStepsWithoutCertificateUsePlaceholder(t *testing.T) {
+	steps, err := InstallSteps(Platform{GOOS: "darwin", Home: t.TempDir()}, FilesIn(t.TempDir()), testURL, nil)
+	if err != nil || !strings.Contains(strings.Join(commands(steps), "\n"), "-Z "+certPlaceholder+" ") {
+		t.Fatalf("dry-run steps %q %v", commands(steps), err)
+	}
+}

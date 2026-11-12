@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -28,3 +29,5 @@ func TestRunDispatch(t *testing.T) {
 		}
 	}
 }
+
+func quiet() *slog.Logger { return slog.New(slog.DiscardHandler) }

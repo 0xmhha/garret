@@ -1,0 +1,293 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"errors"
+	"net"
+	"net/http"
+	"net/netip"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/0xmhha/garret/internal/app"
+	"github.com/0xmhha/garret/internal/clock"
+	"github.com/0xmhha/garret/internal/config"
+	"github.com/0xmhha/garret/internal/enroll"
+	"github.com/0xmhha/garret/internal/netguard"
+)
+
+const testPassword = "correct horse battery staple"
+
+// answers is a Prompter that replies in order and records the labels.
+type answers struct {
+	replies []string
+	asked   []string
+}
+
+func (a *answers) next(label string) (string, error) {
+	a.asked = append(a.asked, label)
+	if len(a.replies) == 0 {
+		return "", errors.New("no answer for " + label)
+	}
+	r := a.replies[0]
+	a.replies = a.replies[1:]
+	return r, nil
+}
+
+func (a *answers) Ask(label, def string) (string, error) {
+	r, err := a.next(label)
+	if r == "" {
+		return def, err
+	}
+	return r, err
+}
+func (a *answers) Secret(label string) (string, error) { return a.next(label) }
+
+// recorder is an enroll.Runner that records commands.
+type recorder struct {
+	mu  sync.Mutex
+	ran []string
+}
+
+func (r *recorder) Run(_ context.Context, name string, args ...string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.ran = append(r.ran, name+" "+strings.Join(args, " "))
+	return nil
+}
+
+func freePort(t *testing.T) uint16 {
+	t.Helper()
+	l, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = l.Close() }()
+	return uint16(l.Addr().(*net.TCPAddr).Port)
+}
+
+// server runs a garret server with client certificates on until the test
+// ends and returns it with its data directory.
+func server(t *testing.T) (*app.App, string) {
+	t.Helper()
+	git, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git not installed")
+	}
+	dataDir := filepath.Join(t.TempDir(), "data")
+	enrollPort := freePort(t)
+	cfg := config.Serve{DataDir: dataDir, Host: "localhost",
+		Listen:       netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), 0),
+		EnrollListen: netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), enrollPort),
+		Port:         config.DefaultPort, EnrollPort: enrollPort, ClientCerts: true}
+	sys := app.System{Clock: clock.System{}, Rand: rand.Reader, GitPath: git, Log: quiet(), Out: &bytes.Buffer{},
+		ActiveRefresh: 50 * time.Millisecond,
+		Interfaces: func() ([]netguard.Interface, error) {
+			return []netguard.Interface{{Name: "en0", Up: true, Prefixes: []netip.Prefix{netip.MustParsePrefix("192.168.1.20/24")}}}, nil
+		}}
+	a, err := app.New(context.Background(), cfg, sys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- a.Run(ctx) }()
+	t.Cleanup(func() { cancel(); <-done })
+	return a, dataDir
+}
+
+func depsFor(t *testing.T, home string, replies ...string) (deps, *answers, *recorder, *bytes.Buffer) {
+	t.Helper()
+	ans := &answers{replies: replies}
+	rec := &recorder{}
+	var out bytes.Buffer
+	return deps{stdout: &out, stderr: &out, prompt: ans, runner: rec, clock: clock.System{}, hostname: "test-machine",
+		platform: enroll.Platform{GOOS: "freebsd", Home: home, Executable: "/usr/local/bin/garret"}}, ans, rec, &out
+}
+
+func mainPort(t *testing.T, a *app.App) string {
+	t.Helper()
+	u, err := url.Parse(a.MainURL())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u.Port()
+}
+
+func clientDir(home, port string) string {
+	p, _ := strconv.Atoi(port)
+	return enroll.ClientDir("freebsd", home, "", "localhost", uint16(p))
+}
+
+// session logs in with the certificate in dir and returns a client, the
+// cookie and the CSRF token.
+func session(t *testing.T, a *app.App, dir, username string) (*http.Client, *http.Cookie, string) {
+	t.Helper()
+	files := enroll.FilesIn(dir)
+	key, cert, err := files.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := x509.NewCertPool()
+	pool.AddCert(a.CA())
+	c := &http.Client{Timeout: 10 * time.Second, Transport: &http.Transport{TLSClientConfig: &tls.Config{
+		RootCAs: pool, ServerName: "localhost", MinVersion: tls.VersionTLS13,
+		Certificates: []tls.Certificate{{Certificate: [][]byte{cert.Raw}, PrivateKey: key, Leaf: cert}}}}}
+	body, _ := json.Marshal(map[string]string{"username": username, "password": testPassword})
+	var resp *http.Response
+	// The server loads new certificates within its refresh interval.
+	for range 100 {
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, a.MainURL()+"/api/v1/auth/login", bytes.NewReader(body))
+		req.Header.Set("Origin", a.MainURL())
+		req.Header.Set("Content-Type", "application/json")
+		if resp, err = c.Do(req); err == nil {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var out struct {
+		CSRF string `json:"csrf_token"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	if resp.StatusCode != http.StatusOK || len(resp.Cookies()) == 0 {
+		t.Fatalf("login status %d", resp.StatusCode)
+	}
+	return c, resp.Cookies()[0], out.CSRF
+}
+
+func invite(t *testing.T, a *app.App, c *http.Client, cookie *http.Cookie, csrf string) (link, code string) {
+	t.Helper()
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, a.MainURL()+"/api/v1/admin/invitations",
+		strings.NewReader(`{"role":"member"}`))
+	req.Header.Set("Origin", a.MainURL())
+	req.Header.Set("X-CSRF-Token", csrf)
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var out struct {
+		Link string `json:"link"`
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil || resp.StatusCode != http.StatusCreated {
+		t.Fatalf("invite %d %v", resp.StatusCode, err)
+	}
+	return out.Link, out.Code
+}
+
+func TestSetupEnrollRenew(t *testing.T) {
+	a, dataDir := server(t)
+	port := mainPort(t, a)
+
+	adminHome := t.TempDir()
+	d, _, rec, out := depsFor(t, adminHome, "root", "Root", testPassword, testPassword, "host")
+	if code := runWith([]string{"admin", "setup", "--data", dataDir, "--host", "localhost", "--port", port}, d); code != exitOK {
+		t.Fatalf("admin setup exit %d:\n%s", code, out)
+	}
+	if len(rec.ran) != 3 || !strings.HasPrefix(rec.ran[0], "git config --global http."+a.MainURL()+"/.sslCert") {
+		t.Fatalf("setup commands %q", rec.ran)
+	}
+	d, _, _, out = depsFor(t, t.TempDir(), "root2", "Root", testPassword, testPassword, "host")
+	if code := runWith([]string{"admin", "setup", "--data", dataDir, "--host", "localhost", "--port", port}, d); code == exitOK ||
+		!strings.Contains(out.String(), "administrator already exists") {
+		t.Fatalf("second setup exit %d:\n%s", code, out)
+	}
+
+	c, cookie, csrf := session(t, a, clientDir(adminHome, port), "root")
+	link, inviteCode := invite(t, a, c, cookie, csrf)
+
+	memberHome := t.TempDir()
+	d, _, _, out = depsFor(t, memberHome)
+	if code := runWith([]string{"enroll", "--dry-run", link}, d); code != exitOK || !strings.Contains(out.String(), "would: ") {
+		t.Fatalf("dry run exit %d:\n%s", code, out)
+	}
+	if _, err := os.Stat(clientDir(memberHome, port)); err == nil {
+		t.Fatal("dry run wrote files")
+	}
+	d, _, _, out = depsFor(t, memberHome, inviteCode, "bob", "Bob", testPassword, "another password here", "laptop")
+	if code := runWith([]string{"enroll", link}, d); code == exitOK || !strings.Contains(out.String(), "do not match") {
+		t.Fatalf("mismatched passwords exit %d:\n%s", code, out)
+	}
+	d, ans, rec, out := depsFor(t, memberHome, inviteCode, "bob", "Bob", testPassword, testPassword, "")
+	if code := runWith([]string{"enroll", link}, d); code != exitOK {
+		t.Fatalf("enroll exit %d:\n%s\nasked %q", code, out, ans.asked)
+	}
+	if len(rec.ran) != 3 {
+		t.Fatalf("enroll commands %q", rec.ran)
+	}
+	files := enroll.FilesIn(clientDir(memberHome, port))
+	_, before, err := files.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	session(t, a, files.Dir, "bob")
+
+	d, _, _, out = depsFor(t, memberHome)
+	if code := runWith([]string{"renew"}, d); code != exitOK || !strings.Contains(out.String(), "not due") {
+		t.Fatalf("renew when not due exit %d:\n%s", code, out)
+	}
+	d, _, _, out = depsFor(t, memberHome)
+	if code := runWith([]string{"renew", "--server", a.MainURL(), "--force"}, d); code != exitOK {
+		t.Fatalf("renew exit %d:\n%s", code, out)
+	}
+	_, after, err := files.Load()
+	if err != nil || after.SerialNumber.Cmp(before.SerialNumber) == 0 {
+		t.Fatalf("certificate not replaced: %v", err)
+	}
+	session(t, a, files.Dir, "bob")
+}
+
+func TestSetupWithoutCA(t *testing.T) {
+	d, _, _, out := depsFor(t, t.TempDir(), "root", "Root", testPassword, testPassword, "host")
+	if code := runWith([]string{"admin", "setup", "--data", filepath.Join(t.TempDir(), "data")}, d); code == exitOK ||
+		!strings.Contains(out.String(), "start garret serve once first") {
+		t.Fatalf("setup without a CA exit %d:\n%s", code, out)
+	}
+}
+
+func TestEnrollRejectsBadLink(t *testing.T) {
+	d, _, _, out := depsFor(t, t.TempDir())
+	if code := runWith([]string{"enroll", "http://localhost:8444/enroll"}, d); code != exitUsage || !strings.Contains(out.String(), "invitation link") {
+		t.Fatalf("bad link exit %d:\n%s", code, out)
+	}
+}
+
+func TestTerminalPrompterReadsLines(t *testing.T) {
+	in := strings.NewReader("bob\n\nsecret words here\n")
+	var out bytes.Buffer
+	p := newPrompter(in, &out)
+	if v, _ := p.Ask("Username", ""); v != "bob" {
+		t.Fatalf("Ask = %q", v)
+	}
+	if v, _ := p.Ask("Device", "laptop"); v != "laptop" {
+		t.Fatalf("default = %q", v)
+	}
+	if v, _ := p.Secret("Password"); v != "secret words here" {
+		t.Fatalf("Secret = %q", v)
+	}
+	if _, err := p.Ask("More", ""); err == nil {
+		t.Fatal("read past the end")
+	}
+	if !strings.Contains(out.String(), "Device [laptop]: ") {
+		t.Fatalf("prompt output %q", out.String())
+	}
+}
