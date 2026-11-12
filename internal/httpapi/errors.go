@@ -41,6 +41,7 @@ var errorMapping = []struct {
 	{[]error{auth.ErrInvalidCredentials, auth.ErrUnauthenticated}, http.StatusUnauthorized, codeUnauthenticated, "sign in again"},
 	{[]error{auth.ErrInvalidInvitation}, http.StatusBadRequest, codeInvalidInvitation, "the invitation code is not valid"},
 	{[]error{admin.ErrExportRequired}, http.StatusConflict, codeExportRequired, "export the project first"},
+	{[]error{errTooManyConnections}, http.StatusTooManyRequests, "too_many_connections", "too many open connections"},
 	{[]error{auth.ErrForbidden, project.ErrForbidden, review.ErrForbidden, comment.ErrForbidden, discussion.ErrForbidden,
 		attachment.ErrForbidden, admin.ErrForbidden}, http.StatusForbidden, codeForbidden, "not allowed"},
 	{[]error{auth.ErrNotFound, project.ErrNotFound, review.ErrNotFound, comment.ErrNotFound, discussion.ErrNotFound,

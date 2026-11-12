@@ -475,3 +475,32 @@ func TestRebuildCallbackFailureChangesNothing(t *testing.T) {
 		t.Fatalf("generation changed after a failed rebuild: %v", err)
 	}
 }
+
+func TestGenerationAndCloseUser(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(ctx, t, filepath.Join(t.TempDir(), "garret.db"))
+	seed(ctx, t, e.db)
+	if g, err := e.svc.Generation(ctx, "libfoo", docID); err != nil || g != 1 {
+		t.Fatalf("Generation = %d, %v", g, err)
+	}
+	if _, err := e.svc.Generation(ctx, "other", docID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("wrong project: %v", err)
+	}
+	cb, cc := newConn(), newConn()
+	if _, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, cb); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.svc.Join(ctx, carol, "libfoo", docID, 1, cc); err != nil {
+		t.Fatal(err)
+	}
+	cb.wait(t, 1)
+	cc.wait(t, 1)
+	e.svc.CloseUser(bob.ID)
+	deadline := time.Now().Add(5 * time.Second)
+	for !cb.isClosed() && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond) // waiting for the owner goroutine
+	}
+	if !cb.isClosed() || cc.isClosed() {
+		t.Fatalf("bob closed %v, carol closed %v", cb.isClosed(), cc.isClosed())
+	}
+}
