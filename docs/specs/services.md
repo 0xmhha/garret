@@ -64,7 +64,8 @@ user, issues a client certificate with `issued_via = setup`, and records
 ### 3.2 Invitations
 
 - `CreateInvitation(ctx, admin, role)` returns the token once; the row stores
-  its digest. Lifetime 24 hours (security.md).
+  its digest. Lifetime 30 minutes; the code is six words from the EFF
+  large wordlist (transport.md, T-D3).
 - `RevokeInvitation`, `ListInvitations`.
 - `OpenInvitations(ctx) (bool, error)`: whether any invitation is unused,
   unrevoked and unexpired. The enrollment listener (stage 5) opens and closes
@@ -221,7 +222,10 @@ recovers per message, so crafted input costs the sender its connection and
 never stops the server. The sync package is transport-agnostic, so garret serves it from its
 own authenticated WebSocket handler instead of ygo's bundled server. The
 library is mostly maintained by one person; the version is pinned, and every
-update pull request reviews the upstream changes before merging.
+update pull request reviews the upstream changes before merging. If panics
+keep appearing in testing despite the guard, the fallback is a fork that
+carries the fix and follows upstream releases, dropped and archived once
+upstream ships its own fix (transport.md, T-D4).
 
 - One **owner goroutine** per loaded document (data.md 7.5) holds the
   `crdt.Doc` and a bounded inbox. Shared types are obtained once at load,
@@ -321,5 +325,5 @@ review.
 | Q8 | What makes an export "completed" for purge | A `project.exported` audit event newer than every other event of the project, so anything written after the export forces a new one |
 
 Proposed defaults already in [security.md](../design/security.md#authentication)
-(invitation 24 hours, session 7 days idle and 30 days maximum) are used as
+(session 7 days idle and 30 days maximum) are used as
 written.

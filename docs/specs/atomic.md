@@ -263,7 +263,7 @@ func DigestEqual(a, b []byte) bool
 ```
 
 - `NewSecret` reads 32 bytes (256 bits) and encodes them as unpadded
-  base64url, 43 characters. Used for invitation tokens, session IDs, CSRF
+  base64url, 43 characters. Used for session IDs, CSRF
   tokens, access tokens and the setup token. Read errors are wrapped.
 - `Digest` is SHA-256 of the secret's bytes. Only digests are stored.
 - `DigestEqual` compares with `crypto/subtle.ConstantTimeCompare`. Different
