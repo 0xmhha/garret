@@ -13,6 +13,7 @@ type Querier interface {
 	AllocateReviewNumber(ctx context.Context, id string) (int64, error)
 	AllocateUpdateSeq(ctx context.Context, id string) (int64, error)
 	BumpCommentVersion(ctx context.Context, arg BumpCommentVersionParams) (int64, error)
+	BumpDocumentGeneration(ctx context.Context, id string) (BumpDocumentGenerationRow, error)
 	ChangeReviewState(ctx context.Context, arg ChangeReviewStateParams) (int64, error)
 	CountActiveAdmins(ctx context.Context) (int64, error)
 	CountAttachmentsWithDigest(ctx context.Context, arg CountAttachmentsWithDigestParams) (int64, error)
@@ -22,6 +23,8 @@ type Querier interface {
 	DeleteCommentAttachmentsOfAttachment(ctx context.Context, attachmentID string) error
 	DeleteCommentAttachmentsOfComment(ctx context.Context, commentID string) error
 	DeleteCommentVersions(ctx context.Context, commentID string) error
+	DeleteDocumentCheckpoints(ctx context.Context, documentID string) error
+	DeleteDocumentUpdates(ctx context.Context, documentID string) error
 	DeleteExpiredSessions(ctx context.Context, arg DeleteExpiredSessionsParams) (int64, error)
 	DeleteNotificationsAbout(ctx context.Context, subjectID string) error
 	DeleteOldNotifications(ctx context.Context, createdAt int64) (int64, error)

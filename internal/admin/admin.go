@@ -18,6 +18,7 @@ import (
 	"github.com/0xmhha/garret/internal/audit"
 	"github.com/0xmhha/garret/internal/auth"
 	"github.com/0xmhha/garret/internal/clock"
+	"github.com/0xmhha/garret/internal/collab"
 	"github.com/0xmhha/garret/internal/gitrepo"
 	"github.com/0xmhha/garret/internal/id"
 	"github.com/0xmhha/garret/internal/project"
@@ -50,6 +51,7 @@ type Config struct {
 	Runner   *gitrepo.Runner
 	Projects *project.Service
 	Files    *attachment.Store
+	Collab   *collab.Service
 }
 
 // Service performs erasure, export and purge. It is safe for concurrent use.
@@ -138,6 +140,32 @@ func (s *Service) EraseAttachment(ctx context.Context, actor auth.User, attachme
 	var sum [sha256.Size]byte
 	copy(sum[:], a.Sha256)
 	return s.cfg.Files.Remove(a.ProjectID, sum)
+}
+
+// EraseDocument permanently removes text from a collaborative document.
+// Yjs updates keep deleted text, so the document is rebuilt from
+// cleanedText: every update and checkpoint is deleted and the generation
+// increases, which loses per-character authorship (data-model.md,
+// Retention). It returns the new generation.
+func (s *Service) EraseDocument(ctx context.Context, actor auth.User, docID, cleanedText, reason string) (int64, error) {
+	if err := s.check(actor, reason); err != nil {
+		return 0, err
+	}
+	var projectID string
+	err := s.cfg.DB.ReadTx(ctx, func(tx *sql.Tx) error {
+		d, err := sqlcgen.New(tx).GetCollabDocument(ctx, docID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		projectID = d.ProjectID
+		return err
+	})
+	if err != nil {
+		return 0, err
+	}
+	return s.cfg.Collab.Rebuild(ctx, docID, cleanedText, func(tx *sql.Tx) error {
+		return s.recordErasure(ctx, tx, sqlcgen.New(tx), actor, "collab_document", docID, "", reason, projectID)
+	})
 }
 
 // Export writes one zip archive of the project to w: a Git bundle with every

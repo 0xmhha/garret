@@ -20,6 +20,40 @@ func (q *Queries) AllocateUpdateSeq(ctx context.Context, id string) (int64, erro
 	return column_1, err
 }
 
+const bumpDocumentGeneration = `-- name: BumpDocumentGeneration :one
+UPDATE collab_documents SET generation = generation + 1 WHERE id = ? RETURNING generation, next_seq
+`
+
+type BumpDocumentGenerationRow struct {
+	Generation int64
+	NextSeq    int64
+}
+
+func (q *Queries) BumpDocumentGeneration(ctx context.Context, id string) (BumpDocumentGenerationRow, error) {
+	row := q.db.QueryRowContext(ctx, bumpDocumentGeneration, id)
+	var i BumpDocumentGenerationRow
+	err := row.Scan(&i.Generation, &i.NextSeq)
+	return i, err
+}
+
+const deleteDocumentCheckpoints = `-- name: DeleteDocumentCheckpoints :exec
+DELETE FROM collab_checkpoints WHERE document_id = ?
+`
+
+func (q *Queries) DeleteDocumentCheckpoints(ctx context.Context, documentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteDocumentCheckpoints, documentID)
+	return err
+}
+
+const deleteDocumentUpdates = `-- name: DeleteDocumentUpdates :exec
+DELETE FROM collab_updates WHERE document_id = ?
+`
+
+func (q *Queries) DeleteDocumentUpdates(ctx context.Context, documentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteDocumentUpdates, documentID)
+	return err
+}
+
 const getCollabDocument = `-- name: GetCollabDocument :one
 SELECT id, project_id, kind, next_seq, generation, created_at FROM collab_documents WHERE id = ?
 `

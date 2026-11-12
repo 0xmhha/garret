@@ -22,3 +22,12 @@ SELECT * FROM reviews WHERE description_doc_id = ?;
 
 -- name: GetDiscussionByBodyDoc :one
 SELECT * FROM discussions WHERE body_doc_id = ?;
+
+-- name: DeleteDocumentUpdates :exec
+DELETE FROM collab_updates WHERE document_id = ?;
+
+-- name: DeleteDocumentCheckpoints :exec
+DELETE FROM collab_checkpoints WHERE document_id = ?;
+
+-- name: BumpDocumentGeneration :one
+UPDATE collab_documents SET generation = generation + 1 WHERE id = ? RETURNING generation, next_seq;
