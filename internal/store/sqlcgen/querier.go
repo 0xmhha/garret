@@ -9,7 +9,23 @@ import (
 )
 
 type Querier interface {
+	CountActiveAdmins(ctx context.Context) (int64, error)
+	EarliestOpenInvitationExpiry(ctx context.Context, expiresAt int64) (int64, error)
+	GetCertificate(ctx context.Context, serial string) (ClientCertificate, error)
+	GetInvitationByDigest(ctx context.Context, tokenSha256 []byte) (Invitation, error)
+	GetUserByID(ctx context.Context, id string) (User, error)
+	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAuditEvent(ctx context.Context, arg InsertAuditEventParams) error
+	InsertCertificate(ctx context.Context, arg InsertCertificateParams) error
+	InsertInvitation(ctx context.Context, arg InsertInvitationParams) error
+	InsertUser(ctx context.Context, arg InsertUserParams) error
+	ListActiveSerials(ctx context.Context) ([]string, error)
+	ListInvitations(ctx context.Context) ([]Invitation, error)
+	ListUserCertificates(ctx context.Context, userID string) ([]ClientCertificate, error)
+	ListUsers(ctx context.Context) ([]User, error)
+	RevokeCertificate(ctx context.Context, arg RevokeCertificateParams) (int64, error)
+	RevokeInvitation(ctx context.Context, arg RevokeInvitationParams) (int64, error)
+	UseInvitation(ctx context.Context, arg UseInvitationParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)
