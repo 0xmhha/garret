@@ -95,6 +95,11 @@ device of one user and is valid for 7 days.
   `http.sslCAInfo`) for the server's URL, and registers a background renewal
   job (launchd on macOS, a systemd user timer on Linux). The job renews when
   less than half of the validity remains.
+- Renewal keeps one line of certificates per device: it is accepted only in
+  the second half of the validity and only from the newest certificate, and
+  revoking a certificate revokes the whole line. A stolen device key
+  therefore cannot be renewed alongside the owner's device, and one
+  revocation ends it.
 - Disabling a user revokes all of the user's client certificates at once. The
   server checks every handshake against its own revocation list in the
   database.

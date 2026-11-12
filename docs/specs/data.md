@@ -176,7 +176,7 @@ Index: `(user_id)`, `(expires_at)`.
 | `device_name` | TEXT | 1–64 characters |
 | `public_key_sha256` | BLOB | SHA-256 of the SubjectPublicKeyInfo |
 | `issued_via` | TEXT | `invitation`, `renewal`, `setup` |
-| `renewed_from` | TEXT | N, FK client_certificates |
+| `renewed_from` | TEXT | N, FK client_certificates, unique (a certificate is renewed at most once) |
 | `not_before` | INTEGER | |
 | `not_after` | INTEGER | |
 | `revoked_at` | INTEGER | N |

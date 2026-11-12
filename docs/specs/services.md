@@ -117,6 +117,13 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
   expires, so a renewal job that crashes after the response does not lock
   the device out. The checks run again inside the write transaction, so a
   revocation or a disable that commits in between cannot be bypassed.
+  It also requires that less than half of the current certificate's
+  validity remains (`pki.RenewalDue`, else `ErrConflict`) and that the
+  current certificate has not been renewed before (else `ErrConflict`); a
+  unique index on `renewed_from` makes the second rule hold under
+  concurrent renewals.
+- `RevokeCertificate` revokes the whole line of the certificate: every
+  certificate reachable through `renewed_from` in either direction.
 - `ListCertificates`, `RevokeCertificate` (own devices, or any as admin).
 - `DisableUser(ctx, admin, userID)`: sets `disabled_at`, deletes sessions,
   revokes tokens and certificates in one transaction, then replaces the

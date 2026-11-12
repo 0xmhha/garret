@@ -402,9 +402,10 @@ before the access list is changed.
   `server_url`, and applies 6.5. `--dry-run` parses the link, fetches and
   verifies the CA, and prints the steps with placeholders for the values the
   server would return; it sends no code and changes nothing.
-- `garret renew [--server <url>] [--force]`: for the given server, or every
+- `garret renew [--server <url>]`: for the given server, or every
   directory under the client directory, loads `cert.pem`; when
-  `pki.RenewalDue` says so (or with `--force`) it renews with a new key,
+  `pki.RenewalDue` says so it renews with a new key (the server checks the
+  same rule and refuses an early renewal),
   saves the files and applies the renewal steps of 6.5. A server whose
   certificate has expired is reported with the instruction to enroll again,
   and the others are still renewed. The exit code is non-zero if any server
