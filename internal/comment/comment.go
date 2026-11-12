@@ -78,6 +78,8 @@ type NewComment struct {
 	ReplyTo    string
 	Anchor     *Anchor
 	Body       string
+	// Attachments are IDs of the project's attachments to link.
+	Attachments []string
 }
 
 // Comment is a comment with its current body. Body is empty for a deleted
@@ -96,6 +98,7 @@ type Comment struct {
 	Body         string
 	CreatedAt    time.Time
 	Deleted      bool
+	Attachments  []string
 }
 
 // Version is one stored version of a comment body.
@@ -191,6 +194,18 @@ func (s *Service) Create(ctx context.Context, actor auth.User, projectName strin
 		if err := q.InsertCommentVersion(ctx, sqlcgen.InsertCommentVersionParams{CommentID: commentID, Version: 1, Body: in.Body, CreatedAt: now}); err != nil {
 			return err
 		}
+		for _, aid := range in.Attachments {
+			a, err := q.GetAttachment(ctx, aid)
+			if errors.Is(err, sql.ErrNoRows) || err == nil && (a.ProjectID != par.project.ID || a.DeletedAt.Valid) {
+				return fmt.Errorf("%w: attachment %s", ErrInvalid, aid)
+			}
+			if err != nil {
+				return err
+			}
+			if err := q.InsertCommentAttachment(ctx, sqlcgen.InsertCommentAttachmentParams{CommentID: commentID, AttachmentID: aid}); err != nil {
+				return err
+			}
+		}
 		recipients, err := s.recipients(ctx, q, actor.ID, in.Body, "", rootAuthor, par.reviewAuthor)
 		if err != nil {
 			return err
@@ -214,7 +229,7 @@ func (s *Service) Create(ctx context.Context, actor auth.User, projectName strin
 	s.publish(par, "comment.created", commentID, notified)
 	return Comment{ID: commentID, ProjectID: par.project.ID, ReviewID: par.reviewID, DiscussionID: par.discussionID,
 		ThreadRootID: in.ReplyTo, AuthorID: actor.ID, RevisionID: revisionID, Anchor: in.Anchor, Version: 1, Body: in.Body,
-		CreatedAt: time.UnixMilli(now).UTC()}, nil
+		CreatedAt: time.UnixMilli(now).UTC(), Attachments: in.Attachments}, nil
 }
 
 // Edit replaces the body of actor's comment, keeping the earlier version.
@@ -373,11 +388,19 @@ func (s *Service) ListForReview(ctx context.Context, actor auth.User, projectNam
 	}
 	var out []Comment
 	err = s.db.ReadTx(ctx, func(tx *sql.Tx) error {
-		rows, err := sqlcgen.New(tx).ListReviewComments(ctx, sql.NullString{String: par.reviewID, Valid: true})
-		for _, r := range rows {
-			out = append(out, toComment(commentFromReviewRow(r), r.Body))
+		q := sqlcgen.New(tx)
+		rows, err := q.ListReviewComments(ctx, sql.NullString{String: par.reviewID, Valid: true})
+		if err != nil {
+			return err
 		}
-		return err
+		for _, r := range rows {
+			c := toComment(commentFromReviewRow(r), r.Body)
+			if c.Attachments, err = attachmentIDs(ctx, q, c); err != nil {
+				return err
+			}
+			out = append(out, c)
+		}
+		return nil
 	})
 	return out, err
 }
@@ -390,11 +413,19 @@ func (s *Service) ListForDiscussion(ctx context.Context, actor auth.User, projec
 	}
 	var out []Comment
 	err = s.db.ReadTx(ctx, func(tx *sql.Tx) error {
-		rows, err := sqlcgen.New(tx).ListDiscussionComments(ctx, sql.NullString{String: par.discussionID, Valid: true})
-		for _, r := range rows {
-			out = append(out, toComment(commentFromDiscussionRow(r), r.Body))
+		q := sqlcgen.New(tx)
+		rows, err := q.ListDiscussionComments(ctx, sql.NullString{String: par.discussionID, Valid: true})
+		if err != nil {
+			return err
 		}
-		return err
+		for _, r := range rows {
+			c := toComment(commentFromDiscussionRow(r), r.Body)
+			if c.Attachments, err = attachmentIDs(ctx, q, c); err != nil {
+				return err
+			}
+			out = append(out, c)
+		}
+		return nil
 	})
 	return out, err
 }
@@ -641,4 +672,20 @@ func commentFromReviewRow(r sqlcgen.ListReviewCommentsRow) sqlcgen.Comment {
 
 func commentFromDiscussionRow(r sqlcgen.ListDiscussionCommentsRow) sqlcgen.Comment {
 	return commentFromReviewRow(sqlcgen.ListReviewCommentsRow(r))
+}
+
+// attachmentIDs lists a comment's linked attachments that are not deleted.
+// A deleted comment shows none.
+func attachmentIDs(ctx context.Context, q *sqlcgen.Queries, c Comment) ([]string, error) {
+	if c.Deleted {
+		return nil, nil
+	}
+	rows, err := q.ListCommentAttachments(ctx, c.ID)
+	var out []string
+	for _, a := range rows {
+		if !a.DeletedAt.Valid {
+			out = append(out, a.ID)
+		}
+	}
+	return out, err
 }
