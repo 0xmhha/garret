@@ -54,6 +54,7 @@ var (
 )
 
 type fixture struct {
+	db      *store.DB
 	svc     *Service
 	inbox   *inbox.Service
 	events  *events
@@ -100,7 +101,7 @@ func newFixture(t *testing.T) *fixture {
 	ev := &events{}
 	in := inbox.NewService(db, inbox.NewNotifier(ids, c), c)
 	reviews := review.NewService(db, rec, ids, c, runner, projects, ev, in.Notifier())
-	f := &fixture{svc: New(db, rec, ids, c, runner, projects, ev, in.Notifier()), inbox: in, events: ev,
+	f := &fixture{db: db, svc: New(db, rec, ids, c, runner, projects, ev, in.Notifier()), inbox: in, events: ev,
 		wt: filepath.Join(base, "wt"), git: gitPath}
 	_ = os.Mkdir(f.wt, 0o700)
 	f.run(t, "init", "-q", "-b", "main")
@@ -303,5 +304,40 @@ func TestResolveAndDelete(t *testing.T) {
 	}
 	if _, err := f.svc.Create(ctx, carol, "libfoo", NewComment{Review: 1, ReplyTo: root.ID, Body: "x"}); !errors.Is(err, ErrConflict) {
 		t.Fatalf("reply to a deleted root: %v", err)
+	}
+}
+
+func TestCommentAttachments(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	insert := func(id, projectID string, deleted bool) {
+		var del any
+		if deleted {
+			del = 5
+		}
+		err := f.db.WriteTx(ctx, func(tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, `INSERT INTO attachments VALUES (?, ?, ?, 'poc.txt', 'text/plain', 1, zeroblob(32), 1, ?)`,
+				id, projectID, carol.ID, del)
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	p := f.rev.ProjectID
+	insert("01JD0000000000000000ATTAC1", p, false)
+	insert("01JD0000000000000000ATTAC2", p, true)
+	c, err := f.svc.Create(ctx, carol, "libfoo", NewComment{Review: 1, Body: "see file", Attachments: []string{"01JD0000000000000000ATTAC1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, _ := f.svc.ListForReview(ctx, bob, "libfoo", 1)
+	if len(list) != 1 || len(list[0].Attachments) != 1 || list[0].Attachments[0] != "01JD0000000000000000ATTAC1" || c.ID != list[0].ID {
+		t.Fatalf("listed %+v", list)
+	}
+	for _, bad := range []string{"01JD0000000000000000ATTAC2", "01JD0000000000000000NOPE00"} {
+		if _, err := f.svc.Create(ctx, carol, "libfoo", NewComment{Review: 1, Body: "x", Attachments: []string{bad}}); !errors.Is(err, ErrInvalid) {
+			t.Errorf("attachment %s: %v", bad, err)
+		}
 	}
 }
