@@ -574,3 +574,22 @@ func optMS(v sql.NullInt64) *time.Time {
 	t := fromMS(v.Int64)
 	return &t
 }
+
+// ListUsers returns every account by username. Any member may list users,
+// so the interface can show names; only administrators see who is disabled.
+func (s *Service) ListUsers(ctx context.Context, actor User) ([]User, error) {
+	var rows []sqlcgen.User
+	err := s.db.ReadTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		rows, err = sqlcgen.New(tx).ListUsers(ctx)
+		return err
+	})
+	out := make([]User, len(rows))
+	for i, r := range rows {
+		out[i] = toUser(r)
+		if !actor.IsAdmin() {
+			out[i].Disabled = false
+		}
+	}
+	return out, err
+}

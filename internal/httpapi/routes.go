@@ -41,6 +41,24 @@ func (a *API) routes() {
 	h("GET "+ds+"/{id}/comments", a.authed(a.discussionComments))
 	h("POST "+ds+"/{id}/comments", a.authed(a.createDiscussionComment))
 
+	h("POST "+p+"/{project}/attachments", a.authed(a.upload))
+	h("GET "+basePath+"/attachments/{id}", a.authed(a.download))
+	h("DELETE "+basePath+"/attachments/{id}", a.authed(a.deleteAttachment))
+
+	h("GET "+basePath+"/inbox", a.authed(a.listInbox))
+	h("POST "+basePath+"/inbox/read", a.authed(a.markRead))
+	h("GET "+basePath+"/users", a.authed(a.listUsers))
+
+	ad := basePath + "/admin"
+	h("GET "+ad+"/invitations", a.authed(a.listInvitations))
+	h("POST "+ad+"/invitations", a.authed(a.createInvitation))
+	h("DELETE "+ad+"/invitations/{id}", a.authed(a.revokeInvitation))
+	h("GET "+ad+"/users", a.authed(a.adminListUsers))
+	h("POST "+ad+"/users/{id}/disable", a.authed(a.disableUser))
+	h("POST "+ad+"/erasures", a.authed(a.erase))
+	h("POST "+ad+"/projects/{project}/export", a.authed(a.export))
+	h("POST "+ad+"/projects/{project}/purge", a.authed(a.purge))
+
 	c := basePath + "/comments/{id}"
 	h("PATCH "+c, a.authed(a.editComment))
 	h("POST "+c+"/resolve", a.authed(a.resolveComment))

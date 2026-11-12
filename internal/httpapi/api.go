@@ -46,7 +46,14 @@ type Config struct {
 	// handshake, so a connection opened before a revocation must not keep
 	// working.
 	Active *pki.ActiveSerials
-	Log    *slog.Logger
+	// EnrollURL is the enrollment listener's base URL and CAFingerprint the
+	// CA's SHA-256; together they make the secret-free invitation link.
+	EnrollURL     string
+	CAFingerprint string
+	// OnInvitationsChanged lets the server open or close the enrollment
+	// listener after an invitation is created or revoked. It may be nil.
+	OnInvitationsChanged func()
+	Log                  *slog.Logger
 }
 
 // API is the JSON API handler.

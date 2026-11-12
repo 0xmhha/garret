@@ -37,10 +37,11 @@ stated otherwise.
 |---|---|---|
 | `GET` `POST` | `/admin/invitations` | List or create invitations |
 | `DELETE` | `/admin/invitations/{id}` | Revoke an unused invitation |
-| `GET` | `/admin/users` | List users |
+| `GET` | `/admin/users` | List users, including whether each is disabled |
+| `GET` | `/users` | List users for display (any member) |
 | `POST` | `/admin/users/{id}/disable` | Disable a user and revoke their sessions and tokens |
 | `POST` | `/admin/erasures` | Permanently erase one comment, attachment or collaborative text |
-| `POST` | `/admin/projects/{project}/export` | Produce an export archive and return a download link |
+| `POST` | `/admin/projects/{project}/export` | Stream the export archive as the response; its SHA-256 arrives in the `X-Garret-Export-SHA256` trailer |
 | `POST` | `/admin/projects/{project}/purge` | Erase the project. Requires a completed export and the project name typed again |
 
 ## Projects
