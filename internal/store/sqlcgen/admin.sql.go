@@ -140,6 +140,22 @@ func (q *Queries) LatestProjectEventID(ctx context.Context, projectID sql.NullSt
 	return column_1, err
 }
 
+const latestProjectEventWithData = `-- name: LatestProjectEventWithData :one
+SELECT action, data FROM audit_events WHERE project_id = ? ORDER BY id DESC LIMIT 1
+`
+
+type LatestProjectEventWithDataRow struct {
+	Action string
+	Data   string
+}
+
+func (q *Queries) LatestProjectEventWithData(ctx context.Context, projectID sql.NullString) (LatestProjectEventWithDataRow, error) {
+	row := q.db.QueryRowContext(ctx, latestProjectEventWithData, projectID)
+	var i LatestProjectEventWithDataRow
+	err := row.Scan(&i.Action, &i.Data)
+	return i, err
+}
+
 const makeCommentPlaceholder = `-- name: MakeCommentPlaceholder :exec
 UPDATE comments SET current_version = 0, deleted_at = COALESCE(deleted_at, ?1),
     deleted_by = COALESCE(deleted_by, ?2) WHERE id = ?3

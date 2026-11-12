@@ -54,6 +54,7 @@ type Service struct {
 	runner   *gitrepo.Runner
 	reposDir string
 	names    store.KeyedMutex
+	repos    store.KeyedMutex
 }
 
 // New returns a Service that keeps repositories in reposDir.
@@ -67,6 +68,13 @@ func (s *Service) RepoPath(name string) (string, error) {
 		return "", fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	return filepath.Join(s.reposDir, name+repoSuffix), nil
+}
+
+// LockRepo serializes operations that must see a repository's refs stand
+// still: a push (refs read before and after), an export (bundle and refs)
+// and a purge. The returned function unlocks.
+func (s *Service) LockRepo(ctx context.Context, name string) (func(), error) {
+	return s.repos.Lock(ctx, name)
 }
 
 // Create creates a project and its bare repository. Only administrators may
