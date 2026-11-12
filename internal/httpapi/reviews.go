@@ -144,28 +144,40 @@ func (a *API) getReview(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	type commitJSON struct {
-		SHA        string    `json:"sha"`
-		Subject    string    `json:"subject"`
-		AuthorName string    `json:"author_name"`
-		AuthoredAt time.Time `json:"authored_at"`
-	}
-	type revisionJSON struct {
-		Number         int64        `json:"number"`
-		BaseSHA        string       `json:"base_sha"`
-		HeadSHA        string       `json:"head_sha"`
-		CommitsOmitted bool         `json:"commits_omitted"`
-		PushedBy       string       `json:"pushed_by"`
-		PushedAt       time.Time    `json:"pushed_at"`
-		Commits        []commitJSON `json:"commits"`
-	}
 	type verdictJSON struct {
 		UserID string         `json:"user_id"`
 		Value  review.Verdict `json:"value"`
 		At     time.Time      `json:"at"`
 	}
-	revs := make([]revisionJSON, len(d.Revisions))
-	for i, rv := range d.Revisions {
+	revs := toRevisionsJSON(d.Revisions)
+	verdicts := make([]verdictJSON, len(d.Verdicts))
+	for i, v := range d.Verdicts {
+		verdicts[i] = verdictJSON{UserID: v.UserID, Value: v.Value, At: v.At}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"review": toReviewJSON(d.Review), "revisions": revs, "verdicts": verdicts})
+	return nil
+}
+
+type commitJSON struct {
+	SHA        string    `json:"sha"`
+	Subject    string    `json:"subject"`
+	AuthorName string    `json:"author_name"`
+	AuthoredAt time.Time `json:"authored_at"`
+}
+
+type revisionJSON struct {
+	Number         int64        `json:"number"`
+	BaseSHA        string       `json:"base_sha"`
+	HeadSHA        string       `json:"head_sha"`
+	CommitsOmitted bool         `json:"commits_omitted"`
+	PushedBy       string       `json:"pushed_by"`
+	PushedAt       time.Time    `json:"pushed_at"`
+	Commits        []commitJSON `json:"commits"`
+}
+
+func toRevisionsJSON(in []review.Revision) []revisionJSON {
+	revs := make([]revisionJSON, len(in))
+	for i, rv := range in {
 		revs[i] = revisionJSON{Number: rv.Number, BaseSHA: rv.BaseSHA, HeadSHA: rv.HeadSHA, CommitsOmitted: rv.CommitsOmitted,
 			PushedBy: rv.PushedBy, PushedAt: rv.PushedAt, Commits: []commitJSON{}}
 		for _, c := range rv.Commits {
@@ -173,12 +185,85 @@ func (a *API) getReview(w http.ResponseWriter, r *http.Request) error {
 				AuthoredAt: time.Unix(c.AuthoredAt, 0).UTC()})
 		}
 	}
-	verdicts := make([]verdictJSON, len(d.Verdicts))
-	for i, v := range d.Verdicts {
-		verdicts[i] = verdictJSON{UserID: v.UserID, Value: v.Value, At: v.At}
+	return revs
+}
+
+func (a *API) reviewRevisions(w http.ResponseWriter, r *http.Request) error {
+	n, err := number(r)
+	if err != nil {
+		return err
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"review": toReviewJSON(d.Review), "revisions": revs, "verdicts": verdicts})
+	d, err := a.cfg.Reviews.Get(r.Context(), user(r), r.PathValue("project"), n)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"revisions": toRevisionsJSON(d.Revisions)})
 	return nil
+}
+
+func (a *API) reviewFile(w http.ResponseWriter, r *http.Request) error {
+	n, err := number(r)
+	if err != nil {
+		return err
+	}
+	q := r.URL.Query()
+	commit, path := q.Get("commit"), q.Get("path")
+	if commit == "" || path == "" {
+		return fmt.Errorf("%w: commit and path are required", errBadRequest)
+	}
+	content, err := a.cfg.Reviews.File(r.Context(), user(r), r.PathValue("project"), n, commit, path)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"commit": commit, "path": path, "content": string(content)})
+	return nil
+}
+
+func (a *API) reviewHistory(w http.ResponseWriter, r *http.Request) error {
+	n, err := number(r)
+	if err != nil {
+		return err
+	}
+	limit, err := pageLimit(r)
+	if err != nil {
+		return err
+	}
+	events, next, err := a.cfg.Reviews.History(r.Context(), user(r), r.PathValue("project"), n, r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		return err
+	}
+	type eventJSON struct {
+		ID          string         `json:"id"`
+		ActorID     string         `json:"actor_id"`
+		Action      string         `json:"action"`
+		SubjectKind string         `json:"subject_kind"`
+		SubjectID   string         `json:"subject_id"`
+		Data        map[string]any `json:"data"`
+		At          time.Time      `json:"at"`
+	}
+	out := make([]eventJSON, len(events))
+	for i, e := range events {
+		out[i] = eventJSON{ID: e.ID, ActorID: e.ActorID, Action: e.Action, SubjectKind: e.SubjectKind, SubjectID: e.SubjectID, Data: e.Data, At: e.At}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": out, "next_cursor": next})
+	return nil
+}
+
+// defaultPage is the page size when a request gives no limit.
+const defaultPage = 50
+
+// pageLimit reads ?limit=, defaulting to defaultPage. The service checks
+// the upper bound.
+func pageLimit(r *http.Request) (int, error) {
+	v := r.URL.Query().Get("limit")
+	if v == "" {
+		return defaultPage, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("%w: limit", errBadRequest)
+	}
+	return n, nil
 }
 
 func (a *API) changeState(w http.ResponseWriter, r *http.Request) error {

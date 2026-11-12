@@ -27,6 +27,9 @@ func (a *API) routes() {
 	h("GET "+rv+"/{n}", a.authed(a.getReview))
 	h("POST "+rv+"/{n}/state", a.authed(a.changeState))
 	h("POST "+rv+"/{n}/verdicts", a.authed(a.recordVerdict))
+	h("GET "+rv+"/{n}/revisions", a.authed(a.reviewRevisions))
+	h("GET "+rv+"/{n}/file", a.authed(a.reviewFile))
+	h("GET "+rv+"/{n}/history", a.authed(a.reviewHistory))
 	h("GET "+rv+"/{n}/diff", a.authed(a.diff))
 	h("GET "+rv+"/{n}/diff/file", a.authed(a.fileDiff))
 	h("GET "+rv+"/{n}/comments", a.authed(a.reviewComments))
@@ -38,6 +41,7 @@ func (a *API) routes() {
 	h("GET "+ds+"/{id}", a.authed(a.getDiscussion))
 	h("PATCH "+ds+"/{id}", a.authed(a.renameDiscussion))
 	h("DELETE "+ds+"/{id}", a.authed(a.deleteDiscussion))
+	h("GET "+ds+"/{id}/history", a.authed(a.discussionHistory))
 	h("GET "+ds+"/{id}/comments", a.authed(a.discussionComments))
 	h("POST "+ds+"/{id}/comments", a.authed(a.createDiscussionComment))
 

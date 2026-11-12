@@ -31,3 +31,9 @@ DELETE FROM collab_checkpoints WHERE document_id = ?;
 
 -- name: BumpDocumentGeneration :one
 UPDATE collab_documents SET generation = generation + 1 WHERE id = ? RETURNING generation, next_seq;
+
+-- name: ListCheckpointsAfter :many
+SELECT up_to_seq, text, contributors, created_at FROM collab_checkpoints
+WHERE document_id = @document_id AND up_to_seq > @after
+ORDER BY up_to_seq
+LIMIT @max_rows;
