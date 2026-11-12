@@ -148,7 +148,11 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
   after `git-receive-pack` with the refs whose heads changed. For each open
   review on a changed source branch, under the review's keyed lock, follows
   data.md 6.2. A deleted source branch abandons nothing; the review stays
-  open and shows the branch as missing.
+  open and shows the branch as missing. A push that resets the branch to its
+  target (no commits left) adds no revision. If the target branch was
+  deleted, the new revision keeps the previous base. A branch with no
+  commits beyond its target cannot be opened for review (`ErrInvalid`).
+  Commit subjects and author names are cut to 200 characters.
 - At start, missing revision refs are re-created from `revisions.head_sha`.
 
 ### 5.2 Verdicts and state

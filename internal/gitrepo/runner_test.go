@@ -347,3 +347,18 @@ func TestRunnerErrorCarriesStderrNotArguments(t *testing.T) {
 		t.Errorf("error %q repeats the argument list", err)
 	}
 }
+
+func TestResolveRef(t *testing.T) {
+	r := newRunner(t, 2)
+	f := newFixture(t, r)
+	ctx := context.Background()
+	if got, err := r.ResolveRef(ctx, f.bare, "refs/heads/main"); err != nil || got != f.c3 {
+		t.Fatalf("main = %q, %v", got, err)
+	}
+	if got, err := r.ResolveRef(ctx, f.bare, "refs/garret/reviews/R/revisions/1"); err != nil || got != "" {
+		t.Fatalf("missing ref = %q, %v", got, err)
+	}
+	if _, err := r.ResolveRef(ctx, f.bare, "--all"); !errors.Is(err, ErrBadArgument) {
+		t.Fatalf("option as ref: %v", err)
+	}
+}
