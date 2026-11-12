@@ -23,9 +23,8 @@ func TestKeychainStepsOnMacOS(t *testing.T) {
 		t.Skip("set " + keychainTestEnv + "=1 to run against a temporary keychain")
 	}
 	home := t.TempDir()
-	// security adds "-db" to a name ending in .keychain and resolves the
-	// short name afterwards, so the test names it the way users' keychains
-	// are named by the system.
+	// A name ending in .keychain: create-keychain then unlock-keychain on a
+	// path ending in .keychain-db failed on the CI runner.
 	kc := filepath.Join(home, "garret-test.keychain")
 	p := Platform{GOOS: goosDarwin, Home: home, Keychain: kc}
 	run := func(args ...string) string {
@@ -52,8 +51,8 @@ func TestKeychainStepsOnMacOS(t *testing.T) {
 	// the test and restore the list afterwards.
 	before := strings.Fields(strings.ReplaceAll(run("list-keychains", "-d", "user"), `"`, ""))
 	defaultKC := strings.TrimSpace(strings.ReplaceAll(run("default-keychain", "-d", "user"), `"`, ""))
-	run(append([]string{"list-keychains", "-d", "user", "-s", kc + "-db"}, before...)...)
-	run("default-keychain", "-d", "user", "-s", kc+"-db")
+	run(append([]string{"list-keychains", "-d", "user", "-s", kc}, before...)...)
+	run("default-keychain", "-d", "user", "-s", kc)
 	t.Cleanup(func() {
 		ctx := context.Background()
 		_ = exec.CommandContext(ctx, "security", append([]string{"list-keychains", "-d", "user", "-s"}, before...)...).Run()
