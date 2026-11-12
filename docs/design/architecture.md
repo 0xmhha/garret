@@ -164,9 +164,10 @@ Discussion posts and review descriptions are collaborative documents.
   plus the updates received after it. The raw updates stay in the database
   either way.
 
-Whether ygo's bundled WebSocket server can be mounted behind garret's
-authentication is to be confirmed during implementation. If it cannot, garret
-implements a thin handler on top of ygo's sync protocol package.
+garret serves the Yjs sync protocol from its own authenticated WebSocket
+handler, using ygo's transport-agnostic `sync` package rather than ygo's
+bundled server. A spike confirmed this before stage 4 (see
+[specs/services.md](../specs/services.md#7-collaborative-documents-internalcollab)).
 
 ## Frontend
 
