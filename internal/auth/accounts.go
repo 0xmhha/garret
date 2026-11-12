@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/netip"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -32,8 +33,9 @@ const (
 	viaRenewal    = "renewal"
 )
 
-// InvitationLifetime is how long an invitation can be used (security.md).
-const InvitationLifetime = 24 * time.Hour
+// InvitationLifetime is how long an invitation can be used (transport.md,
+// T-D3).
+const InvitationLifetime = 30 * time.Minute
 
 const maxNameChars = 64
 
@@ -133,7 +135,8 @@ func (s *Service) SetupAdmin(ctx context.Context, token string, acct NewAccount,
 }
 
 // CreateInvitation creates an invitation for role and returns it with its
-// token, which is shown once and stored only as a digest.
+// code, which is shown once and stored only as the digest of its normalized
+// form. The administrator gives the code to the member apart from the link.
 func (s *Service) CreateInvitation(ctx context.Context, actor User, role Role) (Invitation, string, error) {
 	if !actor.IsAdmin() {
 		return Invitation{}, "", ErrForbidden
@@ -141,7 +144,7 @@ func (s *Service) CreateInvitation(ctx context.Context, actor User, role Role) (
 	if role != RoleAdmin && role != RoleMember {
 		return Invitation{}, "", fmt.Errorf("%w: role", ErrInvalid)
 	}
-	token, err := NewSecret(s.rand)
+	token, err := NewInvitationCode(s.rand)
 	if err != nil {
 		return Invitation{}, "", err
 	}
@@ -150,7 +153,7 @@ func (s *Service) CreateInvitation(ctx context.Context, actor User, role Role) (
 		return Invitation{}, "", err
 	}
 	now := s.clock.Now()
-	digest := Digest(token)
+	digest := Digest(NormalizeCode(token))
 	inv := Invitation{ID: invID, Role: role, CreatedBy: actor.ID, CreatedAt: ms(now), ExpiresAt: ms(now.Add(InvitationLifetime))}
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if err := sqlcgen.New(tx).InsertInvitation(ctx, sqlcgen.InsertInvitationParams{
@@ -222,11 +225,24 @@ func (s *Service) OpenInvitationsUntil(ctx context.Context) (time.Time, bool, er
 	return fromMS(earliest), true, nil
 }
 
-// Enroll creates an account from an invitation token and issues its first
-// device certificate. An unknown, expired, revoked or used token all return
-// ErrInvalidInvitation. Nothing is written when any step fails.
-func (s *Service) Enroll(ctx context.Context, token string, acct NewAccount, csrDER []byte) (Issued, error) {
-	digest := Digest(token)
+// Enroll creates an account from an invitation code and issues its first
+// device certificate. An unknown, expired, revoked or used code all return
+// ErrInvalidInvitation, and every failure counts against the remote address
+// like a failed login. Nothing is written when any step fails.
+func (s *Service) Enroll(ctx context.Context, remote netip.Addr, code string, acct NewAccount, csrDER []byte) (Issued, error) {
+	addrKey := "enroll:" + remote.String()
+	if !s.limiter.attempt(addrKey) {
+		return Issued{}, ErrInvalidInvitation
+	}
+	issued, err := s.enroll(ctx, code, acct, csrDER)
+	if err == nil {
+		s.limiter.succeeded("", addrKey)
+	}
+	return issued, err
+}
+
+func (s *Service) enroll(ctx context.Context, code string, acct NewAccount, csrDER []byte) (Issued, error) {
+	digest := Digest(NormalizeCode(code))
 	var role Role
 	err := s.db.ReadTx(ctx, func(tx *sql.Tx) error {
 		inv, err := sqlcgen.New(tx).GetInvitationByDigest(ctx, digest[:])
