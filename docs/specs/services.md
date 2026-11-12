@@ -1,6 +1,6 @@
 # Services specification
 
-Status: draft for review. Services are the business operations of garret.
+Status: approved. Services are the business operations of garret.
 Each one coordinates components ([components.md](components.md)) inside one
 write transaction or one unit of work, writes its audit event in the same
 transaction, and publishes real-time events only after the commit
@@ -232,9 +232,12 @@ administrator.
   project name and a `project.exported` event newer than every other
   project event (Q8). Then data.md 6.6 under the project's exclusive lock.
 
-## 11. Open questions
+## 11. Settled values
 
-| # | Question | Proposed answer |
+These were open questions in the draft and were accepted as proposed during
+review.
+
+| # | Question | Value |
 |---|---|---|
 | Q1 | Login and token rate limits | 10 failures per 15 minutes, counted per username and per source address; further attempts get the same error until the window passes |
 | Q2 | May an author approve their own review | No. They may request changes |
