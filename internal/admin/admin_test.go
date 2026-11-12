@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/0xmhha/garret/internal/attachment"
 	"github.com/0xmhha/garret/internal/audit"
 	"github.com/0xmhha/garret/internal/auth"
+	"github.com/0xmhha/garret/internal/collab"
 	"github.com/0xmhha/garret/internal/comment"
 	"github.com/0xmhha/garret/internal/gitrepo"
 	"github.com/0xmhha/garret/internal/id"
@@ -100,8 +102,14 @@ func newFixture(t *testing.T) *fixture {
 	notifier := inbox.NewNotifier(ids, c)
 	reviews := review.NewService(db, rec, ids, c, runner, projects, nopEvents{}, notifier)
 	files := attachment.New(attach)
+	co := collab.New(collab.Config{DB: db, IDs: ids, Clock: c, Notifier: notifier, Events: nopEvents{},
+		Log: slog.New(slog.DiscardHandler), Quiet: time.Hour, Grace: time.Hour})
+	runCtx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { co.Run(runCtx); close(done) }()
+	t.Cleanup(func() { stop(); <-done })
 	f := &fixture{
-		svc:         New(Config{DB: db, Audit: rec, IDs: ids, Clock: c, Runner: runner, Projects: projects, Files: files}),
+		svc:         New(Config{DB: db, Audit: rec, IDs: ids, Clock: c, Runner: runner, Projects: projects, Files: files, Collab: co}),
 		db:          db,
 		comments:    comment.New(db, rec, ids, c, runner, projects, nopEvents{}, notifier),
 		attachments: attachment.NewService(db, rec, ids, c, files, attachment.DefaultMaxSize),
@@ -287,5 +295,35 @@ func TestPurgeRefusesAfterNewActivity(t *testing.T) {
 	}
 	if err := f.svc.Purge(ctx, root, "libfoo", "libfoo"); !errors.Is(err, ErrExportRequired) {
 		t.Fatalf("purge after activity newer than the export: %v", err)
+	}
+}
+
+func TestEraseDocument(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	var docID string
+	if err := f.db.ReadTx(ctx, func(tx *sql.Tx) error {
+		return tx.QueryRowContext(ctx, "SELECT description_doc_id FROM reviews").Scan(&docID)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, "INSERT INTO collab_updates VALUES (?, 1, ?, 1, x'01')", docID, bob.ID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.EraseDocument(ctx, bob, docID, "clean", "leak"); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("member erased: %v", err)
+	}
+	gen, err := f.svc.EraseDocument(ctx, root, docID, "clean text", "contained a key")
+	if err != nil || gen != 2 {
+		t.Fatalf("EraseDocument = %d, %v", gen, err)
+	}
+	if n := f.count(t, "SELECT count(*) FROM collab_updates WHERE document_id = ?", docID); n != 0 {
+		t.Fatalf("%d updates left", n)
+	}
+	if n := f.count(t, "SELECT count(*) FROM erasures WHERE scope = 'collab_document' AND subject_id = ?", docID); n != 1 {
+		t.Fatal("erasure not recorded")
 	}
 }

@@ -183,11 +183,11 @@ func TestEditsAreStoredAndBroadcast(t *testing.T) {
 	ctx := context.Background()
 	seed(ctx, t, e.db)
 	ca, cb := newConn(), newConn()
-	sa, err := e.svc.Join(ctx, bob, "libfoo", docID, ca)
+	sa, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, ca)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sb, err := e.svc.Join(ctx, carol, "libfoo", docID, cb)
+	sb, err := e.svc.Join(ctx, carol, "libfoo", docID, 1, cb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestRejectsBadUpdates(t *testing.T) {
 	ctx := context.Background()
 	seed(ctx, t, e.db)
 	c := newConn()
-	s, err := e.svc.Join(ctx, bob, "libfoo", docID, c)
+	s, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestRejectsBadUpdates(t *testing.T) {
 		t.Fatalf("%d malformed updates stored", n)
 	}
 	c2 := newConn()
-	s2, _ := e.svc.Join(ctx, bob, "libfoo", docID, c2)
+	s2, _ := e.svc.Join(ctx, bob, "libfoo", docID, 1, c2)
 	big := frame(ysync.EncodeUpdate(make([]byte, MaxUpdateBytes+1)))
 	if err := s2.Receive(ctx, big); !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("oversized update: %v", err)
@@ -253,10 +253,10 @@ func TestJoinChecksDocument(t *testing.T) {
 	e := newEnv(context.Background(), t, filepath.Join(t.TempDir(), "garret.db"))
 	ctx := context.Background()
 	seed(ctx, t, e.db)
-	if _, err := e.svc.Join(ctx, bob, "other", docID, newConn()); !errors.Is(err, ErrNotFound) {
+	if _, err := e.svc.Join(ctx, bob, "other", docID, 1, newConn()); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("wrong project: %v", err)
 	}
-	if _, err := e.svc.Join(ctx, bob, "libfoo", "01JD0000000000000000NOPE00", newConn()); !errors.Is(err, ErrNotFound) {
+	if _, err := e.svc.Join(ctx, bob, "libfoo", "01JD0000000000000000NOPE00", 1, newConn()); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing document: %v", err)
 	}
 }
@@ -268,7 +268,7 @@ func TestReloadFromCheckpointAndUpdates(t *testing.T) {
 		e := newEnv(ctx, t, path)
 		seed(ctx, t, e.db)
 		c := newConn()
-		s, err := e.svc.Join(ctx, bob, "libfoo", docID, c)
+		s, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, c)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -286,16 +286,16 @@ func TestReloadFromCheckpointAndUpdates(t *testing.T) {
 	}()
 	e := newEnv(context.Background(), t, path)
 	c := newConn()
-	if _, err := e.svc.Join(ctx, carol, "libfoo", docID, c); err != nil {
+	if _, err := e.svc.Join(ctx, carol, "libfoo", docID, 1, c); err != nil {
 		t.Fatal(err)
 	}
 	c.wait(t, 1)
 	cl := newClient()
 	// Ask the server for everything: send step 1 from an empty client.
-	s, _ := e.svc.Join(ctx, carol, "libfoo", docID, newConn())
+	s, _ := e.svc.Join(ctx, carol, "libfoo", docID, 1, newConn())
 	_ = s
 	reply := newConn()
-	s3, _ := e.svc.Join(ctx, carol, "libfoo", docID, reply)
+	s3, _ := e.svc.Join(ctx, carol, "libfoo", docID, 1, reply)
 	if err := s3.Receive(ctx, frame(ysync.EncodeSyncStep1(cl.doc))); err != nil {
 		t.Fatal(err)
 	}
@@ -311,8 +311,8 @@ func TestAwarenessIsRelayedNotStored(t *testing.T) {
 	ctx := context.Background()
 	seed(ctx, t, e.db)
 	ca, cb := newConn(), newConn()
-	sa, _ := e.svc.Join(ctx, bob, "libfoo", docID, ca)
-	if _, err := e.svc.Join(ctx, carol, "libfoo", docID, cb); err != nil {
+	sa, _ := e.svc.Join(ctx, bob, "libfoo", docID, 1, ca)
+	if _, err := e.svc.Join(ctx, carol, "libfoo", docID, 1, cb); err != nil {
 		t.Fatal(err)
 	}
 	cb.wait(t, 1)
@@ -340,11 +340,11 @@ func TestPanickingUpdateClosesOnlyTheSender(t *testing.T) {
 	e := newEnv(ctx, t, filepath.Join(t.TempDir(), "garret.db"))
 	seed(ctx, t, e.db)
 	attacker, bystander := newConn(), newConn()
-	sa, err := e.svc.Join(ctx, bob, "libfoo", docID, attacker)
+	sa, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, attacker)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sb, err := e.svc.Join(ctx, carol, "libfoo", docID, bystander)
+	sb, err := e.svc.Join(ctx, carol, "libfoo", docID, 1, bystander)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -383,7 +383,7 @@ func TestDeletedDiscussionCannotBeJoined(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := e.svc.Join(ctx, bob, "libfoo", docID, newConn()); !errors.Is(err, ErrNotFound) {
+	if _, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, newConn()); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("joined a deleted discussion: %v", err)
 	}
 }
@@ -394,12 +394,84 @@ func TestJoinDuringUnloadIsServed(t *testing.T) {
 	seed(ctx, t, e.db)
 	for range 50 {
 		c := newConn()
-		s, err := e.svc.Join(ctx, bob, "libfoo", docID, c)
+		s, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, c)
 		if err != nil {
 			t.Fatal(err)
 		}
 		c.wait(t, 1) // every join gets sync step 1, even right as the owner unloads
 		s.Leave()
 		time.Sleep(time.Duration(len(c.all())) * 45 * time.Millisecond) // land near the 50 ms grace expiry
+	}
+}
+
+func TestRebuildErasesHistory(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(ctx, t, filepath.Join(t.TempDir(), "garret.db"))
+	seed(ctx, t, e.db)
+	c := newConn()
+	s, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl := newClient()
+	_ = s.Receive(ctx, cl.edit("public part. SECRET exploit details"))
+	deadline := time.Now().Add(5 * time.Second)
+	for countRows(ctx, t, e.db, "collab_updates") == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond) // waiting for the update to be stored
+	}
+	called := false
+	gen, err := e.svc.Rebuild(ctx, docID, "public part.", func(*sql.Tx) error { called = true; return nil })
+	if err != nil || gen != 2 || !called {
+		t.Fatalf("Rebuild = %d, %v, callback %v", gen, err, called)
+	}
+	if !c.isClosed() {
+		t.Fatal("connected client not told to reload")
+	}
+	if last := c.all()[len(c.all())-1]; len(last) != 1 || last[0] != messageReload {
+		t.Fatalf("last message %v, want a reload", last)
+	}
+	var leaked int
+	_ = e.db.ReadTx(ctx, func(tx *sql.Tx) error {
+		return tx.QueryRowContext(ctx, "SELECT (SELECT count(*) FROM collab_updates) + (SELECT count(*) FROM collab_checkpoints WHERE CAST(state AS TEXT) LIKE '%SECRET%' OR text LIKE '%SECRET%')").Scan(&leaked)
+	})
+	if leaked != 0 {
+		t.Fatalf("%d rows still hold the erased text or old updates", leaked)
+	}
+	if text, _ := e.svc.Text(ctx, docID); text != "public part." {
+		t.Fatalf("text after rebuild %q", text)
+	}
+	if _, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, newConn()); !errors.Is(err, ErrStale) {
+		t.Fatalf("join with the old generation: %v", err)
+	}
+	fresh := newConn()
+	if _, err := e.svc.Join(ctx, bob, "libfoo", docID, 2, fresh); err != nil {
+		t.Fatal(err)
+	}
+	fresh.wait(t, 1)
+	nc := newClient()
+	sess, _ := e.svc.Join(ctx, bob, "libfoo", docID, 2, newConn())
+	reply := newConn()
+	sess3, _ := e.svc.Join(ctx, bob, "libfoo", docID, 2, reply)
+	_ = sess
+	if err := sess3.Receive(ctx, frame(ysync.EncodeSyncStep1(nc.doc))); err != nil {
+		t.Fatal(err)
+	}
+	reply.wait(t, 2)
+	nc.apply(t, reply.all())
+	if got := nc.text.ToString(); got != "public part." {
+		t.Fatalf("a new client sees %q", got)
+	}
+}
+
+func TestRebuildCallbackFailureChangesNothing(t *testing.T) {
+	ctx := context.Background()
+	e := newEnv(ctx, t, filepath.Join(t.TempDir(), "garret.db"))
+	seed(ctx, t, e.db)
+	errStop := errors.New("stop")
+	if _, err := e.svc.Rebuild(ctx, docID, "x", func(*sql.Tx) error { return errStop }); !errors.Is(err, errStop) {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := e.svc.Join(ctx, bob, "libfoo", docID, 1, newConn()); err != nil {
+		t.Fatalf("generation changed after a failed rebuild: %v", err)
 	}
 }

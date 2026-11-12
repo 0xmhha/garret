@@ -29,6 +29,10 @@ var (
 	ErrNotFound = errors.New("collab: document not found")
 	ErrTooLarge = errors.New("collab: update too large")
 	ErrClosed   = errors.New("collab: session closed")
+	// ErrStale means the client's generation is older than the document's,
+	// because the document was rebuilt by an erasure; the client must drop
+	// its local copy and load the document again.
+	ErrStale = errors.New("collab: the document was rebuilt; reload it")
 	// errPanic marks a panic inside the Yjs library turned into an error.
 	errPanic = errors.New("collab: Yjs library panicked")
 )
@@ -64,6 +68,9 @@ const (
 const (
 	messageSync      byte = 0
 	messageAwareness byte = 1
+	// messageReload tells a client to discard its local document and join
+	// again with the new generation. It is garret's own message type.
+	messageReload byte = 2
 )
 
 var mentionRE = regexp.MustCompile(`(?:^|[^A-Za-z0-9_@-])@([a-z0-9][a-z0-9_-]{1,31})\b`)
@@ -129,9 +136,10 @@ type Session struct {
 }
 
 // Join connects conn to the document docID of projectName for actor. The
-// server sends sync step 1 first.
-func (s *Service) Join(ctx context.Context, actor auth.User, projectName, docID string, conn Conn) (*Session, error) {
-	if err := s.checkDocument(ctx, projectName, docID); err != nil {
+// client states the generation it loaded; an older one returns ErrStale.
+// The server sends sync step 1 first.
+func (s *Service) Join(ctx context.Context, actor auth.User, projectName, docID string, generation int64, conn Conn) (*Session, error) {
+	if err := s.checkDocument(ctx, projectName, docID, generation); err != nil {
 		return nil, err
 	}
 	for {
@@ -206,7 +214,7 @@ func (s *Service) Text(ctx context.Context, docID string) (string, error) {
 	return cp.Text, err
 }
 
-func (s *Service) checkDocument(ctx context.Context, projectName, docID string) error {
+func (s *Service) checkDocument(ctx context.Context, projectName, docID string, generation int64) error {
 	return s.cfg.DB.ReadTx(ctx, func(tx *sql.Tx) error {
 		q := sqlcgen.New(tx)
 		d, err := q.GetCollabDocument(ctx, docID)
@@ -222,6 +230,9 @@ func (s *Service) checkDocument(ctx context.Context, projectName, docID string) 
 		}
 		if p.Name != projectName {
 			return ErrNotFound
+		}
+		if generation != d.Generation {
+			return ErrStale
 		}
 		if d.Kind == "discussion_body" {
 			disc, err := q.GetDiscussionByBodyDoc(ctx, docID)
@@ -363,10 +374,96 @@ func (s *Service) load(ctx context.Context, docID string) (*owner, error) {
 
 // command is one request to an owner. Exactly one field group is set.
 type command struct {
-	join  *Session
-	leave *Session
-	from  *Session
-	msg   []byte
+	join    *Session
+	leave   *Session
+	from    *Session
+	msg     []byte
+	rebuild *rebuildRequest
+}
+
+type rebuildRequest struct {
+	text  string
+	inTx  func(*sql.Tx) error
+	reply chan rebuildResult
+}
+
+type rebuildResult struct {
+	generation int64
+	err        error
+}
+
+// Rebuild replaces a document by a new one holding only text, for erasure
+// (data.md 6.6): it deletes every update and checkpoint, increments the
+// generation, stores one checkpoint of the new document, and runs inTx in
+// the same transaction. Connected clients are told to reload and
+// disconnected. It returns the new generation.
+func (s *Service) Rebuild(ctx context.Context, docID, text string, inTx func(*sql.Tx) error) (int64, error) {
+	for {
+		o, err := s.owner(ctx, docID)
+		if err != nil {
+			return 0, err
+		}
+		req := &rebuildRequest{text: text, inTx: inTx, reply: make(chan rebuildResult, 1)}
+		select {
+		case o.cmds <- command{rebuild: req}:
+		case <-o.done:
+			continue
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		}
+		select {
+		case r := <-req.reply:
+			return r.generation, r.err
+		case <-o.done:
+			return 0, ErrClosed
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		}
+	}
+}
+
+func (o *owner) rebuild(ctx context.Context, req *rebuildRequest) rebuildResult {
+	doc := crdt.New()
+	text := doc.GetText(TextName)
+	var state []byte
+	if err := guard(func() error {
+		doc.Transact(func(tx *crdt.Transaction) { text.Insert(tx, 0, req.text, nil) })
+		state = doc.EncodeStateAsUpdate()
+		return nil
+	}); err != nil {
+		return rebuildResult{err: err}
+	}
+	var gen, upTo int64
+	err := o.svc.cfg.DB.WriteTx(ctx, func(tx *sql.Tx) error {
+		q := sqlcgen.New(tx)
+		if err := q.DeleteDocumentUpdates(ctx, o.docID); err != nil {
+			return err
+		}
+		if err := q.DeleteDocumentCheckpoints(ctx, o.docID); err != nil {
+			return err
+		}
+		row, err := q.BumpDocumentGeneration(ctx, o.docID)
+		if err != nil {
+			return err
+		}
+		gen, upTo = row.Generation, row.NextSeq-1
+		if err := q.InsertCheckpoint(ctx, sqlcgen.InsertCheckpointParams{DocumentID: o.docID, UpToSeq: upTo, State: state,
+			Text: req.text, Contributors: "[]", CreatedAt: o.svc.cfg.Clock.Now().UnixMilli()}); err != nil {
+			return err
+		}
+		return req.inTx(tx)
+	})
+	if err != nil {
+		return rebuildResult{err: err}
+	}
+	o.doc, o.text = doc, text
+	o.lastSeq, o.checkpointSeq, o.lastText = upTo, upTo, req.text
+	o.contributors = map[string]bool{}
+	for sess := range o.sessions {
+		_ = sess.conn.Send([]byte{messageReload})
+		o.drop(sess)
+	}
+	return rebuildResult{generation: gen}
 }
 
 // owner is the only goroutine that touches its document and writes its
@@ -432,6 +529,9 @@ func (o *owner) process(ctx context.Context, c command, grace *time.Timer) (chan
 			if c.join != nil {
 				o.drop(c.join)
 			}
+			if c.rebuild != nil {
+				c.rebuild.reply <- rebuildResult{err: fmt.Errorf("%w: %v", errPanic, r)}
+			}
 			changed = false
 		}
 	}()
@@ -447,6 +547,11 @@ func (o *owner) process(ctx context.Context, c command, grace *time.Timer) (chan
 		o.send(c.join, frame(step1))
 	case c.leave != nil:
 		delete(o.sessions, c.leave)
+		if len(o.sessions) == 0 {
+			grace.Reset(o.svc.cfg.Grace)
+		}
+	case c.rebuild != nil:
+		c.rebuild.reply <- o.rebuild(ctx, c.rebuild)
 		if len(o.sessions) == 0 {
 			grace.Reset(o.svc.cfg.Grace)
 		}

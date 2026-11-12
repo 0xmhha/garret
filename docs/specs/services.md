@@ -234,6 +234,13 @@ update pull request reviews the upstream changes before merging.
   nothing is stored. An update that parses but then fails to apply is
   already stored: it is logged, skipped again on reload, and the document
   state stays the same on every load.
+- **Generations**: a client joins with the generation it loaded; an older
+  one gets `ErrStale`. `Rebuild` (erasure) deletes every update and
+  checkpoint, increments the generation, stores one checkpoint of a new
+  document holding only the cleaned text, runs the caller's erasure record in
+  the same transaction, then sends connected clients message type 2
+  (reload) and disconnects them. A client that still held the erased text
+  cannot push it back without loading the new generation first.
 - **Joining**: a deleted discussion's body cannot be joined. A join queued
   while the document unloads is always served, because the owner unloads
   only when its queue is empty, under the lock joins queue under.
