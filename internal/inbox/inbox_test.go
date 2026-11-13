@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -119,5 +120,57 @@ func TestSweep(t *testing.T) {
 	list, _ := s.List(context.Background(), bob, false, "", 10)
 	if len(list) != 1 || list[0].SubjectID != "new" {
 		t.Fatalf("left %+v", list)
+	}
+}
+
+func TestListResolvesWhereNotificationsPoint(t *testing.T) {
+	s, db, _ := setup(t)
+	ctx := context.Background()
+	err := db.WriteTx(ctx, func(tx *sql.Tx) error {
+		for _, q := range []string{
+			"INSERT INTO collab_documents (id, project_id, kind, created_at) VALUES ('D1', 'P1', 'review_description', 1), ('D2', 'P1', 'discussion_body', 1)",
+			"INSERT INTO reviews VALUES ('R1', 'P1', 7, 't', 'refs/heads/a', 'refs/heads/main', 'open', '" + bob.ID + "', 'D1', 1, 1)",
+			"INSERT INTO revisions VALUES ('V1', 'R1', 1, '" + strings.Repeat("a", 40) + "', '" + strings.Repeat("b", 40) + "', 0, '" + bob.ID + "', 1)",
+			"INSERT INTO discussions VALUES ('S1', 'P1', 'plan', '" + bob.ID + "', 'D2', 1, 1, NULL)",
+			"INSERT INTO comments (id, project_id, review_id, author_id, current_version, created_at) VALUES ('C1', 'P1', 'R1', '" + bob.ID + "', 1, 1)",
+			"INSERT INTO comments (id, project_id, discussion_id, author_id, current_version, created_at) VALUES ('C2', 'P1', 'S1', '" + bob.ID + "', 1, 1)",
+		} {
+			if _, err := tx.ExecContext(ctx, q); err != nil {
+				return err
+			}
+		}
+		for _, n := range []Notification{
+			{SubjectKind: SubjectReview, SubjectID: "R1"},
+			{SubjectKind: SubjectRevision, SubjectID: "V1"},
+			{SubjectKind: SubjectComment, SubjectID: "C1"},
+			{SubjectKind: SubjectDiscussion, SubjectID: "S1"},
+			{SubjectKind: SubjectComment, SubjectID: "C2"},
+		} {
+			n.UserID, n.ProjectID, n.Kind = carol.ID, "P1", KindMention
+			if err := s.Notifier().Notify(ctx, tx, n); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.List(ctx, carol, false, "", 10)
+	if err != nil || len(list) != 5 {
+		t.Fatalf("list %d %v", len(list), err)
+	}
+	got := map[string][2]any{}
+	for _, n := range list {
+		if n.Project != "p" {
+			t.Errorf("%s project %q", n.SubjectID, n.Project)
+		}
+		got[n.SubjectID] = [2]any{n.Review, n.Discussion}
+	}
+	want := map[string][2]any{"R1": {int64(7), ""}, "V1": {int64(7), ""}, "C1": {int64(7), ""}, "S1": {int64(0), "S1"}, "C2": {int64(0), "S1"}}
+	for k, w := range want {
+		if got[k] != w {
+			t.Errorf("%s points at %v, want %v", k, got[k], w)
+		}
 	}
 }
