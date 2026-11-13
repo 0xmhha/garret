@@ -316,6 +316,7 @@ function Users({ self }: { self: string }) {
   return (
     <section className="settings__section" aria-labelledby="users-title">
       <h2 id="users-title">{t("admin.users")}</h2>
+      <NewAccount />
       <p className="muted">{t("admin.usersLede")}</p>
       {disable.error ? <p className="form-error" role="alert">{errorMessage(disable.error, t)}</p> : null}
       {list.isError ? <p className="form-error" role="alert">{errorMessage(list.error, t)}</p> : null}
@@ -368,6 +369,68 @@ function Users({ self }: { self: string }) {
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * NewAccount creates an account without an invitation, for a server
+ * running without client certificates; the server refuses it otherwise.
+ */
+function NewAccount() {
+  const t = useT();
+  const api = useApi();
+  const qc = useQueryClient();
+  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<(typeof roles)[number]>("member");
+  const create = useMutation({
+    mutationFn: () =>
+      api.request<{ user: AdminUser; password: string }>("POST", "/api/v1/admin/users", { username: username.trim(), display_name: name.trim(), role }),
+    onSuccess: () => {
+      setUsername("");
+      setName("");
+      void qc.invalidateQueries({ queryKey: keys.adminUsers() });
+      void qc.invalidateQueries({ queryKey: keys.users() });
+    },
+  });
+  return (
+    <>
+      <p className="muted">{t("admin.newAccountLede")}</p>
+      <Form
+        className="inline-form"
+        aria-label={t("admin.newAccount")}
+        onSubmit={(e) => {
+          e.preventDefault();
+          create.mutate();
+        }}
+      >
+        <TextField label={t("admin.username")} value={username} onChange={setUsername} isRequired autoComplete="off" spellCheck="false" />
+        <TextField label={t("admin.displayName")} value={name} onChange={setName} isRequired autoComplete="off" />
+        <label className="field">
+          <span className="field__label">{t("admin.role")}</span>
+          <select className="field__input field__select" value={role} onChange={(e) => setRole(e.target.value as (typeof roles)[number])}>
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {t(`role.${r}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button type="submit" isDisabled={create.isPending || !username.trim() || !name.trim()}>
+          {t("admin.newAccount")}
+        </Button>
+      </Form>
+      {create.data ? (
+        <div className="reveal" role="status">
+          <p>{t("admin.accountCreated", { name: create.data.user.username })}</p>
+          <OneTimeValue label={t("admin.tempPassword")} value={create.data.password} />
+          <Button variant="quiet" onPress={() => create.reset()}>
+            {t("app.done")}
+          </Button>
+        </div>
+      ) : null}
+      {create.error ? <p className="form-error" role="alert">{errorMessage(create.error, t)}</p> : null}
+    </>
   );
 }
 

@@ -28,6 +28,7 @@ stated otherwise.
 | `POST` | `/auth/login` | Start a session |
 | `POST` | `/auth/logout` | End the session |
 | `GET` | `/me` | Current user |
+| `POST` | `/me/password` | Change one's password: `{current, new}`. Ends every session of the user, this one included, so the next step is signing in again, and revokes the user's access tokens |
 | `GET` `POST` | `/me/tokens` | List or create personal access tokens. The token value is shown once |
 | `DELETE` | `/me/tokens/{id}` | Revoke a token |
 
@@ -38,6 +39,7 @@ stated otherwise.
 | `GET` `POST` | `/admin/invitations` | List or create invitations |
 | `DELETE` | `/admin/invitations/{id}` | Revoke an unused invitation |
 | `GET` | `/admin/users` | List users, including whether each is disabled |
+| `POST` | `/admin/users` | Create an account without a device certificate: `{username, display_name, role}` returns the user and a temporary password once (six words from the invitation wordlist). Only while client certificates are off (`--client-cert=off`); otherwise 409, because such an account could not connect |
 | `GET` | `/users` | List users for display (any member) |
 | `POST` | `/admin/users/{id}/disable` | Disable a user and revoke their sessions and tokens |
 | `POST` | `/admin/erasures` | Permanently erase one comment, attachment or collaborative text |

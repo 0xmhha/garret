@@ -32,3 +32,11 @@
   color: var(--fg-muted);
   font-size: var(--text-sm);
 }
+
+.signin__notice {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  font-size: var(--text-sm);
+}

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Form } from "react-aria-components";
+import { useNavigate } from "react-router";
 import { keys } from "../api/keys";
 import { useApi, useLocale, useSetLocale, useT } from "../app/context";
 import { errorMessage } from "../app/errors";
@@ -19,6 +20,7 @@ export function Account() {
     <main className="page settings">
       <h1 className="page__title">{t("account.title")}</h1>
       <Language />
+      <Password />
       <Tokens />
       <Certificates />
     </main>
@@ -46,6 +48,61 @@ function Language() {
           </label>
         ))}
       </fieldset>
+    </section>
+  );
+}
+
+/**
+ * Password changes the user's password. The server ends every session,
+ * this one included, so the screen goes back to sign-in.
+ */
+function Password() {
+  const t = useT();
+  const api = useApi();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [again, setAgain] = useState("");
+  const change = useMutation({
+    mutationFn: () => api.request("POST", "/api/v1/me/password", { current, new: next }),
+    onSuccess: () => {
+      api.clearSession();
+      qc.clear();
+      navigate("/login?changed=1", { replace: true });
+    },
+  });
+  const mismatch = again !== "" && again !== next;
+  return (
+    <section className="settings__section" aria-labelledby="password-title">
+      <h2 id="password-title">{t("account.password")}</h2>
+      <p className="muted">{t("account.passwordLede")}</p>
+      <Form
+        className="stack-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          change.mutate();
+        }}
+      >
+        <TextField label={t("account.currentPassword")} type="password" value={current} onChange={setCurrent} isRequired autoComplete="current-password" />
+        <TextField label={t("account.newPassword")} type="password" value={next} onChange={setNext} isRequired minLength={15} autoComplete="new-password" description={t("account.newPasswordHint")} />
+        <TextField
+          label={t("account.newPasswordAgain")}
+          type="password"
+          value={again}
+          onChange={setAgain}
+          isRequired
+          autoComplete="new-password"
+          isInvalid={mismatch}
+          error={t("account.passwordMismatch")}
+        />
+        <div>
+          <Button type="submit" isDisabled={change.isPending || !current || next.length < 15 || again !== next}>
+            {t("account.changePassword")}
+          </Button>
+        </div>
+        {change.error ? <p className="form-error" role="alert">{errorMessage(change.error, t)}</p> : null}
+      </Form>
     </section>
   );
 }

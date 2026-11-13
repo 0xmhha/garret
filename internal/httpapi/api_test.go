@@ -136,6 +136,12 @@ func (c *client) login(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("login %d %s", w.Code, w.Body)
 	}
+	c.adopt(t, w)
+}
+
+// adopt keeps the session cookie and CSRF token of a successful login.
+func (c *client) adopt(t *testing.T, w *httptest.ResponseRecorder) {
+	t.Helper()
 	for _, ck := range w.Result().Cookies() {
 		if ck.Name == sessionCookie {
 			if !ck.HttpOnly || !ck.Secure || ck.SameSite != http.SameSiteStrictMode || ck.Path != "/" || ck.Domain != "" {

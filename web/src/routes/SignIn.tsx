@@ -29,6 +29,11 @@ export function SignIn() {
         <div className="signin__head">
           <h1 id="signin-title">{t("signIn.title")}</h1>
           <p className="signin__lede">{t("signIn.lede")}</p>
+          {params.get("changed") ? (
+            <p className="signin__notice" role="status">
+              {t("signIn.passwordChanged")}
+            </p>
+          ) : null}
         </div>
         <TextField label={t("signIn.username")} name="username" value={username} onChange={setUsername} autoComplete="username" isRequired autoFocus />
         <TextField label={t("signIn.password")} name="password" type="password" value={password} onChange={setPassword} autoComplete="current-password" isRequired />
