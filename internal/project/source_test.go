@@ -40,6 +40,8 @@ func localRepo(t *testing.T) string {
 	git(t, dir, "checkout", "-q", "-b", "topic")
 	git(t, dir, "commit", "-q", "--allow-empty", "-m", "fix")
 	git(t, dir, "checkout", "-q", "main")
+	// The base branch only as a remote-tracking branch, as in many clones.
+	git(t, dir, "update-ref", "refs/remotes/origin/master", git(t, dir, "rev-parse", "main"))
 	return dir
 }
 
@@ -58,7 +60,7 @@ func TestPreview(t *testing.T) {
 	ctx := context.Background()
 	src := localRepo(t)
 	got, err := s.Preview(ctx, admin, src)
-	if err != nil || !slices.Equal(got, []string{"main", "topic"}) {
+	if err != nil || !slices.Equal(got, []string{"main", "origin/master", "topic"}) {
 		t.Fatalf("preview %v, %v", got, err)
 	}
 	if _, err := s.Preview(ctx, member, src); !errors.Is(err, ErrForbidden) {
@@ -84,7 +86,8 @@ func TestCreateFromSource(t *testing.T) {
 		t.Fatalf("source %q", p.SourcePath)
 	}
 	got := heads(t, s, "libfoo")
-	if got["refs/heads/main"] != git(t, src, "rev-parse", "main") || got["refs/heads/topic"] != git(t, src, "rev-parse", "topic") {
+	if got["refs/heads/main"] != git(t, src, "rev-parse", "main") || got["refs/heads/topic"] != git(t, src, "rev-parse", "topic") ||
+		got["refs/heads/origin/master"] != git(t, src, "rev-parse", "refs/remotes/origin/master") {
 		t.Fatalf("heads %v", got)
 	}
 	if again, _ := s.Get(ctx, member, "libfoo"); again.SourcePath != src {
@@ -150,7 +153,7 @@ func TestSync(t *testing.T) {
 		}
 	}
 	res, err = s.Sync(ctx, member, "libfoo", false)
-	if err != nil || len(res.Moves) != 0 || len(res.Unchanged) != 3 {
+	if err != nil || len(res.Moves) != 0 || len(res.Unchanged) != 4 {
 		t.Fatalf("second sync %+v, %v", res, err)
 	}
 }

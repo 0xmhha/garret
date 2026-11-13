@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -37,13 +38,30 @@ func sourceRepo(t *testing.T) (dir, main1, main2, topic string) {
 func TestSourceBranches(t *testing.T) {
 	r := newRunner(t, 2)
 	ctx := context.Background()
-	src, _, main2, topic := sourceRepo(t)
+	src, main1, main2, topic := sourceRepo(t)
+	// Remote-tracking branches, as a clone has them: origin/master exists
+	// only there, origin/main collides with nothing, origin/HEAD is skipped.
+	work(t, src, "update-ref", "refs/remotes/origin/master", main1)
+	work(t, src, "update-ref", "refs/remotes/upstream/topic", main2)
+	work(t, src, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master")
 	got, err := r.SourceBranches(ctx, src)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || got["refs/heads/main"] != main2 || got["refs/heads/topic"] != topic {
-		t.Fatalf("branches %v", got)
+	want := []SourceBranch{
+		{Ref: "refs/heads/main", From: "refs/heads/main", SHA: main2},
+		{Ref: "refs/heads/origin/master", From: "refs/remotes/origin/master", SHA: main1},
+		{Ref: "refs/heads/topic", From: "refs/heads/topic", SHA: topic},
+		{Ref: "refs/heads/upstream/topic", From: "refs/remotes/upstream/topic", SHA: main2},
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("branches\n got %v\nwant %v", got, want)
+	}
+	// A local branch named like a remote-tracking one wins.
+	work(t, src, "branch", "origin/master", main2)
+	got, _ = r.SourceBranches(ctx, src)
+	if i := slices.IndexFunc(got, func(b SourceBranch) bool { return b.Ref == "refs/heads/origin/master" }); i < 0 || got[i].From != "refs/heads/origin/master" {
+		t.Fatalf("local branch did not win: %v", got)
 	}
 	plain := t.TempDir()
 	tests := []struct {
@@ -74,17 +92,28 @@ func TestFetchBranchesAndMove(t *testing.T) {
 	if err := r.InitBare(ctx, bare); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.FetchBranches(ctx, bare, src, []string{"refs/heads/main", "refs/heads/topic"}); err != nil {
+	work(t, src, "update-ref", "refs/remotes/origin/master", main1)
+	branches, err := r.SourceBranches(ctx, src)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := r.FetchBranches(ctx, bare, src, []string{"refs/heads/../x"}); !errors.Is(err, ErrBadArgument) {
-		t.Fatalf("bad branch name: %v", err)
+	if err := r.FetchBranches(ctx, bare, src, branches); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []SourceBranch{
+		{Ref: "refs/heads/../x", From: "refs/heads/main"},
+		{Ref: "refs/heads/x", From: "refs/tags/v1"},
+		{Ref: "refs/heads/x", From: "refs/remotes/../x"},
+	} {
+		if err := r.FetchBranches(ctx, bare, src, []SourceBranch{bad}); !errors.Is(err, ErrBadArgument) {
+			t.Fatalf("%+v: %v", bad, err)
+		}
 	}
 	staged, err := r.AllRefs(ctx, bare)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if staged[ImportRefPrefix+"main"] != main2 || staged[ImportRefPrefix+"topic"] != topic {
+	if staged[ImportRefPrefix+"main"] != main2 || staged[ImportRefPrefix+"topic"] != topic || staged[ImportRefPrefix+"origin/master"] != main1 {
 		t.Fatalf("import refs %v", staged)
 	}
 	if ok, err := r.IsAncestor(ctx, bare, main1, main2); err != nil || !ok {

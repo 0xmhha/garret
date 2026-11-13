@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/0xmhha/garret/internal/audit"
@@ -46,11 +45,10 @@ func (s *Service) Preview(ctx context.Context, actor auth.User, path string) ([]
 	if err != nil {
 		return nil, err
 	}
-	names := make([]string, 0, len(branches))
-	for ref := range branches {
-		names = append(names, strings.TrimPrefix(ref, branchPrefix))
+	names := make([]string, len(branches))
+	for i, b := range branches {
+		names[i] = strings.TrimPrefix(b.Ref, branchPrefix)
 	}
-	slices.Sort(names)
 	return names, nil
 }
 
@@ -100,9 +98,9 @@ func (s *Service) Sync(ctx context.Context, actor auth.User, name string, overwr
 	return res, err
 }
 
-// sourceBranches lists a source's branches, mapping a path that is not a
-// repository to ErrInvalid.
-func (s *Service) sourceBranches(ctx context.Context, path string) (map[string]string, error) {
+// sourceBranches lists a source's branches, sorted, mapping a path that is
+// not a repository to ErrInvalid.
+func (s *Service) sourceBranches(ctx context.Context, path string) ([]gitrepo.SourceBranch, error) {
 	branches, err := s.runner.SourceBranches(ctx, path)
 	if errors.Is(err, gitrepo.ErrBadArgument) || errors.Is(err, gitrepo.ErrNotRepository) {
 		return nil, fmt.Errorf("%w: %s is not an absolute path to a Git repository", ErrInvalid, path)
@@ -121,12 +119,7 @@ func (s *Service) importBranches(ctx context.Context, dir, source string, overwr
 	if err != nil {
 		return SyncResult{}, err
 	}
-	refs := make([]string, 0, len(branches))
-	for ref := range branches {
-		refs = append(refs, ref)
-	}
-	slices.Sort(refs)
-	if err := s.runner.FetchBranches(ctx, dir, source, refs); err != nil {
+	if err := s.runner.FetchBranches(ctx, dir, source, branches); err != nil {
 		return SyncResult{}, err
 	}
 	defer func() { _ = s.clearStaging(context.WithoutCancel(ctx), dir) }()
@@ -139,7 +132,8 @@ func (s *Service) importBranches(ctx context.Context, dir, source string, overwr
 		return SyncResult{}, err
 	}
 	var res SyncResult
-	for _, ref := range refs {
+	for _, b := range branches {
+		ref := b.Ref
 		name := strings.TrimPrefix(ref, branchPrefix)
 		next, old := staged[gitrepo.ImportRefPrefix+name], current[ref]
 		if next == "" {
