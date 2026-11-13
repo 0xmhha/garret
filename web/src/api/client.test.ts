@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, createClient, type Storage } from "./client";
+import { ApiError, createClient, fileName, type Storage } from "./client";
 
 function memoryStorage(): Storage {
   const m = new Map<string, string>();
@@ -114,4 +114,14 @@ describe("download", () => {
     const api = createClient({ fetch: vi.fn(async () => reply(403, { error: { code: "forbidden", message: "not allowed" } })), storage: memoryStorage() });
     await expect(api.download("/api/v1/admin/projects/x/export")).rejects.toMatchObject({ status: 403, code: "forbidden" });
   });
+});
+
+describe("fileName", () => {
+  it.each([
+    ['attachment; filename="a-export.zip"', "a-export.zip"],
+    ["attachment; filename=b.zip", "b.zip"],
+    ['attachment; filename="../x.zip"', ""],
+    ['attachment; filename="a\\\\b.zip"', ""],
+    [null, ""],
+  ])("%s -> %s", (h, want) => expect(fileName(h)).toBe(want));
 });
