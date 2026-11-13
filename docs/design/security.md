@@ -169,6 +169,10 @@ UI.
   through an allow-list sanitizer. Raw HTML is not allowed.
 - `Content-Security-Policy` restricts scripts, styles and connections to the
   server's own origin.
+- Trusted Types are required (`require-trusted-types-for 'script'`): the
+  browser refuses a string written into HTML sinks such as `innerHTML`
+  unless it comes from the one allowed policy, `garret-markdown`, which only
+  the Markdown renderer creates after sanitizing.
 - `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
   `X-Frame-Options: DENY` on every response.
 - State-changing requests require the CSRF token header and a matching

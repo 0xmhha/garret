@@ -194,7 +194,8 @@ error text is never sent; it is logged with `slog` at the request boundary.
 
 On every response: `Content-Security-Policy: default-src 'self'; img-src
 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self';
-frame-ancestors 'none'; base-uri 'none'; form-action 'self'`,
+frame-ancestors 'none'; base-uri 'none'; form-action 'self';
+require-trusted-types-for 'script'; trusted-types garret-markdown`,
 `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`,
 `X-Frame-Options: DENY`. Attachments are served with `Content-Disposition:
 attachment` unless `Inline`, and always with their detected media type.
