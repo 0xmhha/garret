@@ -118,7 +118,10 @@ export function ReviewPage() {
             {t("review.tab.conversation")}
             <TabCount count={openGeneral} />
           </NavLink>
-          <NavLink to={`${home}/revisions`} className="tabs__tab">{t("review.tab.revisions", { count: revisions.length })}</NavLink>
+          <NavLink to={`${home}/revisions`} className="tabs__tab">
+            {t("review.tab.revisions")}
+            <span className="tabs__count tabs__count--total">{revisions.length}</span>
+          </NavLink>
           <NavLink to={`${home}/files${revision ? `?rev=${revision.number}` : ""}`} className="tabs__tab">
             {t("review.tab.files")}
             <TabCount count={openCode} />

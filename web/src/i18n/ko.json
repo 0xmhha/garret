@@ -81,7 +81,7 @@
   "review.actionFailed": "처리하지 못했습니다. 새로 고친 뒤 다시 시도해 주세요.",
   "review.sections": "리뷰 영역",
   "review.tab.conversation": "대화",
-  "review.tab.revisions": "리비전 ({count})",
+  "review.tab.revisions": "리비전",
   "review.tab.files": "파일",
   "collab.placeholder": "수정 내용, 확인 방법, 남은 일을 적으세요.",
   "collab.edit": "작성",
