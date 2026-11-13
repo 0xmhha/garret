@@ -22,6 +22,7 @@ import (
 	"github.com/0xmhha/garret/internal/config"
 	"github.com/0xmhha/garret/internal/diskcrypt"
 	"github.com/0xmhha/garret/internal/netguard"
+	"github.com/0xmhha/garret/internal/webui"
 )
 
 func freePort(t *testing.T) uint16 {
@@ -117,8 +118,8 @@ func TestAppRequiresClientCertificates(t *testing.T) {
 func TestAppServesWithCertificatesOff(t *testing.T) {
 	cfg := testConfig(t, false)
 	a, out, stop := start(t, cfg)
-	if !strings.Contains(out.String(), "web interface: not built") {
-		t.Errorf("no placeholder notice:\n%s", out.String())
+	if notice := strings.Contains(out.String(), "web interface: not built"); notice == webui.Built() {
+		t.Errorf("not-built notice %v with the interface built %v:\n%s", notice, webui.Built(), out.String())
 	}
 	if !strings.Contains(out.String(), "client certificates are off") {
 		t.Errorf("no warning:\n%s", out.String())
@@ -129,7 +130,7 @@ func TestAppServesWithCertificatesOff(t *testing.T) {
 	}
 	body, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "garret is running") {
+	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "<title>garret</title>") {
 		t.Fatalf("placeholder %d %s", resp.StatusCode, body)
 	}
 	resp, err = get(clientFor(a, nil), a.MainURL()+"/api/v1/me")

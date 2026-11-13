@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+
+	"github.com/0xmhha/garret/internal/webui"
 )
 
 func TestRunDispatch(t *testing.T) {
@@ -14,7 +16,7 @@ func TestRunDispatch(t *testing.T) {
 		inStdout string
 		inStderr string
 	}{
-		{[]string{"version"}, exitOK, "web: placeholder", ""},
+		{[]string{"version"}, exitOK, "web: " + map[bool]string{true: "built", false: "placeholder"}[webui.Built()], ""},
 		{nil, exitUsage, "", "usage: garret"},
 		{[]string{"frobnicate"}, exitUsage, "", `unknown command "frobnicate"`},
 		{[]string{"help"}, exitOK, "usage: garret", ""},
