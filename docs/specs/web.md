@@ -78,10 +78,10 @@ it.
 
 | Module | Contract |
 |---|---|
-| `api` | `request(method, path, body?)`: JSON in and out, sends the CSRF token header on state-changing requests, maps the error body of transport.md 3.2 to a typed error. Query keys are built in one place. |
+| `api` | `request(method, path, body?)`: JSON in and out, sends the CSRF token header on state-changing requests, maps the error body of transport.md 3.2 to a typed error. Query keys are built in one place. The CSRF token from login is kept in `localStorage` so every tab and a reload keep working, and is removed at logout and on any 401. Other sites cannot read it (same-origin policy); script injection on garret's own pages could use it wherever it was kept, which is why sanitizing and the CSP are the defence there. |
 | `events` | One WebSocket to `/api/v1/ws` per tab, reconnects with backoff, and turns each event into query invalidations. Never trusts event content beyond its type and IDs. |
 | `i18n` | `t(key, values?)` with catalogs `en.json` and `ko.json`; plurals, dates, relative times and numbers through `Intl`. The language follows the browser (Korean when it prefers Korean, otherwise English) and can be switched in account settings. A test fails when a key exists in one catalog and not the other. |
-| `markdown` | `renderMarkdown(text)` returns sanitized HTML: marked with raw HTML disabled, then DOMPurify with an allow-list (paragraphs, emphasis, code, pre, lists, block quotes, tables, links with `rel="noopener noreferrer"`, images only from the same origin). It is the only code allowed to set `innerHTML`; lint enforces this. |
+| `markdown` | `renderMarkdown(text)` returns sanitized HTML: marked with raw HTML disabled, then DOMPurify with an allow-list (paragraphs, emphasis, code, pre, lists, block quotes, tables, links with `rel="noopener noreferrer"`, images only from the same origin). It is the only code allowed to set `innerHTML`; a test fails when any other source file writes HTML. |
 | `ui` | Shared components: buttons, menus, tabs, combo box, dialog (native `<dialog>`), tooltip, toasts, keyboard shortcuts. Built on React Aria Components where a native element is not enough. |
 
 ## 6. Screens
@@ -116,7 +116,11 @@ brief in `.impeccable/surfaces/`).
 
 - Unit tests: Vitest with happy-dom and Testing Library, sharing the Vite
   configuration; browser differences happy-dom misses are caught by the
-  Playwright scenarios in real Chrome and WebKit. Chosen over Vitest with
+  Playwright scenarios in real Chrome and WebKit. The sanitizer tests run
+  in jsdom instead: under happy-dom 21 DOMPurify reports support but keeps
+  `<script>` and `javascript:` links, so they would pass without
+  sanitizing. The Playwright suite runs the same cases in Chrome and WebKit.
+  Chosen over Vitest with
   jsdom (about twenty more packages) and over the Node test runner with
   Playwright only (every component test in a browser, too slow for
   test-first work).
