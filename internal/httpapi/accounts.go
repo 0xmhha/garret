@@ -79,6 +79,44 @@ func (a *API) logout(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// changePassword replaces the user's password. Every session of the user
+// ends, so the cookie is cleared and the interface signs in again.
+func (a *API) changePassword(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		Current string `json:"current"`
+		New     string `json:"new"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	if err := a.cfg.Auth.ChangePassword(r.Context(), user(r), in.Current, in.New); err != nil {
+		return err
+	}
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: "", Path: "/", HttpOnly: true, Secure: true,
+		SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// createUser creates an account without an invitation and returns its
+// temporary password once (security.md, Turning client certificates off).
+func (a *API) createUser(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		Username    string    `json:"username"`
+		DisplayName string    `json:"display_name"`
+		Role        auth.Role `json:"role"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	u, password, err := a.cfg.Auth.CreateUser(r.Context(), user(r), auth.NewUser{Username: in.Username, DisplayName: in.DisplayName, Role: in.Role})
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"user": toUserJSON(u), "password": password})
+	return nil
+}
+
 func (a *API) me(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, http.StatusOK, toUserJSON(user(r)))
 	return nil
