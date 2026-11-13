@@ -51,9 +51,21 @@ func (q *Queries) InsertNotification(ctx context.Context, arg InsertNotification
 }
 
 const listNotifications = `-- name: ListNotifications :many
-SELECT id, user_id, project_id, kind, subject_kind, subject_id, created_at, read_at FROM notifications
-WHERE user_id = ?1 AND (?2 = 0 OR read_at IS NULL) AND id < ?3
-ORDER BY id DESC LIMIT ?4
+SELECT n.id, n.user_id, n.project_id, n.kind, n.subject_kind, n.subject_id, n.created_at, n.read_at,
+    p.name AS project_name,
+    CAST(COALESCE(rv.number, rvc.number, rvr.number, 0) AS INTEGER) AS review_number,
+    CAST(COALESCE(d.id, dc.id, '') AS TEXT) AS discussion_id
+FROM notifications n
+JOIN projects p ON p.id = n.project_id
+LEFT JOIN reviews rv ON n.subject_kind = 'review' AND rv.id = n.subject_id
+LEFT JOIN comments c ON n.subject_kind = 'comment' AND c.id = n.subject_id
+LEFT JOIN reviews rvc ON rvc.id = c.review_id
+LEFT JOIN revisions r2 ON n.subject_kind = 'revision' AND r2.id = n.subject_id
+LEFT JOIN reviews rvr ON rvr.id = r2.review_id
+LEFT JOIN discussions d ON n.subject_kind = 'discussion' AND d.id = n.subject_id
+LEFT JOIN discussions dc ON dc.id = c.discussion_id
+WHERE n.user_id = ?1 AND (?2 = 0 OR n.read_at IS NULL) AND n.id < ?3
+ORDER BY n.id DESC LIMIT ?4
 `
 
 type ListNotificationsParams struct {
@@ -63,7 +75,23 @@ type ListNotificationsParams struct {
 	PageSize   int64
 }
 
-func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error) {
+type ListNotificationsRow struct {
+	ID           string
+	UserID       string
+	ProjectID    string
+	Kind         string
+	SubjectKind  string
+	SubjectID    string
+	CreatedAt    int64
+	ReadAt       sql.NullInt64
+	ProjectName  string
+	ReviewNumber int64
+	DiscussionID string
+}
+
+// Each row also carries where it points: the project's name, and the
+// review number or discussion ID its subject belongs to.
+func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listNotifications,
 		arg.UserID,
 		arg.UnreadOnly,
@@ -74,9 +102,9 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Notification
+	var items []ListNotificationsRow
 	for rows.Next() {
-		var i Notification
+		var i ListNotificationsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -86,6 +114,9 @@ func (q *Queries) ListNotifications(ctx context.Context, arg ListNotificationsPa
 			&i.SubjectID,
 			&i.CreatedAt,
 			&i.ReadAt,
+			&i.ProjectName,
+			&i.ReviewNumber,
+			&i.DiscussionID,
 		); err != nil {
 			return nil, err
 		}

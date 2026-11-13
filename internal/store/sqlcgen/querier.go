@@ -90,7 +90,9 @@ type Querier interface {
 	ListDiscussions(ctx context.Context, projectID string) ([]Discussion, error)
 	ListEnabledUsersByName(ctx context.Context, names []string) ([]ListEnabledUsersByNameRow, error)
 	ListInvitations(ctx context.Context) ([]Invitation, error)
-	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]Notification, error)
+	// Each row also carries where it points: the project's name, and the
+	// review number or discussion ID its subject belongs to.
+	ListNotifications(ctx context.Context, arg ListNotificationsParams) ([]ListNotificationsRow, error)
 	ListOpenReviewsOnBranch(ctx context.Context, arg ListOpenReviewsOnBranchParams) ([]Review, error)
 	ListProjectNames(ctx context.Context) ([]string, error)
 	ListProjects(ctx context.Context) ([]Project, error)

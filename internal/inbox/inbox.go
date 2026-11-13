@@ -60,6 +60,11 @@ type Notification struct {
 	SubjectID   string
 	CreatedAt   time.Time
 	ReadAt      *time.Time
+	// Where the notification points, filled by List: the project's name and
+	// the review number or discussion ID its subject belongs to.
+	Project    string
+	Review     int64
+	Discussion string
 }
 
 // Notifier adds notifications inside the caller's transaction.
@@ -113,7 +118,7 @@ func (s *Service) List(ctx context.Context, actor auth.User, unreadOnly bool, be
 	if unreadOnly {
 		unread = 1
 	}
-	var rows []sqlcgen.Notification
+	var rows []sqlcgen.ListNotificationsRow
 	err := s.db.ReadTx(ctx, func(tx *sql.Tx) error {
 		var err error
 		rows, err = sqlcgen.New(tx).ListNotifications(ctx, sqlcgen.ListNotificationsParams{
@@ -123,7 +128,8 @@ func (s *Service) List(ctx context.Context, actor auth.User, unreadOnly bool, be
 	out := make([]Notification, len(rows))
 	for i, r := range rows {
 		out[i] = Notification{ID: r.ID, UserID: r.UserID, ProjectID: r.ProjectID, Kind: Kind(r.Kind),
-			SubjectKind: SubjectKind(r.SubjectKind), SubjectID: r.SubjectID, CreatedAt: time.UnixMilli(r.CreatedAt).UTC()}
+			SubjectKind: SubjectKind(r.SubjectKind), SubjectID: r.SubjectID, CreatedAt: time.UnixMilli(r.CreatedAt).UTC(),
+			Project: r.ProjectName, Review: r.ReviewNumber, Discussion: r.DiscussionID}
 		if r.ReadAt.Valid {
 			t := time.UnixMilli(r.ReadAt.Int64).UTC()
 			out[i].ReadAt = &t
