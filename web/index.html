@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>garret</title>
+    <!-- React Aria injects an inline <style> for pressable elements unless an
+         element with this id exists; the CSP forbids inline styles, so the
+         rule lives in src/styles/base.css and this marker stops the injection. -->
+    <meta id="react-aria-pressable-style" name="react-aria-pressable-style" content="src/styles/base.css" />
   </head>
   <body>
     <div id="root"></div>

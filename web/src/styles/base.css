@@ -85,3 +85,11 @@ kbd {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* React Aria's pressable rule, served from this file instead of the inline
+   style it would inject (see index.html). */
+@layer {
+  [data-react-aria-pressable] {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+}

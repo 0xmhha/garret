@@ -18,7 +18,9 @@ export function json(status: number, body?: unknown) {
 }
 
 /** renderApp renders routes at path with a fake fetch, in English. */
-export function renderApp(routes: RouteObject[], path: string, fetch = vi.fn(async () => json(200, {})), storage = memoryStorage()) {
+type FetchFn = (input: string, init: RequestInit) => Promise<Response>;
+
+export function renderApp(routes: RouteObject[], path: string, fetch: FetchFn = vi.fn(async () => json(200, {})), storage = memoryStorage()) {
   const api = createClient({ fetch, storage });
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
