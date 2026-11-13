@@ -118,8 +118,10 @@ expired.
 
 ### Turning client certificates off
 
-`--client-cert=off` disables mutual TLS for teams on an access point they
-fully control. Login and tokens still apply. garret prints a warning at every
+`--client-cert=off`, or answering "a browser and a password only" when the
+server first starts (decisions.md D14), disables mutual TLS for teams on an
+access point they fully control or that cannot run a program on members'
+machines. Login and tokens still apply. garret prints a warning at every
 start while client certificates are off.
 
 While client certificates are off, an administrator can also create an

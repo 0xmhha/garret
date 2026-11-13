@@ -14,9 +14,12 @@ import (
 	"runtime/debug"
 	"syscall"
 
+	"golang.org/x/term"
+
 	"github.com/0xmhha/garret/internal/app"
 	"github.com/0xmhha/garret/internal/clock"
 	"github.com/0xmhha/garret/internal/config"
+	"github.com/0xmhha/garret/internal/datadir"
 	"github.com/0xmhha/garret/internal/diskcrypt"
 	"github.com/0xmhha/garret/internal/netguard"
 	"github.com/0xmhha/garret/internal/webui"
@@ -122,6 +125,22 @@ func serve(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "garret serve: %v\n", err)
 		return exitUsage
+	}
+	dir, err := datadir.Open(cfg.DataDir)
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "garret serve: %v\n", err)
+		return exitError
+	}
+	var ask func() (joinMode, error)
+	if term.IsTerminal(int(os.Stdin.Fd())) { // #nosec G115 -- a file descriptor fits in int
+		ask = func() (joinMode, error) { return askJoinMode(newPrompter(os.Stdin, stdout)) }
+	}
+	if cfg.ClientCerts, err = resolveClientCerts(cfg, dir, ask); err != nil {
+		_, _ = fmt.Fprintf(stderr, "garret serve: %v\n", err)
+		return exitError
+	}
+	if !cfg.ClientCerts {
+		_, _ = fmt.Fprintln(stdout, "Members join with a browser: after garret admin setup, create their accounts under Administration.")
 	}
 	git, err := exec.LookPath("git")
 	if err != nil {

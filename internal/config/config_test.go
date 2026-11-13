@@ -95,3 +95,22 @@ func TestDefaultHost(t *testing.T) {
 		}
 	}
 }
+
+func TestClientCertsSet(t *testing.T) {
+	tests := []struct {
+		args []string
+		want bool
+	}{
+		{nil, false},
+		{[]string{"--client-cert=on"}, true},
+		{[]string{"--client-cert=off"}, true},
+		{[]string{"--insecure-http"}, true},
+		{[]string{"--host", "review.lan"}, false},
+	}
+	for _, tt := range tests {
+		c, err := ParseServe(tt.args, env)
+		if err != nil || c.ClientCertsSet != tt.want {
+			t.Errorf("%v: ClientCertsSet = %v, %v; want %v", tt.args, c.ClientCertsSet, err, tt.want)
+		}
+	}
+}
