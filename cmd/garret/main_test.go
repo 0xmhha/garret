@@ -14,7 +14,7 @@ func TestRunDispatch(t *testing.T) {
 		inStdout string
 		inStderr string
 	}{
-		{[]string{"version"}, exitOK, "garret ", ""},
+		{[]string{"version"}, exitOK, "web: placeholder", ""},
 		{nil, exitUsage, "", "usage: garret"},
 		{[]string{"frobnicate"}, exitUsage, "", `unknown command "frobnicate"`},
 		{[]string{"help"}, exitOK, "usage: garret", ""},

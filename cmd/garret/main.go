@@ -19,6 +19,7 @@ import (
 	"github.com/0xmhha/garret/internal/config"
 	"github.com/0xmhha/garret/internal/diskcrypt"
 	"github.com/0xmhha/garret/internal/netguard"
+	"github.com/0xmhha/garret/internal/webui"
 )
 
 // Exit codes.
@@ -104,7 +105,11 @@ func version() string {
 			}
 		}
 	}
-	return fmt.Sprintf("garret %s (commit %s%s, %s)", info.Main.Version, rev, dirty, runtime.Version())
+	web := "built"
+	if !webui.Built() {
+		web = "placeholder"
+	}
+	return fmt.Sprintf("garret %s (commit %s%s, %s, web: %s)", info.Main.Version, rev, dirty, runtime.Version(), web)
 }
 
 func serve(args []string, stdout, stderr io.Writer) int {
