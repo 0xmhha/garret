@@ -125,3 +125,25 @@ describe("fileName", () => {
     [null, ""],
   ])("%s -> %s", (h, want) => expect(fileName(h)).toBe(want));
 });
+
+describe("upload", () => {
+  it("posts the file as multipart form data with the CSRF header", async () => {
+    const fetch = vi.fn(async () => reply(201, { id: "A1", filename: "a.log" }));
+    const api = createClient({ fetch, storage: memoryStorage() });
+    api.setCsrf("tok");
+    const got = await api.upload("/api/v1/projects/libfoo/attachments", new Blob(["x"]), "a.log");
+    expect(got).toEqual({ id: "A1", filename: "a.log" });
+    const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.method).toBe("POST");
+    const headers = new Headers(init.headers);
+    expect(headers.get("X-CSRF-Token")).toBe("tok");
+    expect(headers.get("Content-Type")).toBeNull(); // the browser sets the multipart boundary
+    const form = init.body as FormData;
+    expect((form.get("file") as File).name).toBe("a.log");
+  });
+
+  it("maps a refused upload to an ApiError", async () => {
+    const api = createClient({ fetch: vi.fn(async () => reply(413, { error: { code: "too_large", message: "the file is too large" } })), storage: memoryStorage() });
+    await expect(api.upload("/api/v1/projects/x/attachments", new Blob(["x"]), "a")).rejects.toMatchObject({ status: 413, code: "too_large" });
+  });
+});

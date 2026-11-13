@@ -94,6 +94,17 @@ func (a *API) download(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// attachmentMeta describes an attachment without sending its file, so the
+// interface can name and size it (api.md, Attachments).
+func (a *API) attachmentMeta(w http.ResponseWriter, r *http.Request) error {
+	att, err := a.cfg.Attachments.Info(r.Context(), user(r), r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, toAttachmentJSON(att))
+	return nil
+}
+
 func (a *API) deleteAttachment(w http.ResponseWriter, r *http.Request) error {
 	if err := a.cfg.Attachments.Delete(r.Context(), user(r), r.PathValue("id")); err != nil {
 		return err

@@ -29,8 +29,8 @@ interface Props {
   threads: Thread[];
   users: Map<string, User> | undefined;
   now: Date;
-  onLineComment: (anchor: LineAnchor, body: string) => Promise<unknown>;
-  onReply: (rootId: string, body: string) => Promise<unknown>;
+  onLineComment: (anchor: LineAnchor, body: string, attachments: string[]) => Promise<unknown>;
+  onReply: (rootId: string, body: string, attachments: string[]) => Promise<unknown>;
   onResolve: (rootId: string, resolved: boolean) => void;
 }
 
@@ -155,7 +155,7 @@ function FileDiff({ project, number, view, from, to, file, threads, users, now, 
         </label>
       </header>
       {placed.fileLevel.map((th) => (
-        <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} />
+        <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} project={project} />
       ))}
       {file.binary ? <p className="muted pad">{t("files.binary")}</p> : null}
       {q.isError ? <p className="muted pad">{t("files.tooLarge")}</p> : null}
@@ -188,15 +188,16 @@ function FileDiff({ project, number, view, from, to, file, threads, users, now, 
                         <tr className="diff__threads">
                           <td colSpan={4}>
                             {here.map((th) => (
-                              <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} />
+                              <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} project={project} />
                             ))}
                             {commenting === key && kind ? (
                               <Composer
+                                project={project}
                                 label={t("files.commentOn", { line: no })}
                                 submitLabel={t("conversation.comment")}
                                 onCancel={() => setCommenting(null)}
-                                onSubmit={async (body) => {
-                                  await onLineComment({ view: kind, from, to, path, side, line: no }, body);
+                                onSubmit={async (body, attachments) => {
+                                  await onLineComment({ view: kind, from, to, path, side, line: no }, body, attachments);
                                   setCommenting(null);
                                 }}
                               />

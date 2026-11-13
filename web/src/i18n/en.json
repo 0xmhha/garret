@@ -262,5 +262,12 @@
   "files.openThreads": {
     "one": "{count} unresolved thread",
     "other": "{count} unresolved threads"
-  }
+  },
+  "attach.button": "Attach files",
+  "attach.chosen": "Files to attach",
+  "attach.uploading": "Uploading…",
+  "attach.remove": "Remove {name}",
+  "attach.tooLarge": "Over 25 MiB, the limit",
+  "attach.files": "Attached files",
+  "attach.gone": "A deleted file"
 }

@@ -10,6 +10,7 @@ export const keys = {
   invitations: () => ["admin", "invitations"] as const,
   adminUsers: () => ["admin", "users"] as const,
   users: () => ["users"] as const,
+  attachment: (id: string) => ["attachment", id] as const,
   inbox: () => ["inbox"] as const,
   projects: () => ["projects"] as const,
   project: (project: string) => ["project", project] as const,

@@ -41,11 +41,16 @@ export function createClient(opts: ClientOptions) {
   const { fetch, storage, onUnauthenticated } = opts;
 
   async function send(method: Method, path: string, accept: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
+    return sendRaw(method, path, accept, body === undefined ? undefined : { json: body }, signal);
+  }
+
+  /** sendRaw sends JSON, or a form the browser encodes (and sets the boundary for). */
+  async function sendRaw(method: Method, path: string, accept: string, payload?: { json: unknown } | { form: FormData }, signal?: AbortSignal): Promise<Response> {
     if (!path.startsWith(apiPrefix)) {
       throw new Error(`not an API path: ${path}`);
     }
     const headers = new Headers({ Accept: accept });
-    if (body !== undefined) headers.set("Content-Type", "application/json");
+    if (payload && "json" in payload) headers.set("Content-Type", "application/json");
     const token = storage.getItem(csrfKey);
     if (method !== "GET" && token) headers.set(csrfHeader, token);
     let resp: Response;
@@ -54,7 +59,7 @@ export function createClient(opts: ClientOptions) {
         method,
         headers,
         credentials: "same-origin",
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(payload === undefined ? {} : { body: "json" in payload ? JSON.stringify(payload.json) : payload.form }),
         ...(signal ? { signal } : {}),
       });
     } catch (err) {
@@ -84,9 +89,20 @@ export function createClient(opts: ClientOptions) {
     return { blob: await resp.blob(), name: fileName(resp.headers.get("Content-Disposition")) };
   }
 
+  /** upload posts one file as multipart form data under the field name "file". */
+  async function upload<T = unknown>(path: string, file: Blob, name: string): Promise<T> {
+    const form = new FormData();
+    // A File carries its name itself; some FormData implementations drop
+    // the third argument of append.
+    form.append("file", new File([file], name, { type: file.type }));
+    const resp = await sendRaw("POST", path, "application/json", { form });
+    return (await resp.json()) as T;
+  }
+
   return {
     request,
     download,
+    upload,
     setCsrf: (token: string) => storage.setItem(csrfKey, token),
     clearSession: () => storage.removeItem(csrfKey),
     hasSession: () => storage.getItem(csrfKey) !== null,

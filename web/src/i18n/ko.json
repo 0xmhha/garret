@@ -258,5 +258,12 @@
   "files.reviewedMark": "검토함",
   "files.openThreads": {
     "other": "미해결 스레드 {count}건"
-  }
+  },
+  "attach.button": "파일 첨부",
+  "attach.chosen": "첨부할 파일",
+  "attach.uploading": "올리는 중…",
+  "attach.remove": "{name} 빼기",
+  "attach.tooLarge": "한도 25 MiB를 넘습니다",
+  "attach.files": "첨부 파일",
+  "attach.gone": "삭제된 파일"
 }

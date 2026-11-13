@@ -15,8 +15,8 @@ interface Props {
   threads: Thread[];
   users: Map<string, User> | undefined;
   now: Date;
-  onComment: (body: string) => Promise<unknown>;
-  onReply: (rootId: string, body: string) => Promise<unknown>;
+  onComment: (body: string, attachments: string[]) => Promise<unknown>;
+  onReply: (rootId: string, body: string, attachments: string[]) => Promise<unknown>;
   onResolve: (rootId: string, resolved: boolean) => void;
 }
 
@@ -35,9 +35,9 @@ export function Conversation({ project, descriptionDoc, number, threads, users, 
         <h2 id="conv-threads" className="section-title section-title--spaced">{t("conversation.threads")}</h2>
         {general.length === 0 ? <p className="muted">{t("conversation.empty")}</p> : null}
         {general.map((th) => (
-          <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} />
+          <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} project={project} />
         ))}
-        <Composer label={t("conversation.newComment")} submitLabel={t("conversation.comment")} onSubmit={onComment} />
+        <Composer label={t("conversation.newComment")} submitLabel={t("conversation.comment")} onSubmit={onComment} project={project} />
       </section>
       <section aria-labelledby="conv-history">
         <h2 id="conv-history" className="section-title">{t("conversation.history")}</h2>

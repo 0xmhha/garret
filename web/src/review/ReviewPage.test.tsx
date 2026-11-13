@@ -64,7 +64,7 @@ it("diffs one commit and anchors a new comment to it", async () => {
   await waitFor(() =>
     expect(posts).toContainEqual({
       url: "/api/v1/projects/libfoo/reviews/1/comments",
-      body: { body: "Why int?", anchor: { revision: 1, view: "commit", from: c1, to: c2, path: "a.c", side: "new", start_line: 1, end_line: 1 } },
+      body: { body: "Why int?", attachments: [], anchor: { revision: 1, view: "commit", from: c1, to: c2, path: "a.c", side: "new", start_line: 1, end_line: 1 } },
     }),
   );
 });

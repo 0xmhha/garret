@@ -83,3 +83,16 @@ export function formatDate(locale: Locale, date: Date): string {
   if (!Number.isFinite(date.getTime())) return "";
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
+
+const sizeUnits = [
+  [1e6, "megabyte"],
+  [1e3, "kilobyte"],
+] as const;
+
+/** formatSize writes a byte count in decimal units (kB, MB), one decimal at most. */
+export function formatSize(locale: Locale, bytes: number): string {
+  for (const [size, unit] of sizeUnits) {
+    if (bytes >= size) return new Intl.NumberFormat(locale, { style: "unit", unit, maximumFractionDigits: 1 }).format(bytes / size);
+  }
+  return new Intl.NumberFormat(locale, { style: "unit", unit: "byte", unitDisplay: "long" }).format(bytes);
+}

@@ -59,8 +59,18 @@ func TestAttachments(t *testing.T) {
 	if !bytes.Contains(body, []byte("<script>")) {
 		t.Fatal("download body changed")
 	}
+	meta := c.do(t, http.MethodGet, basePath+"/attachments/"+img.ID+"/meta", nil, nil)
+	if meta.Code != http.StatusOK || !strings.HasPrefix(meta.Header().Get("Content-Type"), "application/json") {
+		t.Fatalf("meta %d %v", meta.Code, meta.Header())
+	}
+	if got := decodeBody[attachmentJSON](t, meta.Body.Bytes()); got != img {
+		t.Fatalf("meta %+v, want %+v", got, img)
+	}
 	if w := c.do(t, http.MethodDelete, basePath+"/attachments/"+html.ID, nil, nil); w.Code != http.StatusNoContent {
 		t.Fatalf("delete %d", w.Code)
+	}
+	if w := c.do(t, http.MethodGet, basePath+"/attachments/"+html.ID+"/meta", nil, nil); w.Code != http.StatusNotFound {
+		t.Fatalf("meta of a deleted attachment %d", w.Code)
 	}
 }
 

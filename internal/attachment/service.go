@@ -90,18 +90,20 @@ func (s *Service) Upload(ctx context.Context, actor auth.User, projectName, file
 	return a, err
 }
 
+// Info returns an attachment that is not deleted, without its file. Every
+// member reads every project, so actor is not checked.
+func (s *Service) Info(ctx context.Context, _ auth.User, attachmentID string) (Attachment, error) {
+	row, err := s.live(ctx, attachmentID)
+	if err != nil {
+		return Attachment{}, err
+	}
+	return toAttachment(row), nil
+}
+
 // Open returns an attachment that is not deleted, with its file opened for
 // reading. The caller closes the file.
 func (s *Service) Open(ctx context.Context, _ auth.User, attachmentID string) (Attachment, *os.File, error) {
-	var row sqlcgen.Attachment
-	err := s.db.ReadTx(ctx, func(tx *sql.Tx) error {
-		var err error
-		row, err = sqlcgen.New(tx).GetAttachment(ctx, attachmentID)
-		return err
-	})
-	if errors.Is(err, sql.ErrNoRows) || err == nil && row.DeletedAt.Valid {
-		return Attachment{}, nil, ErrNotFound
-	}
+	row, err := s.live(ctx, attachmentID)
 	if err != nil {
 		return Attachment{}, nil, err
 	}
@@ -112,6 +114,20 @@ func (s *Service) Open(ctx context.Context, _ auth.User, attachmentID string) (A
 		return Attachment{}, nil, fmt.Errorf("attachment: open file: %w", err)
 	}
 	return toAttachment(row), f, nil
+}
+
+// live reads an attachment row, or ErrNotFound when it is missing or deleted.
+func (s *Service) live(ctx context.Context, attachmentID string) (sqlcgen.Attachment, error) {
+	var row sqlcgen.Attachment
+	err := s.db.ReadTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		row, err = sqlcgen.New(tx).GetAttachment(ctx, attachmentID)
+		return err
+	})
+	if errors.Is(err, sql.ErrNoRows) || err == nil && row.DeletedAt.Valid {
+		return sqlcgen.Attachment{}, ErrNotFound
+	}
+	return row, err
 }
 
 // Delete soft-deletes an attachment. The uploader or an administrator may

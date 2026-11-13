@@ -91,7 +91,8 @@ stated otherwise.
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/projects/{project}/attachments` | Upload (`multipart/form-data`). **Proposed default** size limit: 25 MiB |
-| `GET` | `/attachments/{id}` | Download. Always served as `Content-Disposition: attachment` |
+| `GET` | `/attachments/{id}` | The file. PNG, JPEG, GIF and WebP are served `inline` with their type, so a page can show them; every other type is `Content-Disposition: attachment` as `application/octet-stream`. Each response carries its own sandboxing CSP |
+| `GET` | `/attachments/{id}/meta` | `{id, filename, media_type, size, inline, created_at}` without the file, so the interface can name and size it before anyone downloads it. 404 once deleted |
 | `DELETE` | `/attachments/{id}` | Soft delete |
 
 ## Inbox

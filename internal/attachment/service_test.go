@@ -128,3 +128,43 @@ func TestDelete(t *testing.T) {
 		t.Fatalf("admin delete: %v", err)
 	}
 }
+
+func TestInfo(t *testing.T) {
+	s := newService(t)
+	ctx := context.Background()
+	png, err := s.Upload(ctx, bob, "libfoo", "shot.png", strings.NewReader("\x89PNG\r\n\x1a\n0000"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	log, _ := s.Upload(ctx, bob, "libfoo", "crash.log", strings.NewReader("panic"))
+	tests := []struct {
+		name    string
+		id      string
+		want    Attachment
+		wantErr error
+	}{
+		{"image", png.ID, png, nil},
+		{"other type", log.ID, log, nil},
+		{"unknown", "01JD0000000000000000000NONE", Attachment{}, ErrNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := s.Info(ctx, carol, tt.id)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Fatalf("got %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+	if !png.Inline || log.Inline {
+		t.Fatalf("inline: png %v, log %v", png.Inline, log.Inline)
+	}
+	if err := s.Delete(ctx, bob, log.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Info(ctx, carol, log.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("deleted attachment described: %v", err)
+	}
+}
