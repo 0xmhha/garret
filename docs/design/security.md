@@ -122,6 +122,15 @@ expired.
 fully control. Login and tokens still apply. garret prints a warning at every
 start while client certificates are off.
 
+While client certificates are off, an administrator can also create an
+account directly (`POST /api/v1/admin/users`) instead of sending an
+invitation, so members need no program to join: they open the link and sign
+in with a temporary password that the administrator passes on through
+another channel, then change it under Account. The temporary password has
+the strength of an invitation code; unlike an invitation it does not expire,
+so the administrator disables an account that is never claimed. The
+administrator knows the temporary password until the member changes it.
+
 ### Other transport settings
 
 - `--tls-cert` and `--tls-key` load an externally issued server certificate.
