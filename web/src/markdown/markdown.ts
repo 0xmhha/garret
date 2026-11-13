@@ -32,6 +32,24 @@ const marked = new Marked({
   },
 });
 
+// The one Trusted Types policy the CSP allows (transport.md 3.3). It is
+// created here, once; the CSP refuses a second policy of the same name, so
+// no other script can obtain it. createHTML passes strings through because
+// it is only ever given DOMPurify's output, and DOMPurify's own parsing.
+// DOMPurify requires createScriptURL as well; garret allows no script
+// URLs, so it always yields an empty one.
+const policyName = "garret-markdown";
+interface TrustedTypePolicyFactory {
+  createPolicy(name: string, rules: { createHTML(s: string): string; createScriptURL(s: string): string }): {
+    createHTML(s: string): TrustedHTML;
+  };
+}
+const factory = (globalThis as { trustedTypes?: TrustedTypePolicyFactory }).trustedTypes;
+const policy = factory?.createPolicy(policyName, {
+  createHTML: (s: string) => s,
+  createScriptURL: () => "",
+});
+
 // Bound to the page's window explicitly: without one DOMPurify cannot sanitize.
 const purifier = DOMPurify(window);
 purifier.addHook("afterSanitizeAttributes", (node) => {
@@ -48,14 +66,17 @@ purifier.addHook("afterSanitizeAttributes", (node) => {
  * HTML shown as text, then DOMPurify with an allow-list. It is the only
  * function whose output may be assigned to innerHTML.
  */
-export function renderMarkdown(source: string): string {
+export function renderMarkdown(source: string): SafeHTML {
   return renderWith(purifier, source);
 }
+
+/** Sanitized HTML: TrustedHTML where the browser has Trusted Types. */
+export type SafeHTML = string | TrustedHTML;
 
 /** The part of DOMPurify renderWith needs; tests pass a stand-in. */
 export interface Sanitizer {
   readonly isSupported: boolean;
-  sanitize(html: string, config: object): string;
+  sanitize(html: string, config: object): SafeHTML;
 }
 
 /**
@@ -63,14 +84,17 @@ export interface Sanitizer {
  * work (DOMPurify returns its input unchanged then), the source is shown as
  * escaped text: this function never returns unsanitized HTML.
  */
-export function renderWith(sanitizer: Sanitizer, source: string): string {
-  if (!sanitizer.isSupported) return `<p>${escapeHTML(source)}</p>`;
+export function renderWith(sanitizer: Sanitizer, source: string): SafeHTML {
+  if (!sanitizer.isSupported) {
+    const text = `<p>${escapeHTML(source)}</p>`;
+    return policy ? policy.createHTML(text) : text;
+  }
   const html = marked.parse(source) as string;
   return sanitizer.sanitize(html, {
     ALLOWED_TAGS: allowedTags,
     ALLOWED_ATTR: allowedAttrs,
     ALLOWED_URI_REGEXP: allowedURI,
     ALLOW_DATA_ATTR: false,
-    RETURN_TRUSTED_TYPE: false,
+    ...(policy ? { TRUSTED_TYPES_POLICY: policy, RETURN_TRUSTED_TYPE: true } : { RETURN_TRUSTED_TYPE: false }),
   });
 }
