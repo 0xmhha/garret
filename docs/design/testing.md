@@ -20,7 +20,14 @@ Three users on one network: **A** runs the server and is the administrator,
 | 8 | After a server restart, every record from steps 2 to 6 is still present | Go integration test |
 | 9 | A exports and purges the project. No row, repository file or attachment of the project remains | Go integration test |
 
-The three users are simulated inside the tests. Step 7 sets a narrow
+The three users are simulated inside the tests. For the browser steps, a Go
+fixture (`TestBrowserFixture` in `cmd/garret`) runs steps 1 to 3 and keeps
+the server up while Playwright drives two browser contexts, one per person.
+There is one fixture server per client mode: Chrome runs with client
+certificates on and WebKit with them off, because Playwright's WebKit on
+macOS presents client certificates only to a special host name whose origin
+the server refuses. Safari with client certificates is covered by the
+manual run. Step 7 sets a narrow
 `--allow` range and injects the peer address, so no second network is needed.
 Before the first release the scenario is also run once by hand on three real
 machines.
@@ -32,7 +39,7 @@ machines.
 | Unit | `go test` | Packages in isolation, table-driven, error paths included |
 | Integration | `go test` with a real `git` and a temporary data directory | HTTP API, Git push and fetch, revisions, purge |
 | Component | Vitest | React components and client-side logic |
-| End to end | Playwright | Steps 4 to 6 against a built binary |
+| End to end | Playwright | Steps 4 to 6, the axe checks and the sanitizer cases, in Chrome and WebKit, against a server built with the interface |
 | Fuzz | `go test -fuzz` | Diff parsing, anchor parsing, CIDR handling |
 
 Time and randomness are injected, so tests are deterministic.

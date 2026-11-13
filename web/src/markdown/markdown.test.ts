@@ -4,6 +4,7 @@
 // environment DOMPurify's own tests use, and again in real browsers by the
 // Playwright suite.
 import { describe, expect, it } from "vitest";
+import { dangerousHref, dangerousLinks, droppedImages, forbiddenElements, markupAttacks } from "./cases";
 import { renderMarkdown, type SafeHTML } from "./markdown";
 
 function dom(html: SafeHTML): HTMLElement {
@@ -46,17 +47,10 @@ describe("renderMarkdown keeps Markdown", () => {
 });
 
 describe("renderMarkdown removes what could run or leak", () => {
-  it.each([
-    ["script tag", "<script>alert(1)</script>"],
-    ["event attribute", '<img src=x onerror="alert(1)">'],
-    ["iframe", '<iframe src="https://evil.example"></iframe>'],
-    ["style attribute", '<p style="background:url(https://evil.example)">x</p>'],
-    ["svg", "<svg><script>alert(1)</script></svg>"],
-    ["form", '<form action="https://evil.example"><input name=a></form>'],
-  ])("%s", (_name, input) => {
+  it.each(markupAttacks)("%s", (_name, input) => {
     const html = String(renderMarkdown(input));
     const d = dom(html);
-    expect(d.querySelector("script, iframe, svg, form, input, [onerror], [style]")).toBeNull();
+    expect(d.querySelector(forbiddenElements)).toBeNull();
     expect(html).not.toMatch(/<(script|iframe|svg|form)/i);
   });
 
@@ -65,27 +59,12 @@ describe("renderMarkdown removes what could run or leak", () => {
     expect(dom(renderMarkdown("<b>not bold</b>")).textContent).toContain("<b>not bold</b>");
   });
 
-  it.each([
-    "[x](javascript:alert(1))",
-    "[x](JAVASCRIPT:alert(1))",
-    "[x](data:text/html;base64,PHNjcmlwdD4=)",
-    "[x](vbscript:msgbox)",
-    "[x](/&#92;evil.example)",
-    "[x](/&#x5c;evil.example)",
-    "[x](/&#x09;&#x5c;evil.example)",
-  ])("drops the dangerous link in %s", (input) => {
+  it.each(dangerousLinks)("drops the dangerous link in %s", (input) => {
     const a = dom(renderMarkdown(input)).querySelector("a");
-    const href = a?.getAttribute("href") ?? "";
-    expect(href).not.toMatch(/^(javascript|data|vbscript):/i);
-    expect(href).not.toMatch(/\\/);
+    expect(a?.getAttribute("href") ?? "").not.toMatch(dangerousHref);
   });
 
-  it.each([
-    "![x](https://evil.example/pixel.png)",
-    "![x](//evil.example/pixel.png)",
-    "![x](data:image/png;base64,AAAA)",
-    "![x](/api/v1/me)",
-  ])("drops the image in %s", (input) => {
+  it.each(droppedImages)("drops the image in %s", (input) => {
     expect(dom(renderMarkdown(input)).querySelector("img")).toBeNull();
   });
 });

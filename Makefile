@@ -14,12 +14,14 @@ WEB_DIST := internal/webui/dist/index.html
 # (docs/specs/web.md 3); without it they use the committed placeholder.
 GOTAGS := $(shell test -f $(WEB_DIST) && echo webui)
 
-.PHONY: help build build-go web web-audit test lint vuln secrets generate generate-check check release
+.PHONY: help build build-go web web-audit e2e test lint vuln secrets generate generate-check check release
 
 help:
 	@echo "make build           build the web interface, then compile with it embedded"
 	@echo "make build-go        compile without Node (embeds the placeholder page)"
 	@echo "make web             install, test and build the web interface"
+	@echo "make e2e             run the browser suite in Chrome and WebKit (after make build;"
+	@echo "                     WebKit once: cd web && npx playwright install webkit)"
 	@echo "make release         build bin/garret; fails unless the web interface is embedded"
 	@echo "make test            run tests with the race detector"
 	@echo "make lint            run golangci-lint (v$(GOLANGCI_LINT_VERSION) in CI)"
@@ -40,6 +42,12 @@ web:
 
 web-audit:
 	cd $(WEB_DIR) && npm audit --audit-level=high
+
+# The browser suite builds its Go fixture with the embedded interface, so
+# the interface must already be built (docs/design/testing.md).
+e2e:
+	@test -f $(WEB_DIST) || { echo "the web interface is not built; run make build first"; exit 1; }
+	cd $(WEB_DIR) && npm run typecheck && npx playwright test
 
 test:
 	$(GO) test -race -count=1 -tags "$(GOTAGS)" ./...

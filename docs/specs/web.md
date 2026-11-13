@@ -143,6 +143,14 @@ brief in `.impeccable/surfaces/`).
   jsdom (about twenty more packages) and over the Node test runner with
   Playwright only (every component test in a browser, too slow for
   test-first work).
+- Browser suite: `make e2e` (after `make build`) runs `web/e2e` with
+  Playwright: steps 4 to 6 of the scenario, an axe check of every screen
+  (WCAG 2.2 A and AA tags, with a guard that rules actually ran) and the
+  sanitizer cases, which live in `src/markdown/cases.ts` so that the unit
+  tests and the browser suite check the same inputs. Chrome is the installed
+  browser; WebKit is installed once with `npx playwright install webkit`.
+  `@axe-core/playwright` 4.14.0 (Deque, with `axe-core` 4.14.0 and no other
+  dependency) is the only package this adds.
 - Every version is exact (`save-exact`) and at least 7 days old when
   added. Install scripts are disabled (`ignore-scripts`): no dependency
   runs code at install time; Playwright browsers are installed by an
