@@ -6,11 +6,12 @@ import { expect, it } from "vitest";
 // (docs/specs/web.md 5). Everything else renders through React, which
 // escapes text.
 const allowed = new Set(["markdown/markdown.ts", "markdown/markdown.test.ts", "markdown/guard.test.ts", "ui/Markdown.tsx"]);
-const writesHTML = /\b(innerHTML|outerHTML|insertAdjacentHTML|dangerouslySetInnerHTML)\b|document\.write\(/;
+const writesHTML =
+  /\b(innerHTML|outerHTML|insertAdjacentHTML|dangerouslySetInnerHTML|srcdoc|createContextualFragment|DOMParser|parseFromString|setHTMLUnsafe|parseHTMLUnsafe)\b|document\.write(ln)?\(|["'`](inner|outer)["'`]\s*\+|["'`]dangerously["'`]\s*\+/;
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-    e.isDirectory() ? sources(join(dir, e.name)) : /\.(ts|tsx)$/.test(e.name) ? [join(dir, e.name)] : [],
+    e.isDirectory() ? sources(join(dir, e.name)) : /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(e.name) ? [join(dir, e.name)] : [],
   );
 }
 

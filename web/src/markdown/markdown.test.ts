@@ -70,9 +70,14 @@ describe("renderMarkdown removes what could run or leak", () => {
     "[x](JAVASCRIPT:alert(1))",
     "[x](data:text/html;base64,PHNjcmlwdD4=)",
     "[x](vbscript:msgbox)",
+    "[x](/&#92;evil.example)",
+    "[x](/&#x5c;evil.example)",
+    "[x](/&#x09;&#x5c;evil.example)",
   ])("drops the dangerous link in %s", (input) => {
     const a = dom(renderMarkdown(input)).querySelector("a");
-    expect(a?.getAttribute("href") ?? "").not.toMatch(/^(javascript|data|vbscript):/i);
+    const href = a?.getAttribute("href") ?? "";
+    expect(href).not.toMatch(/^(javascript|data|vbscript):/i);
+    expect(href).not.toMatch(/\\/);
   });
 
   it.each([
@@ -82,5 +87,14 @@ describe("renderMarkdown removes what could run or leak", () => {
     "![x](/api/v1/me)",
   ])("drops the image in %s", (input) => {
     expect(dom(renderMarkdown(input)).querySelector("img")).toBeNull();
+  });
+});
+
+describe("renderMarkdown when sanitizing is impossible", () => {
+  it("returns escaped text instead of unsanitized HTML", async () => {
+    const { renderWith } = await import("./markdown");
+    const out = renderWith({ isSupported: false, sanitize: (s: string) => s }, "<script>alert(1)</script> **x**");
+    expect(out).not.toContain("<script>");
+    expect(out).toContain("&lt;script&gt;");
   });
 });
