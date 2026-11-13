@@ -4,6 +4,7 @@
 
 .review {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   min-height: 100%;
 }
@@ -17,12 +18,15 @@
 
 .review__titleline {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-4);
 }
 
 .review__title {
   flex: 1;
+  min-width: min(100%, 320px);
+  overflow-wrap: anywhere;
   font-size: var(--text-2xl);
   line-height: 1.25;
 }
@@ -352,6 +356,7 @@
 /* Files */
 .files-wrap {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   min-height: 0;
 }
@@ -382,7 +387,7 @@
 }
 
 .revpicker select {
-  max-width: 420px;
+  max-width: min(420px, 100%);
   min-height: 28px;
   padding: 0 var(--space-2);
   border: 1px solid var(--border-strong);
@@ -658,12 +663,13 @@
 }
 
 @media (max-width: 960px) {
+  /* minmax(0, …): a plain 1fr track grows to the widest diff line. */
   .conversation {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .files {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .files__list {

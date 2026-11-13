@@ -67,7 +67,29 @@
 }
 
 .topbar__user {
+  overflow: hidden;
+  max-width: 32ch;
   color: var(--fg-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+    height: auto;
+    min-height: 48px;
+    padding-block: var(--space-2);
+  }
+
+  .topbar__nav {
+    gap: var(--space-3);
+  }
+
+  .topbar__user {
+    max-width: 14ch;
+  }
 }
 
 .topbar__user[aria-current="page"] {
