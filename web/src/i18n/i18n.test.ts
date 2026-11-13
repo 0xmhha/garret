@@ -30,9 +30,9 @@ describe("createTranslator", () => {
   });
 
   it("picks plural forms with Intl.PluralRules", () => {
-    expect(t("review.commentCount", { count: 1 })).toBe("1 comment");
-    expect(t("review.commentCount", { count: 3 })).toBe("3 comments");
-    expect(tk("review.commentCount", { count: 1 })).toBe("댓글 1개");
+    expect(t("shell.unread", { count: 1 })).toBe("1 unread notification");
+    expect(t("shell.unread", { count: 3 })).toBe("3 unread notifications");
+    expect(tk("shell.unread", { count: 1 })).toBe("읽지 않은 알림 1개");
   });
 
   it("leaves an unknown placeholder visible rather than dropping text", () => {

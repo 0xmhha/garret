@@ -1,10 +1,5 @@
 {
-  "app.name": "garret",
   "app.loading": "Loading…",
-  "review.commentCount": {
-    "one": "{count} comment",
-    "other": "{count} comments"
-  },
   "review.openedBy": "Opened by {author}",
   "signIn.title": "Sign in to garret",
   "signIn.lede": "Use the account your administrator invited you with.",
