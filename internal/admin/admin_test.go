@@ -58,6 +58,7 @@ type fixture struct {
 	db          *store.DB
 	comments    *comment.Service
 	attachments *attachment.Service
+	projects    *project.Service
 	reposDir    string
 	attachDir   string
 	projectID   string
@@ -111,6 +112,7 @@ func newFixture(t *testing.T) *fixture {
 	f := &fixture{
 		svc:         New(Config{DB: db, Audit: rec, IDs: ids, Clock: c, Runner: runner, Projects: projects, Files: files, Collab: co}),
 		db:          db,
+		projects:    projects,
 		comments:    comment.New(db, rec, ids, c, runner, projects, nopEvents{}, notifier),
 		attachments: attachment.NewService(db, rec, ids, c, files, attachment.DefaultMaxSize),
 		reposDir:    repos, attachDir: attach, projectID: p.ID,
@@ -364,5 +366,35 @@ func TestPurgeRefusesAfterATagPush(t *testing.T) {
 	}
 	if err := f.svc.Purge(ctx, root, "libfoo", "libfoo"); !errors.Is(err, ErrExportRequired) {
 		t.Fatalf("purge after a tag push: %v", err)
+	}
+}
+
+// A project created but never pushed to has no branches; git refuses an
+// empty bundle, so the archive simply has none, and the purge still works.
+func TestExportProjectWithoutBranches(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	if _, err := f.projects.Create(ctx, root, "empty", ""); err != nil {
+		t.Fatal(err)
+	}
+	var archive bytes.Buffer
+	sum, err := f.svc.Export(ctx, root, "empty", &archive)
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	if len(sum) != 64 {
+		t.Fatalf("digest %q", sum)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(archive.Bytes()), int64(archive.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, zf := range zr.File {
+		if zf.Name == "repository.bundle" {
+			t.Fatal("an empty repository produced a bundle")
+		}
+	}
+	if err := f.svc.Purge(ctx, root, "empty", "empty"); err != nil {
+		t.Fatalf("purge after export: %v", err)
 	}
 }
