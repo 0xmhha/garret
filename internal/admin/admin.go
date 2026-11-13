@@ -194,22 +194,33 @@ func (s *Service) Export(ctx context.Context, actor auth.User, projectName strin
 	if err != nil {
 		return "", err
 	}
-	bundle, err := os.CreateTemp(filepath.Dir(dir), ".export-*.bundle")
+	refs, err := s.cfg.Runner.AllRefs(ctx, dir)
 	if err != nil {
-		return "", fmt.Errorf("admin: temporary bundle: %w", err)
-	}
-	bundlePath := bundle.Name()
-	_ = bundle.Close()
-	defer func() { _ = os.Remove(bundlePath) }()
-	_ = os.Remove(bundlePath) // git bundle refuses to overwrite an existing file
-	if err := s.cfg.Runner.Bundle(ctx, dir, bundlePath); err != nil {
 		return "", err
+	}
+	// A project nobody pushed to has no refs, and git refuses an empty
+	// bundle; its archive then has no repository.bundle.
+	bundlePath := ""
+	if len(refs) > 0 {
+		bundle, err := os.CreateTemp(filepath.Dir(dir), ".export-*.bundle")
+		if err != nil {
+			return "", fmt.Errorf("admin: temporary bundle: %w", err)
+		}
+		bundlePath = bundle.Name()
+		_ = bundle.Close()
+		defer func() { _ = os.Remove(bundlePath) }()
+		_ = os.Remove(bundlePath) // git bundle refuses to overwrite an existing file
+		if err := s.cfg.Runner.Bundle(ctx, dir, bundlePath); err != nil {
+			return "", err
+		}
 	}
 
 	h := sha256.New()
 	zw := zip.NewWriter(io.MultiWriter(w, h))
-	if err := addFile(zw, bundleName, bundlePath); err != nil {
-		return "", err
+	if bundlePath != "" {
+		if err := addFile(zw, bundleName, bundlePath); err != nil {
+			return "", err
+		}
 	}
 	var startEvent string
 	var digests [][]byte

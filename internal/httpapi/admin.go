@@ -289,15 +289,36 @@ func (a *API) export(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": name + "-export.zip"}))
 	w.Header().Set("Trailer", "X-Garret-Export-SHA256")
-	sum, err := a.cfg.Admin.Export(r.Context(), user(r), name, w)
+	cw := &countingWriter{w: w}
+	sum, err := a.cfg.Admin.Export(r.Context(), user(r), name, cw)
 	if err != nil {
-		// Headers are already sent; the missing trailer tells the client the
-		// archive is incomplete.
 		a.cfg.Log.Error("export failed", "project", name, "err", err)
+		if cw.n == 0 {
+			// Nothing was sent yet: answer with the error instead of an
+			// empty archive the client cannot tell from a cut one.
+			for _, k := range []string{"Content-Type", "Content-Disposition", "Trailer"} {
+				w.Header().Del(k)
+			}
+			return err
+		}
+		// The archive is partly sent; the missing trailer and the missing
+		// end of the zip tell the client it is incomplete.
 		return nil
 	}
 	w.Header().Set("X-Garret-Export-SHA256", sum)
 	return nil
+}
+
+// countingWriter counts the bytes written through it.
+type countingWriter struct {
+	w io.Writer
+	n int64
+}
+
+func (c *countingWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.n += int64(n)
+	return n, err
 }
 
 func (a *API) purge(w http.ResponseWriter, r *http.Request) error {
