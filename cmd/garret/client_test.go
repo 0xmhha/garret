@@ -98,9 +98,17 @@ type testServer struct {
 }
 
 // startServer runs a server on dataDir (a new one when empty) until stop
-// or the end of the test. Zero ports are chosen; a restart passes the
-// previous ones. listen, when set, opens the sockets.
+// or the end of the test, with client certificates required. Zero ports are
+// chosen; a restart passes the previous ones. listen, when set, opens the
+// sockets.
 func startServer(t *testing.T, dataDir string, mainPort, enrollPort uint16, listen func(context.Context, string) (net.Listener, error)) *testServer {
+	t.Helper()
+	return startServerCerts(t, dataDir, mainPort, enrollPort, listen, true)
+}
+
+// startServerCerts is startServer with client certificates on or off
+// (serve --client-cert).
+func startServerCerts(t *testing.T, dataDir string, mainPort, enrollPort uint16, listen func(context.Context, string) (net.Listener, error), clientCerts bool) *testServer {
 	t.Helper()
 	git, err := exec.LookPath("git")
 	if err != nil {
@@ -118,7 +126,7 @@ func startServer(t *testing.T, dataDir string, mainPort, enrollPort uint16, list
 	cfg := config.Serve{DataDir: dataDir, Host: "localhost",
 		Listen:       netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), mainPort),
 		EnrollListen: netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), enrollPort),
-		Port:         mainPort, EnrollPort: enrollPort, ClientCerts: true}
+		Port:         mainPort, EnrollPort: enrollPort, ClientCerts: clientCerts}
 	out := &bytes.Buffer{}
 	sys := app.System{Clock: testClock, Rand: rand.Reader, GitPath: git, Log: quiet(), Out: out, Listen: listen,
 		ActiveRefresh: 50 * time.Millisecond,
