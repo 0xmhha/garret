@@ -83,7 +83,8 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func setSecurityHeaders(h http.Header) {
 	h.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; "+
-		"connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+		"connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; "+
+		"require-trusted-types-for 'script'; trusted-types garret-markdown")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("X-Frame-Options", "DENY")
