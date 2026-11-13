@@ -201,6 +201,10 @@ UI.
 - `git` runs without a shell, with an explicit minimal environment, and every
   invocation has a context timeout.
 - Pushes to `refs/garret/*` are rejected. Hidden refs are not advertised.
+- A source path for importing (D15) is typed only by an administrator. It
+  must be absolute and name an existing Git repository; garret only fetches
+  from it (no hooks of the source run, nothing is written there) and never
+  lists directories in the interface.
 - Repository size and push size limits are **proposed defaults** to be
   measured during implementation.
 

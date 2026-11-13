@@ -66,7 +66,7 @@ erasures      (what was permanently erased, by whom, when)
 
 | Table | Key columns | Notes |
 |---|---|---|
-| `projects` | `id`, `name` (unique, `[a-z0-9][a-z0-9._-]{0,63}`), `description`, `created_by` | Maps to `data/repos/<name>.git` |
+| `projects` | `id`, `name` (unique, `[a-z0-9][a-z0-9._-]{0,63}`), `description`, `created_by`, `source_path` (nullable) | Maps to `data/repos/<name>.git`; `source_path` is the repository on the server's machine it syncs from (D15) |
 | `reviews` | `id`, `project_id`, `number` (per project), `title`, `source_branch`, `target_branch`, `state`, `author_id`, `description_doc_id` | `state` is `open`, `completed` or `abandoned` |
 | `revisions` | `id`, `review_id`, `number`, `base_sha`, `head_sha`, `pushed_by`, `pushed_at` | Head pinned at `refs/garret/reviews/<review>/revisions/<number>` |
 | `revision_commits` | `revision_id`, `position`, `sha`, `subject`, `author_name`, `authored_at` | Commits in `base..head`, oldest first |
