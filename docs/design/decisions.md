@@ -270,6 +270,10 @@ laptops still bring their branches with `git push`.
   repository, and expected to register that repository instead of pushing
   it into an empty one. A button keeps every revision attributable to a
   person, as pushes are (PRODUCT.md, principle 2).
+- **Which branches**: the source's local branches, and its remote-tracking
+  branches as `<remote>/<branch>` (for example `origin/master`), because a
+  clone often has its base branch only as a remote-tracking branch. A local
+  branch with the same name wins; `<remote>/HEAD` is skipped.
 - **Sync rules**: new branches and fast-forwards are copied; a branch the
   source rewrote is listed and copied only when the person confirms an
   overwrite, because a member may have pushed to the same branch name;

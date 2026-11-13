@@ -124,8 +124,10 @@ repository on the server's machine, and the "Sync from source" action does
 it again:
 
 1. Check that the source is an absolute path to an existing Git repository.
-2. With the project's repository locked, `git fetch --no-tags` every
-   `refs/heads/*` of the source into `refs/garret/import/*`.
+2. With the project's repository locked, `git fetch --no-tags` the
+   source's branches into `refs/garret/import/*`: every `refs/heads/<name>`
+   as `<name>`, and every `refs/remotes/<remote>/<name>` (except `HEAD`) as
+   `<remote>/<name>` unless a local branch already has that name.
 3. For each source branch: create it if it is new, move it if the move is a
    fast-forward, and otherwise list it as rewritten; a rewritten branch moves
    only when the request asks to overwrite. Branches missing from the
