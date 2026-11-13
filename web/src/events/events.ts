@@ -71,7 +71,12 @@ export interface EventsOptions {
   onEvent: (ev: ServerEvent) => void;
   /** Called once when the server ends the stream for good (logout, disable). */
   onEnded: () => void;
+  /** Called when the connection state changes, for the top bar's indicator. */
+  onStatus?: (status: ConnectionStatus) => void;
 }
+
+/** ConnectionStatus is the event stream's state: first connecting, live, or offline while it retries. */
+export type ConnectionStatus = "connecting" | "live" | "offline";
 
 const firstDelay = 1000;
 const maxDelay = 30000;
@@ -95,6 +100,7 @@ export function connectEvents(opts: EventsOptions): () => void {
     socket = s;
     s.onopen = () => {
       delay = firstDelay;
+      if (!stopped) opts.onStatus?.("live");
     };
     s.onmessage = (e) => {
       const ev = parseEvent(String(e.data));
@@ -107,10 +113,12 @@ export function connectEvents(opts: EventsOptions): () => void {
         opts.onEnded();
         return;
       }
+      opts.onStatus?.("offline");
       timer = setTimeout(open, delay);
       delay = Math.min(delay * 2, maxDelay);
     };
   };
+  opts.onStatus?.("connecting");
   open();
 
   return () => {

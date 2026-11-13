@@ -9,7 +9,7 @@ import { Composer } from "./Composer";
 import { fileThreads, lineKey, reviewedStore, type DiffFile, type DiffLine, type Revision, type Thread } from "./model";
 import { useDiff, useFileDiff } from "./queries";
 import { ThreadView } from "./Thread";
-import { anchorView, viewKey, viewQuery, viewThreads, type DiffView } from "./views";
+import { anchorView, unresolvedByFile, viewKey, viewQuery, viewThreads, type DiffView } from "./views";
 
 /** LineAnchor is where a new code comment goes: the view's commits and one line. */
 export interface LineAnchor {
@@ -52,6 +52,7 @@ export function Files(props: Props) {
   // A new view has its own reviewed marks.
   useEffect(() => setReviewed(store.all()), [store]);
   const threads = useMemo(() => viewThreads(props.threads, view, revision.number, from, to), [props.threads, view, revision.number, from, to]);
+  const openByFile = useMemo(() => unresolvedByFile(threads), [threads]);
 
   const select = (f: DiffFile) => {
     const next = new URLSearchParams(params);
@@ -79,27 +80,35 @@ export function Files(props: Props) {
       }}
     >
       <nav className="files__list" aria-label={t("files.list")}>
-        <p className="files__progress">{t("files.progress", { done: files.filter((f) => reviewed.has(pathOf(f))).length, total: files.length })}</p>
-        <ul>
-          {files.map((f) => {
-            const p = pathOf(f);
-            const done = reviewed.has(p);
-            return (
-              <li key={p} className={`files__item${f === selected ? " is-selected" : ""}${done ? " is-reviewed" : ""}`}>
-                <button type="button" className="files__name" aria-current={f === selected ? "true" : undefined} onClick={() => select(f)} title={p}>
-                  <span className={`status status--${f.status.toLowerCase()}`} aria-label={t(`files.status.${statusKey(f.status)}` as MessageKey)}>
-                    {f.status.slice(0, 1)}
+        <div className="files__panel">
+          <p className="files__progress">{t("files.progress", { done: files.filter((f) => reviewed.has(pathOf(f))).length, total: files.length })}</p>
+          <ul>
+            {files.map((f) => {
+              const p = pathOf(f);
+              const done = reviewed.has(p);
+              return (
+                <li key={p} className={`files__item${f === selected ? " is-selected" : ""}${done ? " is-reviewed" : ""}`}>
+                  <button type="button" className="files__name" aria-current={f === selected ? "true" : undefined} onClick={() => select(f)} title={p}>
+                    <span className={`status status--${f.status.toLowerCase()}`} aria-label={t(`files.status.${statusKey(f.status)}` as MessageKey)}>
+                      {f.status.slice(0, 1)}
+                    </span>
+                    <span className="files__path">{p}</span>
+                    {done ? <IconCheck className="files__check" aria-label={t("files.reviewedMark")} /> : null}
+                  </button>
+                  {openByFile.get(p) ? (
+                    <span className="files__open" role="img" aria-label={t("files.openThreads", { count: openByFile.get(p) ?? 0 })}>
+                      <IconComment /> {openByFile.get(p)}
+                    </span>
+                  ) : null}
+                  <span className="files__counts" aria-label={t("files.counts", { added: f.added, deleted: f.deleted })}>
+                    <span className="add">+{f.added}</span> <span className="del">−{f.deleted}</span>
                   </span>
-                  <span className="files__path">{p}</span>
-                </button>
-                <span className="files__counts" aria-label={t("files.counts", { added: f.added, deleted: f.deleted })}>
-                  <span className="add">+{f.added}</span> <span className="del">−{f.deleted}</span>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="files__hint">{t("files.keys")}</p>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="files__hint">{t("files.keys")}</p>
+        </div>
       </nav>
       <section className="files__diff" aria-label={selected ? pathOf(selected) : t("files.none")}>
         {diff.isPending ? <p className="muted pad">{t("app.loading")}</p> : null}

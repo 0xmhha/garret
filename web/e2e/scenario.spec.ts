@@ -101,7 +101,7 @@ test("step 6: carol approves and completes; verdict and state are recorded with 
   await carol.goto(reviewURL());
   await carol.getByRole("button", { name: "Approve" }).click();
   await expect(carol.getByText("Carol: approved")).toBeVisible();
-  await carol.getByRole("button", { name: "More actions" }).click();
+  await carol.getByRole("button", { name: "Review state" }).click();
   await carol.getByRole("menuitem", { name: "Complete" }).click();
   await expect(carol.locator(".review__meta .state")).toHaveText("Completed");
 

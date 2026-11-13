@@ -5,7 +5,6 @@ import { ApiError } from "../api/client";
 import { useT } from "../app/context";
 import { useSignIn } from "../app/session";
 import { Button } from "../ui/Button";
-import { IconLock } from "../ui/icons";
 import { TextField } from "../ui/TextField";
 import "./SignIn.css";
 
@@ -28,9 +27,6 @@ export function SignIn() {
     <main className="signin">
       <Form className="signin__card" onSubmit={onSubmit} aria-labelledby="signin-title">
         <div className="signin__head">
-          <span className="signin__mark" aria-hidden="true">
-            <IconLock />
-          </span>
           <h1 id="signin-title">{t("signIn.title")}</h1>
           <p className="signin__lede">{t("signIn.lede")}</p>
         </div>

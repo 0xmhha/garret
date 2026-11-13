@@ -97,3 +97,29 @@ describe("connectEvents", () => {
     expect(FakeSocket.all).toHaveLength(1);
   });
 });
+
+describe("connectEvents status", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    FakeSocket.all = [];
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("reports connecting, live, offline while reconnecting, and live again", () => {
+    const seen: string[] = [];
+    connectEvents({ url: "wss://h/api/v1/ws", WebSocket: FakeSocket as never, onEvent: vi.fn(), onEnded: vi.fn(), onStatus: (s) => seen.push(s) });
+    FakeSocket.all[0]!.onopen?.();
+    FakeSocket.all[0]!.onclose?.({ code: 1006 });
+    vi.advanceTimersByTime(1000);
+    FakeSocket.all[1]!.onopen?.();
+    expect(seen).toEqual(["connecting", "live", "offline", "live"]);
+  });
+
+  it("reports nothing after it is stopped", () => {
+    const seen: string[] = [];
+    const stop = connectEvents({ url: "wss://h/api/v1/ws", WebSocket: FakeSocket as never, onEvent: vi.fn(), onEnded: vi.fn(), onStatus: (s) => seen.push(s) });
+    stop();
+    FakeSocket.all[0]!.onclose?.({ code: 1006 });
+    expect(seen).toEqual(["connecting"]);
+  });
+});

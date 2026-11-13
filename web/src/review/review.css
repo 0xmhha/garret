@@ -147,9 +147,8 @@
 /* Conversation */
 .conversation {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: var(--space-8);
-  max-width: 1200px;
   padding: var(--space-6);
 }
 
@@ -262,7 +261,43 @@
 
 .thread__badge {
   margin-left: auto;
-  color: var(--add-fg);
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* Amber is kept for unresolved work (tokens.css). */
+.thread__badge--open,
+.unresolved {
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.comment__origin {
+  color: var(--fg-muted);
+}
+
+.review__crumbs {
+  display: flex;
+  gap: var(--space-2);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+
+.tabs__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
   font-size: var(--text-xs);
   font-weight: 600;
 }
@@ -305,7 +340,6 @@
 
 /* Revisions */
 .revisions {
-  max-width: 960px;
   margin: 0;
   padding: var(--space-6);
   list-style: none;
@@ -399,19 +433,36 @@
 
 .files {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   min-height: 0;
 }
 
+/* The column is painted full height; only its contents stick. */
 .files__list {
+  border-right: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.files__panel {
   position: sticky;
   top: 0;
-  align-self: start;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   padding: var(--space-3) 0;
-  border-right: 1px solid var(--border);
-  background: var(--bg-subtle);
+}
+
+.files__check {
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.files__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--warn-fg);
+  font-size: var(--text-xs);
+  font-weight: 600;
 }
 
 .files__list ul {
@@ -459,7 +510,6 @@
 
 .files__item.is-reviewed .files__path {
   color: var(--fg-muted);
-  text-decoration: line-through;
 }
 
 .files__path {
@@ -488,7 +538,7 @@
 .status--m,
 .status--r,
 .status--c {
-  color: var(--warn-fg);
+  color: var(--fg-muted);
 }
 
 .files__counts {
@@ -673,10 +723,13 @@
   }
 
   .files__list {
-    position: static;
-    max-height: none;
     border-right: 0;
     border-bottom: 1px solid var(--border);
+  }
+
+  .files__panel {
+    position: static;
+    max-height: none;
   }
 }
 

@@ -4,20 +4,25 @@
   gap: var(--space-8);
 }
 
-.project {
-  max-width: 1200px;
-}
-
 .project__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.project__head .section-title {
+  margin: 0;
+}
+
+/* Everything after the heading sits on the right. */
+.project__head > :nth-child(2) {
+  margin-left: auto;
 }
 
 .filter {
   display: flex;
   gap: var(--space-1);
-  margin-left: auto;
 }
 
 .filter button {
@@ -77,24 +82,23 @@
 }
 
 .newform {
-  margin-top: var(--space-4);
-}
-
-.newform summary {
-  color: var(--accent);
-  font-weight: 500;
-  cursor: pointer;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
 }
 
 .newform__body {
   display: grid;
   gap: var(--space-3);
   max-width: 480px;
-  margin-top: var(--space-3);
 }
 
-.discussion {
-  max-width: 1200px;
+.newform__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 .discussion__meta {

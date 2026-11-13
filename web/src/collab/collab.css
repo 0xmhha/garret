@@ -41,7 +41,7 @@
 }
 
 .collab__status--live {
-  color: var(--add-fg);
+  color: var(--fg-muted);
 }
 
 .collab__status--offline {

@@ -34,4 +34,3 @@ export const IconComment = (p: IconProps) => <Icon {...p}><path d="M2.25 3.25h11
 export const IconBranch = (p: IconProps) => <Icon {...p}><circle cx="4.5" cy="3.5" r="1.5" /><circle cx="4.5" cy="12.5" r="1.5" /><circle cx="11.5" cy="5" r="1.5" /><path d="M4.5 5v6M11.5 6.5c0 3-7 2-7 4.5" /></Icon>;
 export const IconClose = (p: IconProps) => <Icon {...p}><path d="m4 4 8 8M12 4l-8 8" /></Icon>;
 export const IconSignOut = (p: IconProps) => <Icon {...p}><path d="M6.5 2.25h-4v11.5h4M10 5l3 3-3 3M13 8H6" /></Icon>;
-export const IconLock = (p: IconProps) => <Icon {...p}><rect x="3" y="7" width="10" height="7" rx="1.5" /><path d="M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2" /></Icon>;

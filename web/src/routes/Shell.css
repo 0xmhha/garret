@@ -95,3 +95,31 @@
 .topbar__user[aria-current="page"] {
   color: var(--fg);
 }
+
+/* The event stream's state (PRODUCT.md, trust is visible): quiet while
+   live, plain text when it is not. No hue: green and red mean changes. */
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-right: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.conn__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.conn--connecting .conn__dot,
+.conn--offline .conn__dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+.conn--offline {
+  color: var(--fg);
+  font-weight: 600;
+}

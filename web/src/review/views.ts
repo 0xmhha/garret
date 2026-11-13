@@ -107,3 +107,24 @@ export function viewThreads(threads: readonly Thread[], view: DiffView, revision
     return kind === "revision" && a.revision < revision && t.root.ported !== undefined;
   });
 }
+
+const isOpen = (t: Thread) => !t.root.resolved && !t.root.deleted;
+
+/** unresolved counts the open threads: not resolved and not deleted. */
+export function unresolved(threads: readonly Thread[]): number {
+  return threads.filter(isOpen).length;
+}
+
+/**
+ * unresolvedByFile counts open code threads per file, at the path the
+ * thread is shown on (its ported path when it moved), in first-seen order.
+ */
+export function unresolvedByFile(threads: readonly Thread[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const t of threads) {
+    const path = t.root.ported?.path ?? t.root.anchor?.path;
+    if (!path || !isOpen(t)) continue;
+    out.set(path, (out.get(path) ?? 0) + 1);
+  }
+  return out;
+}

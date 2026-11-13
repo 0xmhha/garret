@@ -1,8 +1,8 @@
 import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApi, useT } from "../app/context";
-import { connectEvents, invalidationsFor } from "../events/events";
+import { connectEvents, invalidationsFor, type ConnectionStatus } from "../events/events";
 import { useInbox } from "./Inbox";
 import { useMe, useSignOut } from "../app/session";
 import { Button } from "../ui/Button";
@@ -20,6 +20,7 @@ export function Shell() {
   const qc = useQueryClient();
   const unread = useInbox(true);
   const signedIn = api.hasSession();
+  const [status, setStatus] = useState<ConnectionStatus>("connecting");
 
   // One event stream per tab: each event refetches what it made stale.
   useEffect(() => {
@@ -32,6 +33,7 @@ export function Shell() {
         for (const key of invalidationsFor(ev)) void qc.invalidateQueries({ queryKey: key });
       },
       onEnded: () => navigate("/login"),
+      onStatus: setStatus,
     });
   }, [signedIn, qc, navigate]);
 
@@ -60,6 +62,10 @@ export function Shell() {
           ) : null}
         </nav>
         <div className="topbar__account">
+          <span className={`conn conn--${status}`} role="status" title={t("shell.connectionHint")}>
+            <span className="conn__dot" aria-hidden="true" />
+            {t(`shell.connection.${status}`)}
+          </span>
           {me.data ? (
             <Link className="topbar__user" to="/account" aria-current={location.pathname === "/account" ? "page" : undefined} title={t("shell.accountSettings")}>
               {t("shell.account", { name: me.data.display_name })}

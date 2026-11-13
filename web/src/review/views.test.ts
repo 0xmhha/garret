@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Comment, Revision, Thread } from "./model";
-import { anchorView, parseView, viewKey, viewQuery, viewThreads, type DiffView } from "./views";
+import { anchorView, parseView, unresolved, unresolvedByFile, viewKey, viewQuery, viewThreads, type DiffView } from "./views";
 
 const commit = (sha: string, subject = sha) => ({ sha, subject, author_name: "Bob", authored_at: "2026-11-13T00:00:00Z" });
 const rev = (number: number, base: string, shas: string[]): Revision => ({
@@ -94,5 +94,18 @@ describe("viewThreads", () => {
   });
   it("shows nothing inline when comparing revisions", () => {
     expect(viewThreads(all, { kind: "pair", base: 1 }, 2, "c3", "d2")).toEqual([]);
+  });
+});
+
+describe("unresolved", () => {
+  it("counts open, undeleted threads, overall and per file", () => {
+    const open = root("a", { anchor: anchor(2, "revision", "b0", "d2") });
+    const done = root("b", { anchor: anchor(2, "revision", "b0", "d2"), resolved: true });
+    const gone = root("c", { deleted: true });
+    const general = root("d", {});
+    const moved = root("e", { anchor: anchor(1, "commit", "c1", "c2"), ported: { path: "b.c", side: "new", start_line: 1, end_line: 1, file_level: false, dropped: false } });
+    const all = [open, done, gone, general, moved];
+    expect(unresolved(all)).toBe(3);
+    expect([...unresolvedByFile(all)]).toEqual([["a.c", 1], ["b.c", 1]]);
   });
 });
