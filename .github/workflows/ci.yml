@@ -29,10 +29,18 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
       - name: Build
+        # Installs, tests and builds the web interface, then compiles with it.
         run: make build
+      - name: Web dependencies audit
+        run: make web-audit
       - name: Test
         run: make test
+      - name: Build without Node still works
+        run: make build-go
       - name: Keychain installation
         # Runs the real security commands against a temporary keychain;
         # skipped elsewhere so go test never creates a keychain on a
@@ -63,6 +71,9 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
       - name: Build
         run: make build
       - name: Test

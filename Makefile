@@ -8,11 +8,19 @@ GOLANGCI_LINT ?= golangci-lint
 GOLANGCI_LINT_VERSION := 2.15.0
 BETTERLEAKS ?= betterleaks
 QUERIES_DIR := internal/store/queries
+WEB_DIR := web
+WEB_DIST := internal/webui/dist/index.html
+# Go tests and builds embed the real interface once `make web` has built it
+# (docs/specs/web.md 3); without it they use the committed placeholder.
+GOTAGS := $(shell test -f $(WEB_DIST) && echo webui)
 
-.PHONY: help build test lint vuln secrets generate generate-check check
+.PHONY: help build build-go web web-audit test lint vuln secrets generate generate-check check release
 
 help:
-	@echo "make build           compile every package"
+	@echo "make build           build the web interface, then compile with it embedded"
+	@echo "make build-go        compile without Node (embeds the placeholder page)"
+	@echo "make web             install, test and build the web interface"
+	@echo "make release         build bin/garret; fails unless the web interface is embedded"
 	@echo "make test            run tests with the race detector"
 	@echo "make lint            run golangci-lint (v$(GOLANGCI_LINT_VERSION) in CI)"
 	@echo "make vuln            run govulncheck"
@@ -21,11 +29,25 @@ help:
 	@echo "make generate-check  fail if generated code is out of date"
 	@echo "make check           everything above, as CI does, plus secrets"
 
-build:
+build: web
+	$(GO) build -tags webui ./...
+
+build-go:
 	$(GO) build ./...
 
+web:
+	cd $(WEB_DIR) && npm ci && npm test && npm run build
+
+web-audit:
+	cd $(WEB_DIR) && npm audit --audit-level=high
+
 test:
-	$(GO) test -race -count=1 ./...
+	$(GO) test -race -count=1 -tags "$(GOTAGS)" ./...
+
+release: web
+	$(GO) build -tags webui -trimpath -o bin/garret ./cmd/garret
+	@./bin/garret version | grep -q "web: built" || { echo "release refused: bin/garret does not embed the web interface"; exit 1; }
+	@./bin/garret version
 
 lint:
 	@command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { echo "golangci-lint not found; install v$(GOLANGCI_LINT_VERSION) from https://golangci-lint.run"; exit 1; }
@@ -45,4 +67,4 @@ generate:
 generate-check: generate
 	@git diff --exit-code -- internal/store/sqlcgen || { echo "generated code is out of date; run make generate and commit"; exit 1; }
 
-check: build test lint vuln generate-check secrets
+check: build test lint vuln generate-check web-audit secrets
