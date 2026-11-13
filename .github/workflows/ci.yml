@@ -41,6 +41,11 @@ jobs:
         run: make test
       - name: Build without Node still works
         run: make build-go
+      - name: Browsers for the end-to-end suite
+        # Chrome comes with the runner; WebKit is Playwright's build.
+        run: cd web && npx playwright install webkit
+      - name: End to end
+        run: make e2e
       - name: Keychain installation
         # Runs the real security commands against a temporary keychain;
         # skipped elsewhere so go test never creates a keychain on a
@@ -78,3 +83,7 @@ jobs:
         run: make build
       - name: Test
         run: make test
+      - name: Browsers for the end-to-end suite
+        run: cd web && npx playwright install --with-deps webkit
+      - name: End to end
+        run: make e2e
