@@ -77,3 +77,9 @@ export function formatRelative(locale: Locale, date: Date, now: Date): string {
   }
   return format.format(seconds, "second");
 }
+
+/** formatDate writes date and time in the locale's medium date and short time. */
+export function formatDate(locale: Locale, date: Date): string {
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date);
+}

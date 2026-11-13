@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { Link } from "react-router";
+import { eraseHref } from "../admin/model";
 import { useLocale, useT } from "../app/context";
-import type { User } from "../app/session";
+import { useMe, type User } from "../app/session";
 import { formatRelative } from "../i18n/i18n";
 import { Button } from "../ui/Button";
 import { Markdown } from "../ui/Markdown";
@@ -55,12 +57,18 @@ export function ThreadView({ thread, users, now, onReply, onResolve }: Props) {
 function CommentView({ comment, users, now }: { comment: Comment; users: Map<string, User> | undefined; now: Date }) {
   const t = useT();
   const locale = useLocale();
+  const me = useMe();
   return (
     <div className="comment">
       <div className="comment__meta">
         <span className="comment__author">{name(users, comment.author_id)}</span>
         <time dateTime={comment.created_at}>{formatRelative(locale, new Date(comment.created_at), now)}</time>
         {comment.version > 1 ? <span className="muted">{t("comment.edited")}</span> : null}
+        {me.data?.role === "admin" && !comment.deleted ? (
+          <Link className="comment__erase" to={eraseHref("comment", comment.id)}>
+            {t("admin.eraseLink")}
+          </Link>
+        ) : null}
       </div>
       {comment.deleted ? <p className="muted">{t("comment.deleted")}</p> : <Markdown source={comment.body} />}
     </div>

@@ -649,3 +649,8 @@
     border-bottom: 1px solid var(--border);
   }
 }
+
+.comment__erase {
+  margin-left: auto;
+  color: var(--fg-muted);
+}

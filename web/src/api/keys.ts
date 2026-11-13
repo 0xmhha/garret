@@ -5,6 +5,11 @@
  */
 export const keys = {
   me: () => ["me"] as const,
+  tokens: () => ["me", "tokens"] as const,
+  certificates: () => ["me", "certificates"] as const,
+  invitations: () => ["admin", "invitations"] as const,
+  adminUsers: () => ["admin", "users"] as const,
+  users: () => ["users"] as const,
   inbox: () => ["inbox"] as const,
   projects: () => ["projects"] as const,
   project: (project: string) => ["project", project] as const,

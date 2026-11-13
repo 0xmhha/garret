@@ -8,6 +8,8 @@ import { DiscussionPage } from "../project/DiscussionPage";
 import { ProjectPage } from "../project/ProjectPage";
 import { ReviewPage } from "../review/ReviewPage";
 import { Inbox } from "../routes/Inbox";
+import { Account } from "../account/Account";
+import { Admin } from "../admin/Admin";
 import { Shell } from "../routes/Shell";
 import { SignIn } from "../routes/SignIn";
 import { EnvProvider } from "./context";
@@ -21,6 +23,8 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <Projects /> },
       { path: "inbox", element: <Inbox /> },
+      { path: "account", element: <Account /> },
+      { path: "admin", element: <Admin /> },
       { path: "p/:project", element: <ProjectPage /> },
       { path: "p/:project/d/:id", element: <DiscussionPage /> },
       { path: "p/:project/r/:number/*", element: <ReviewPage /> },
@@ -29,10 +33,18 @@ export const routes: RouteObject[] = [
   },
 ];
 
+interface AppProps {
+  api: Client;
+  locale: Locale;
+  onLocaleChange?: (locale: Locale) => void;
+  queryClient: QueryClient;
+  router: ReturnType<typeof createBrowserRouter>;
+}
+
 /** App wires the client, the translator, the query cache and the router. */
-export function App({ api, locale, queryClient, router }: { api: Client; locale: Locale; queryClient: QueryClient; router: ReturnType<typeof createBrowserRouter> }) {
+export function App({ api, locale, onLocaleChange, queryClient, router }: AppProps) {
   return (
-    <EnvProvider api={api} locale={locale}>
+    <EnvProvider api={api} locale={locale} onLocaleChange={onLocaleChange}>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
       </QueryClientProvider>
