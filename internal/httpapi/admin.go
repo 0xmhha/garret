@@ -117,11 +117,15 @@ func (a *API) listInbox(w http.ResponseWriter, r *http.Request) error {
 		SubjectID   string            `json:"subject_id"`
 		CreatedAt   time.Time         `json:"created_at"`
 		ReadAt      *time.Time        `json:"read_at"`
+		Project     string            `json:"project"`
+		Review      int64             `json:"review,omitempty"`
+		Discussion  string            `json:"discussion,omitempty"`
 	}
 	out := make([]noteJSON, len(list))
 	next := ""
 	for i, n := range list {
 		out[i] = noteJSON{ID: n.ID, ProjectID: n.ProjectID, Kind: n.Kind, SubjectKind: n.SubjectKind, SubjectID: n.SubjectID,
+			Project: n.Project, Review: n.Review, Discussion: n.Discussion,
 			CreatedAt: n.CreatedAt, ReadAt: n.ReadAt}
 		next = n.ID
 	}

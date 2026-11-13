@@ -4,7 +4,10 @@ import type { Client } from "../api/client";
 import type { Locale } from "../i18n/i18n";
 import { NotFound } from "../routes/NotFound";
 import { Projects } from "../routes/Projects";
+import { DiscussionPage } from "../project/DiscussionPage";
+import { ProjectPage } from "../project/ProjectPage";
 import { ReviewPage } from "../review/ReviewPage";
+import { Inbox } from "../routes/Inbox";
 import { Shell } from "../routes/Shell";
 import { SignIn } from "../routes/SignIn";
 import { EnvProvider } from "./context";
@@ -17,6 +20,9 @@ export const routes: RouteObject[] = [
     element: <Shell />,
     children: [
       { index: true, element: <Projects /> },
+      { path: "inbox", element: <Inbox /> },
+      { path: "p/:project", element: <ProjectPage /> },
+      { path: "p/:project/d/:id", element: <DiscussionPage /> },
       { path: "p/:project/r/:number/*", element: <ReviewPage /> },
       { path: "*", element: <NotFound /> },
     ],

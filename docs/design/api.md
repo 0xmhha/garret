@@ -98,7 +98,7 @@ stated otherwise.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/inbox` | Notifications, newest first. Query `unread=true` |
+| `GET` | `/inbox` | Notifications, newest first. Query `unread=true`. Each carries where it points: `project` (name) and `review` (number) or `discussion` (ID), resolved from its subject |
 | `POST` | `/inbox/read` | Mark notifications as read |
 
 ## WebSocket channels
