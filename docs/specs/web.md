@@ -93,7 +93,13 @@ brief in `.impeccable/surfaces/`).
 1. Review: header, tabs Conversation, Revisions and Files; diff views of
    architecture.md (revision, commit, range, revision pair); file tree with
    reviewed state; inline threads with porting; verdicts and state;
-   collaborative description.
+   collaborative description. The Files tab picks the revision and what to
+   show in it (all changes, one commit, a run of commits, or the changes
+   since an earlier revision), kept in the URL. A view shows only the
+   threads written on exactly its commits; the whole-revision view also
+   shows unresolved threads ported from earlier revisions. Comments are
+   written on the first three views, not on a comparison of revisions,
+   whose line numbers no anchor can hold.
 2. Sign-in, and the shell: projects list, navigation, inbox.
 3. Project: branches, reviews list with filters, discussions.
 4. Discussion: collaborative body, comments, history.

@@ -239,5 +239,15 @@
   "admin.erasePrompt": "Erase it for good? This cannot be undone.",
   "admin.erased": "Erased.",
   "admin.eraseLink": "Erase…",
-  "admin.eraseHistoryLink": "Erase history…"
+  "admin.eraseHistoryLink": "Erase history…",
+  "files.show": "Show",
+  "files.allChanges": "All changes",
+  "files.commits": "Commits",
+  "files.commitOption": "Commit {n} of {total}: {subject}",
+  "files.range": "A range of commits…",
+  "files.rangeFirst": "From",
+  "files.rangeLast": "through",
+  "files.compare": "Compare",
+  "files.compareWith": "Changes since revision {number}",
+  "files.pairNoComments": "Comments are written on a revision, a commit or a range of commits. Switch to one of those to comment."
 }

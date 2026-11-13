@@ -18,9 +18,16 @@ export function Revisions({ revisions, users, now }: { revisions: Revision[]; us
             <span className="muted">
               {t("revisions.pushed", { name: name(users, r.pushed_by) })} · <time dateTime={r.pushed_at}>{formatRelative(locale, new Date(r.pushed_at), now)}</time>
             </span>
-            <Link className="revisions__open" to={`../files?rev=${r.number}`} relative="path">
-              {t("revisions.openFiles")}
-            </Link>
+            <span className="revisions__links">
+              {r.number > 1 ? (
+                <Link to={`../files?rev=${r.number}&view=pair&base=${r.number - 1}`} relative="path">
+                  {t("files.compareWith", { number: r.number - 1 })}
+                </Link>
+              ) : null}
+              <Link to={`../files?rev=${r.number}`} relative="path">
+                {t("revisions.openFiles")}
+              </Link>
+            </span>
           </div>
           <ul className="commits">
             {r.commits.map((c) => (

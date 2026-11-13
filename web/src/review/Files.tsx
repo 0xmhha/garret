@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useT } from "../app/context";
 import type { MessageKey } from "../i18n/i18n";
@@ -9,15 +9,27 @@ import { Composer } from "./Composer";
 import { fileThreads, lineKey, reviewedStore, type DiffFile, type DiffLine, type Revision, type Thread } from "./model";
 import { useDiff, useFileDiff } from "./queries";
 import { ThreadView } from "./Thread";
+import { anchorView, viewKey, viewQuery, viewThreads, type DiffView } from "./views";
+
+/** LineAnchor is where a new code comment goes: the view's commits and one line. */
+export interface LineAnchor {
+  view: "revision" | "commit" | "range";
+  from: string;
+  to: string;
+  path: string;
+  side: string;
+  line: number;
+}
 
 interface Props {
   project: string;
   number: number;
   revision: Revision;
+  view: DiffView;
   threads: Thread[];
   users: Map<string, User> | undefined;
   now: Date;
-  onLineComment: (anchor: { path: string; side: string; line: number }, body: string) => Promise<unknown>;
+  onLineComment: (anchor: LineAnchor, body: string) => Promise<unknown>;
   onReply: (rootId: string, body: string) => Promise<unknown>;
   onResolve: (rootId: string, resolved: boolean) => void;
 }
@@ -26,14 +38,20 @@ const pathOf = (f: DiffFile) => f.new_path || f.old_path;
 
 /** Files shows the revision's changed files and the selected file's diff. */
 export function Files(props: Props) {
-  const { project, number, revision } = props;
+  const { project, number, revision, view } = props;
   const t = useT();
   const [params, setParams] = useSearchParams();
-  const diff = useDiff(project, number, revision.number);
+  const diff = useDiff(project, number, viewQuery(view, revision));
   const files = diff.data?.files ?? [];
   const selected = files.find((f) => pathOf(f) === params.get("file")) ?? files[0];
-  const store = useMemo(() => reviewedStore(window.localStorage, project, number, revision.number), [project, number, revision.number]);
+  const from = diff.data?.from ?? "";
+  const to = diff.data?.to ?? "";
+  const scope = viewKey(view, revision.number, from, to);
+  const store = useMemo(() => reviewedStore(window.localStorage, project, number, scope), [project, number, scope]);
   const [reviewed, setReviewed] = useState(() => store.all());
+  // A new view has its own reviewed marks.
+  useEffect(() => setReviewed(store.all()), [store]);
+  const threads = useMemo(() => viewThreads(props.threads, view, revision.number, from, to), [props.threads, view, revision.number, from, to]);
 
   const select = (f: DiffFile) => {
     const next = new URLSearchParams(params);
@@ -86,8 +104,9 @@ export function Files(props: Props) {
       <section className="files__diff" aria-label={selected ? pathOf(selected) : t("files.none")}>
         {diff.isPending ? <p className="muted pad">{t("app.loading")}</p> : null}
         {diff.data?.bases_differ ? <p className="notice">{t("files.basesDiffer")}</p> : null}
-        {selected ? (
-          <FileDiff {...props} file={selected} reviewed={reviewed.has(pathOf(selected))} onToggleReviewed={() => toggleReviewed(pathOf(selected))} />
+        {view.kind === "pair" ? <p className="notice notice--info">{t("files.pairNoComments")}</p> : null}
+        {selected && diff.data ? (
+          <FileDiff {...props} threads={threads} from={from} to={to} file={selected} reviewed={reviewed.has(pathOf(selected))} onToggleReviewed={() => toggleReviewed(pathOf(selected))} />
         ) : diff.isSuccess ? (
           <p className="muted pad">{t("files.none")}</p>
         ) : null}
@@ -102,15 +121,18 @@ function statusKey(status: string): string {
 }
 
 interface FileProps extends Props {
+  from: string;
+  to: string;
   file: DiffFile;
   reviewed: boolean;
   onToggleReviewed: () => void;
 }
 
-function FileDiff({ project, number, revision, file, threads, users, now, reviewed, onToggleReviewed, onLineComment, onReply, onResolve }: FileProps) {
+function FileDiff({ project, number, view, from, to, file, threads, users, now, reviewed, onToggleReviewed, onLineComment, onReply, onResolve }: FileProps) {
   const t = useT();
   const path = pathOf(file);
-  const q = useFileDiff(project, number, revision.base_sha, revision.head_sha, file.status.startsWith("A") ? "" : file.old_path, file.status.startsWith("D") ? "" : file.new_path);
+  const kind = anchorView(view);
+  const q = useFileDiff(project, number, from, to, file.status.startsWith("A") ? "" : file.old_path, file.status.startsWith("D") ? "" : file.new_path);
   const placed = useMemo(() => fileThreads(threads, path), [threads, path]);
   const [commenting, setCommenting] = useState<string | null>(null);
 
@@ -152,20 +174,20 @@ function FileDiff({ project, number, revision, file, threads, users, now, review
                   const here = placed.byLine.get(key) ?? [];
                   return (
                     <Fragment key={li}>
-                      <DiffRow line={l} onComment={() => setCommenting(key)} commentLabel={t("files.commentOn", { line: no })} />
+                      <DiffRow line={l} onComment={kind ? () => setCommenting(key) : null} commentLabel={t("files.commentOn", { line: no })} />
                       {here.length > 0 || commenting === key ? (
                         <tr className="diff__threads">
                           <td colSpan={4}>
                             {here.map((th) => (
                               <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} />
                             ))}
-                            {commenting === key ? (
+                            {commenting === key && kind ? (
                               <Composer
                                 label={t("files.commentOn", { line: no })}
                                 submitLabel={t("conversation.comment")}
                                 onCancel={() => setCommenting(null)}
                                 onSubmit={async (body) => {
-                                  await onLineComment({ path, side, line: no }, body);
+                                  await onLineComment({ view: kind, from, to, path, side, line: no }, body);
                                   setCommenting(null);
                                 }}
                               />
@@ -193,16 +215,18 @@ function FileDiff({ project, number, revision, file, threads, users, now, review
   );
 }
 
-function DiffRow({ line, onComment, commentLabel }: { line: DiffLine; onComment: () => void; commentLabel: string }) {
+function DiffRow({ line, onComment, commentLabel }: { line: DiffLine; onComment: (() => void) | null; commentLabel: string }) {
   const sign = line.kind === "added" ? "+" : line.kind === "deleted" ? "−" : " ";
   return (
     <tr className={`diff__line diff__line--${line.kind}`}>
       <td className="diff__no">{line.old ?? ""}</td>
       <td className="diff__no">{line.new ?? ""}</td>
       <td className="diff__gutter">
-        <button type="button" className="diff__add-comment" aria-label={commentLabel} onClick={onComment}>
-          <IconComment />
-        </button>
+        {onComment ? (
+          <button type="button" className="diff__add-comment" aria-label={commentLabel} onClick={onComment}>
+            <IconComment />
+          </button>
+        ) : null}
       </td>
       <td className="diff__code">
         <span className="diff__sign" aria-hidden="true">{sign}</span>

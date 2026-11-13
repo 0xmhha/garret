@@ -322,7 +322,9 @@
   font-size: var(--text-lg);
 }
 
-.revisions__open {
+.revisions__links {
+  display: flex;
+  gap: var(--space-4);
   margin-left: auto;
   font-size: var(--text-sm);
 }
@@ -356,6 +358,7 @@
 
 .revpicker {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3) var(--space-6);
@@ -363,7 +366,23 @@
   font-size: var(--text-sm);
 }
 
+.revpicker label + select + label,
+.revpicker__range {
+  margin-left: var(--space-3);
+}
+
+.revpicker__range {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.revpicker__range select {
+  max-width: 300px;
+}
+
 .revpicker select {
+  max-width: 420px;
   min-height: 28px;
   padding: 0 var(--space-2);
   border: 1px solid var(--border-strong);
@@ -491,6 +510,11 @@
   background: var(--warn-bg);
   color: var(--warn-fg);
   font-size: var(--text-sm);
+}
+
+.notice--info {
+  background: var(--bg-subtle);
+  color: var(--fg-muted);
 }
 
 .filediff {

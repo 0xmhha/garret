@@ -25,12 +25,12 @@ export function useUsers() {
   });
 }
 
-export function useDiff(project: string, n: number, rev: number) {
+/** useDiff loads the changed files of one view; query comes from viewQuery. */
+export function useDiff(project: string, n: number, query: string) {
   const api = useApi();
   return useQuery({
-    queryKey: [...keys.review(project, n), "diff", rev],
-    queryFn: ({ signal }) => api.request<DiffSummary>("GET", `${base(project, n)}/diff?rev=${rev}`, undefined, { signal }),
-    enabled: rev > 0,
+    queryKey: [...keys.review(project, n), "diff", query],
+    queryFn: ({ signal }) => api.request<DiffSummary>("GET", `${base(project, n)}/diff?${query}`, undefined, { signal }),
   });
 }
 
