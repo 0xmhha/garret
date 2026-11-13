@@ -1,0 +1,53 @@
+.shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: 48px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.topbar__brand {
+  color: var(--fg);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.topbar__brand:hover {
+  text-decoration: none;
+}
+
+.topbar__nav {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.topbar__nav a {
+  color: var(--fg-muted);
+  font-weight: 500;
+}
+
+.topbar__nav a[aria-current="page"] {
+  color: var(--fg);
+}
+
+.topbar__account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+
+.shell__body {
+  min-width: 0;
+}

@@ -1,0 +1,77 @@
+/* garret design tokens: the category standard, played straight (PRODUCT.md).
+   One blue for links, focus and the primary action; green, red and amber
+   only for additions, removals and unresolved work. */
+:root {
+  color-scheme: light dark;
+
+  --bg: #ffffff;
+  --bg-subtle: #f5f7f9;
+  --bg-muted: #eef1f4;
+  --border: #d5dbe1;
+  --border-strong: #b8c1ca;
+  --fg: #1b2027;
+  --fg-muted: #586370;
+  --accent: #1f5fbf;
+  --accent-hover: #1a51a3;
+  --on-accent: #ffffff;
+  --accent-subtle: #e8f0fc;
+  --add-fg: #17703a;
+  --add-bg: #e3f5e8;
+  --add-bg-strong: #c4ebcf;
+  --del-fg: #b42121;
+  --del-bg: #fde8e8;
+  --del-bg-strong: #f8c9c9;
+  --warn-fg: #7a4f00;
+  --warn-bg: #fdf3d6;
+  --focus: #1f5fbf;
+  --selection: #c8dbf7;
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-code: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --leading: 1.5;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 4px;
+  --radius: 6px;
+  --shadow-menu: 0 8px 24px rgb(15 23 32 / 0.14), 0 1px 3px rgb(15 23 32 / 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151a;
+    --bg-subtle: #171c22;
+    --bg-muted: #1e242b;
+    --border: #2e3640;
+    --border-strong: #45505c;
+    --fg: #e6eaef;
+    --fg-muted: #9aa5b1;
+    --accent: #6aa5ff;
+    --accent-hover: #8ab8ff;
+    --on-accent: #0b1220;
+    --accent-subtle: #17263d;
+    --add-fg: #5fd17f;
+    --add-bg: #13301e;
+    --add-bg-strong: #1d4a2d;
+    --del-fg: #ff8a82;
+    --del-bg: #3a1618;
+    --del-bg-strong: #5a2124;
+    --warn-fg: #e8bc54;
+    --warn-bg: #33280f;
+    --focus: #6aa5ff;
+    --selection: #23406b;
+    --shadow-menu: 0 8px 24px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3);
+  }
+}
