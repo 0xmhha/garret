@@ -4,11 +4,11 @@
 // environment DOMPurify's own tests use, and again in real browsers by the
 // Playwright suite.
 import { describe, expect, it } from "vitest";
-import { renderMarkdown } from "./markdown";
+import { renderMarkdown, type SafeHTML } from "./markdown";
 
-function dom(html: string): HTMLElement {
+function dom(html: SafeHTML): HTMLElement {
   const div = document.createElement("div");
-  div.innerHTML = html;
+  div.innerHTML = String(html);
   return div;
 }
 
@@ -54,7 +54,7 @@ describe("renderMarkdown removes what could run or leak", () => {
     ["svg", "<svg><script>alert(1)</script></svg>"],
     ["form", '<form action="https://evil.example"><input name=a></form>'],
   ])("%s", (_name, input) => {
-    const html = renderMarkdown(input);
+    const html = String(renderMarkdown(input));
     const d = dom(html);
     expect(d.querySelector("script, iframe, svg, form, input, [onerror], [style]")).toBeNull();
     expect(html).not.toMatch(/<(script|iframe|svg|form)/i);
@@ -93,7 +93,7 @@ describe("renderMarkdown removes what could run or leak", () => {
 describe("renderMarkdown when sanitizing is impossible", () => {
   it("returns escaped text instead of unsanitized HTML", async () => {
     const { renderWith } = await import("./markdown");
-    const out = renderWith({ isSupported: false, sanitize: (s: string) => s }, "<script>alert(1)</script> **x**");
+    const out = String(renderWith({ isSupported: false, sanitize: (s: string) => s }, "<script>alert(1)</script> **x**"));
     expect(out).not.toContain("<script>");
     expect(out).toContain("&lt;script&gt;");
   });

@@ -169,6 +169,9 @@ func TestLoginMeLogout(t *testing.T) {
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"username":"root"`) {
 		t.Fatalf("me %d %s", w.Code, w.Body)
 	}
+	if csp := w.Header().Get("Content-Security-Policy"); !strings.Contains(csp, "require-trusted-types-for 'script'") || !strings.Contains(csp, "trusted-types garret-markdown") {
+		t.Errorf("CSP without Trusted Types: %q", csp)
+	}
 	for _, h := range []string{"Content-Security-Policy", "X-Content-Type-Options", "Referrer-Policy", "X-Frame-Options"} {
 		if w.Header().Get(h) == "" {
 			t.Errorf("missing %s", h)
