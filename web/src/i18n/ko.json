@@ -272,7 +272,7 @@
   "admin.accountCreated": "“{name}” 계정을 만들었습니다. 이 임시 비밀번호를 다른 경로로 전하세요. 다시 보여 주지 않습니다.",
   "admin.tempPassword": "임시 비밀번호",
   "account.password": "비밀번호",
-  "account.passwordLede": "바꾸면 이 기기를 포함한 모든 곳에서 로그아웃됩니다.",
+  "account.passwordLede": "바꾸면 이 기기를 포함한 모든 곳에서 로그아웃되고, 액세스 토큰도 모두 폐기됩니다.",
   "account.currentPassword": "현재 비밀번호",
   "account.newPassword": "새 비밀번호",
   "account.newPasswordHint": "15자 이상. 서로 관련 없는 단어 몇 개를 이으면 좋습니다.",

@@ -276,7 +276,7 @@
   "admin.accountCreated": "Account “{name}” is ready. Give the member this temporary password through another channel; it is not shown again.",
   "admin.tempPassword": "Temporary password",
   "account.password": "Password",
-  "account.passwordLede": "Changing it signs you out everywhere, here included.",
+  "account.passwordLede": "Changing it signs you out everywhere, here included, and revokes your access tokens.",
   "account.currentPassword": "Current password",
   "account.newPassword": "New password",
   "account.newPasswordHint": "At least 15 characters. A few unrelated words work well.",

@@ -28,7 +28,7 @@ stated otherwise.
 | `POST` | `/auth/login` | Start a session |
 | `POST` | `/auth/logout` | End the session |
 | `GET` | `/me` | Current user |
-| `POST` | `/me/password` | Change one's password: `{current, new}`. Ends every session of the user, this one included, so the next step is signing in again |
+| `POST` | `/me/password` | Change one's password: `{current, new}`. Ends every session of the user, this one included, so the next step is signing in again, and revokes the user's access tokens |
 | `GET` `POST` | `/me/tokens` | List or create personal access tokens. The token value is shown once |
 | `DELETE` | `/me/tokens/{id}` | Revoke a token |
 

@@ -91,8 +91,20 @@ func TestChangePassword(t *testing.T) {
 			}
 		})
 	}
+	_, secret, err := e.svc.CreateToken(ctx, bob, "git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokenLogin := TokenInput{Username: "bob", Token: secret, Remote: addr}
+	if _, err := e.svc.AuthenticateToken(ctx, tokenLogin); err != nil {
+		t.Fatalf("token before the change: %v", err)
+	}
 	if err := e.svc.ChangePassword(ctx, bob, goodPassword, next); err != nil {
 		t.Fatal(err)
+	}
+	// Someone who knew the old password could have made a token with it.
+	if _, err := e.svc.AuthenticateToken(ctx, tokenLogin); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("token made before the change still works: %v", err)
 	}
 	var sessions int
 	if err := e.db.ReadTx(ctx, func(tx *sql.Tx) error {

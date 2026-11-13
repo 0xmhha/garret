@@ -76,7 +76,8 @@ func (s *Service) CreateUser(ctx context.Context, actor User, in NewUser) (User,
 }
 
 // ChangePassword replaces actor's password after checking the current one,
-// and ends every session of actor, this one included. A wrong current
+// ends every session of actor, this one included, and revokes actor's
+// access tokens: whoever knew the old password could have made one. A wrong current
 // password counts like a failed login and returns ErrInvalid, not
 // ErrInvalidCredentials: the session is valid, and the interface must not
 // read the answer as being signed out.
@@ -115,6 +116,10 @@ func (s *Service) ChangePassword(ctx context.Context, actor User, current, next 
 			return err
 		}
 		if err := q.DeleteUserSessions(ctx, actor.ID); err != nil {
+			return err
+		}
+		if err := q.RevokeUserAccessTokens(ctx, sqlcgen.RevokeUserAccessTokensParams{
+			RevokedAt: sql.NullInt64{Int64: s.clock.Now().UnixMilli(), Valid: true}, UserID: actor.ID}); err != nil {
 			return err
 		}
 		return s.audit.Record(ctx, tx, audit.Event{ActorID: actor.ID, Action: "user.password_changed", SubjectKind: "user", SubjectID: actor.ID})

@@ -130,6 +130,8 @@ another channel, then change it under Account. The temporary password has
 the strength of an invitation code; unlike an invitation it does not expire,
 so the administrator disables an account that is never claimed. The
 administrator knows the temporary password until the member changes it.
+Changing a password ends every session and revokes every access token of
+the account, so nothing made with the old password outlives it.
 
 ### Other transport settings
 
