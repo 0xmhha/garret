@@ -229,3 +229,15 @@ code.table__sub {
   border: 1px solid var(--del-fg);
   border-radius: var(--radius);
 }
+
+/* A field with its action button on the same line, aligned to the input. */
+.source-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2);
+}
+
+.source-field > .btn {
+  margin-top: calc(var(--text-sm) * 1.5 + var(--space-1));
+}

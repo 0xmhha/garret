@@ -7,10 +7,11 @@ package sqlcgen
 
 import (
 	"context"
+	"database/sql"
 )
 
 const getProjectByID = `-- name: GetProjectByID :one
-SELECT id, name, description, created_by, created_at, next_review_number FROM projects WHERE id = ?
+SELECT id, name, description, created_by, created_at, next_review_number, source_path FROM projects WHERE id = ?
 `
 
 func (q *Queries) GetProjectByID(ctx context.Context, id string) (Project, error) {
@@ -23,12 +24,13 @@ func (q *Queries) GetProjectByID(ctx context.Context, id string) (Project, error
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.NextReviewNumber,
+		&i.SourcePath,
 	)
 	return i, err
 }
 
 const getProjectByName = `-- name: GetProjectByName :one
-SELECT id, name, description, created_by, created_at, next_review_number FROM projects WHERE name = ?
+SELECT id, name, description, created_by, created_at, next_review_number, source_path FROM projects WHERE name = ?
 `
 
 func (q *Queries) GetProjectByName(ctx context.Context, name string) (Project, error) {
@@ -41,12 +43,13 @@ func (q *Queries) GetProjectByName(ctx context.Context, name string) (Project, e
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.NextReviewNumber,
+		&i.SourcePath,
 	)
 	return i, err
 }
 
 const insertProject = `-- name: InsertProject :exec
-INSERT INTO projects (id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?)
+INSERT INTO projects (id, name, description, created_by, created_at, source_path) VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type InsertProjectParams struct {
@@ -55,6 +58,7 @@ type InsertProjectParams struct {
 	Description string
 	CreatedBy   string
 	CreatedAt   int64
+	SourcePath  sql.NullString
 }
 
 func (q *Queries) InsertProject(ctx context.Context, arg InsertProjectParams) error {
@@ -64,6 +68,7 @@ func (q *Queries) InsertProject(ctx context.Context, arg InsertProjectParams) er
 		arg.Description,
 		arg.CreatedBy,
 		arg.CreatedAt,
+		arg.SourcePath,
 	)
 	return err
 }
@@ -96,7 +101,7 @@ func (q *Queries) ListProjectNames(ctx context.Context) ([]string, error) {
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, name, description, created_by, created_at, next_review_number FROM projects ORDER BY name
+SELECT id, name, description, created_by, created_at, next_review_number, source_path FROM projects ORDER BY name
 `
 
 func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
@@ -115,6 +120,7 @@ func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.NextReviewNumber,
+			&i.SourcePath,
 		); err != nil {
 			return nil, err
 		}

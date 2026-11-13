@@ -56,16 +56,23 @@ function Projects() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [source, setSource] = useState("");
+  const preview = useMutation({
+    mutationFn: (path: string) => api.request<{ path: string; branches: string[] }>("POST", "/api/v1/admin/repository-preview", { path }),
+  });
   const list = useQuery({
     queryKey: keys.projects(),
     queryFn: ({ signal }) => api.request<{ projects: Project[] }>("GET", "/api/v1/projects", undefined, { signal }),
     select: (r) => r.projects,
   });
   const create = useMutation({
-    mutationFn: () => api.request("POST", "/api/v1/projects", { name: name.trim(), description: description.trim() }),
+    mutationFn: () =>
+      api.request("POST", "/api/v1/projects", { name: name.trim(), description: description.trim(), ...(source.trim() ? { source_path: source.trim() } : {}) }),
     onSuccess: () => {
       setName("");
       setDescription("");
+      setSource("");
+      preview.reset();
       void qc.invalidateQueries({ queryKey: keys.projects() });
     },
   });
@@ -81,6 +88,32 @@ function Projects() {
       <Form className="stack-form" onSubmit={onSubmit}>
         <TextField label={t("admin.projectName")} value={name} onChange={setName} isRequired description={t("admin.projectNameHint")} />
         <TextField label={t("admin.projectDescription")} value={description} onChange={setDescription} />
+        <div className="source-field">
+          <TextField
+            label={t("admin.projectSource")}
+            value={source}
+            onChange={(v) => {
+              setSource(v);
+              preview.reset();
+            }}
+            description={t("admin.projectSourceHint")}
+            autoComplete="off"
+            spellCheck="false"
+          />
+          <Button isDisabled={!source.trim() || preview.isPending} onPress={() => preview.mutate(source.trim())}>
+            {t("admin.projectSourceCheck")}
+          </Button>
+        </div>
+        {preview.data ? (
+          <p className="muted" role="status">
+            {preview.data.branches.length > 0 ? t("admin.projectSourceBranches", { names: preview.data.branches.join(", ") }) : t("admin.projectSourceNone")}
+          </p>
+        ) : null}
+        {preview.error ? (
+          <p className="form-error" role="alert">
+            {errorMessage(preview.error, t)}
+          </p>
+        ) : null}
         <div>
           <Button type="submit" isDisabled={create.isPending || name.trim() === ""}>
             {t("admin.projectCreate")}

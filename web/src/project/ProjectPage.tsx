@@ -10,6 +10,8 @@ import { useUsers } from "../review/queries";
 import { name } from "../review/Thread";
 import { Button } from "../ui/Button";
 import { TextField } from "../ui/TextField";
+import { defaultTarget } from "./branches";
+import { CodeSource, useBranches } from "./CodeSource";
 import "../review/review.css";
 import "./project.css";
 
@@ -48,6 +50,7 @@ export function ProjectPage() {
   return (
     <main className="page project">
       <h1 className="page__title">{project}</h1>
+      <CodeSource project={project} />
       <div className="project__grid">
         <section aria-labelledby="reviews-title">
           <div className="project__head">
@@ -64,7 +67,7 @@ export function ProjectPage() {
             </Button>
           </div>
           {creating === "review" ? <NewReview project={project} onCancel={() => setCreating(null)} /> : null}
-          {reviews.data?.reviews.length === 0 ? <p className="muted">{t("project.noReviews")}</p> : null}
+          {reviews.data?.reviews.length === 0 ? <p className="muted">{state === "open" ? t("project.noOpenReviews") : t("project.noReviews")}</p> : null}
           <ul className="list">
             {(reviews.data?.reviews ?? []).map((r) => (
               <li key={r.id} className="list__item">
@@ -109,13 +112,9 @@ function NewReview({ project, onCancel }: { project: string; onCancel: () => voi
   const qc = useQueryClient();
   const navigate = useNavigate();
   const base = `/api/v1/projects/${encodeURIComponent(project)}`;
-  const branches = useQuery({
-    queryKey: [...keys.project(project), "branches"],
-    queryFn: ({ signal }) => api.request<{ branches: Record<string, string> }>("GET", `${base}/branches`, undefined, { signal }),
-    select: (r) => Object.keys(r.branches).sort(),
-  });
+  const branches = useBranches(project);
   const [source, setSource] = useState("");
-  const [target, setTarget] = useState("refs/heads/main");
+  const [chosenTarget, setTarget] = useState("");
   const [title, setTitle] = useState("");
   const open = useMutation({
     mutationFn: () => api.request<Review>("POST", `${base}/reviews`, { source_branch: source, target_branch: target, title }),
@@ -125,6 +124,8 @@ function NewReview({ project, onCancel }: { project: string; onCancel: () => voi
     },
   });
   const list = branches.data ?? [];
+  // Until someone picks one, the target is the usual base branch that exists.
+  const target = chosenTarget || defaultTarget(list);
   return (
     <div className="newform">
       <Form className="newform__body" aria-label={t("project.newReview")} onSubmit={(e) => { e.preventDefault(); open.mutate(); }}>
