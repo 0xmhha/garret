@@ -13,8 +13,12 @@ WEB_DIST := internal/webui/dist/index.html
 # Go tests and builds embed the real interface once `make web` has built it
 # (docs/specs/web.md 3); without it they use the committed placeholder.
 GOTAGS := $(shell test -f $(WEB_DIST) && echo webui)
+# Release archives (docs/specs/release.md). Archives are named by version and
+# overwritten on a rebuild; SHA256SUMS lists only this version's.
+VERSION ?= $(shell git describe --tags --always --dirty)
+DIST_PLATFORMS := darwin/arm64 darwin/amd64 linux/amd64 linux/arm64
 
-.PHONY: help build build-go web web-audit e2e test lint vuln secrets generate generate-check check release
+.PHONY: help build build-go web web-audit e2e dist test lint vuln secrets generate generate-check check release
 
 help:
 	@echo "make build           build the web interface, then compile with it embedded"
@@ -23,6 +27,7 @@ help:
 	@echo "make e2e             run the browser suite in Chrome and WebKit (after make build;"
 	@echo "                     WebKit once: cd web && npx playwright install webkit)"
 	@echo "make release         build bin/garret; fails unless the web interface is embedded"
+	@echo "make dist            release archives for every platform, with SHA256SUMS"
 	@echo "make test            run tests with the race detector"
 	@echo "make lint            run golangci-lint (v$(GOLANGCI_LINT_VERSION) in CI)"
 	@echo "make vuln            run govulncheck"
@@ -56,6 +61,22 @@ release: web
 	$(GO) build -tags webui -trimpath -o bin/garret ./cmd/garret
 	@./bin/garret version | grep -q "web: built" || { echo "release refused: bin/garret does not embed the web interface"; exit 1; }
 	@./bin/garret version
+
+# One archive per platform, each holding the binary with the real web
+# interface, LICENSE and README.md. Staging directories stay under dist/,
+# which Git ignores.
+dist: web
+	@test -f $(WEB_DIST) || { echo "dist refused: the web interface is not built"; exit 1; }
+	@for p in $(DIST_PLATFORMS); do \
+		os=$${p%/*}; arch=$${p#*/}; name=garret_$(VERSION)_$${os}_$${arch}; \
+		echo "building $$name"; \
+		mkdir -p dist/$$name || exit 1; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $(GO) build -tags webui -trimpath -o dist/$$name/garret ./cmd/garret || exit 1; \
+		cp LICENSE README.md dist/$$name/ || exit 1; \
+		tar -C dist -czf dist/$$name.tar.gz $$name || exit 1; \
+	done
+	cd dist && shasum -a 256 garret_$(VERSION)_*.tar.gz > SHA256SUMS
+	@cat dist/SHA256SUMS
 
 lint:
 	@command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { echo "golangci-lint not found; install v$(GOLANGCI_LINT_VERSION) from https://golangci-lint.run"; exit 1; }
