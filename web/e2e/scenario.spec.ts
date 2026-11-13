@@ -22,7 +22,7 @@ let carol: Page;
 
 test.beforeAll(async ({ browser }, info) => {
   s = state(info);
-  branch = `fix-${info.project.name}`;
+  branch = `fix-${info.project.name}-${info.repeatEachIndex}`;
   git(s, "push", "-q", "origin", `fix:refs/heads/${branch}`);
   review = await openReview(s, branch);
   const [b, c] = await Promise.all([contextFor(browser, s, "bob"), contextFor(browser, s, "carol")]);
@@ -59,13 +59,22 @@ test("step 4: carol comments on single commits; bob and carol write the descript
   const editors = [bob, carol].map((p) => p.locator(".cm-content"));
   for (const p of [bob, carol]) await expect(p.getByText("Live")).toBeVisible();
   await Promise.all([type(bob, bobText), type(carol, carolText)]);
-  // Both screens converge on the same text, holding both edits.
+  // Both screens converge on the same text, holding both edits. On a
+  // timeout the message shows both texts, to tell a lost edit from a slow one.
+  let last: string[] = [];
   await expect
-    .poll(async () => {
-      const [a = "", b = ""] = (await Promise.all(editors.map((e) => e.innerText()))).map(clean);
-      return a === b && a.includes(bobText) && a.includes(carolText);
-    })
-    .toBe(true);
+    .poll(
+      async () => {
+        last = (await Promise.all(editors.map((e) => e.innerText()))).map(clean);
+        const [a = "", b = ""] = last;
+        return a === b && a.includes(bobText) && a.includes(carolText);
+      },
+      { timeout: 20_000, message: "descriptions did not converge" },
+    )
+    .toBe(true)
+    .catch((err: unknown) => {
+      throw new Error(`${String(err)}\nbob:   ${JSON.stringify(last[0])}\ncarol: ${JSON.stringify(last[1])}`);
+    });
 });
 
 test("step 5: bob force-pushes; revision 2 appears and carol's comments move with the code", async () => {

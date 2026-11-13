@@ -108,8 +108,23 @@ formats and configuration may change without notice. Follow the
 
 ## Getting started
 
-Build and installation instructions will be added with the first working
-version. The intended workflow looks like this:
+Download the archive for your platform from
+[Releases](https://github.com/0xmhha/garret/releases), check it, and put
+`garret` on your `PATH`:
+
+```sh
+shasum -a 256 -c SHA256SUMS --ignore-missing
+gh attestation verify garret_<version>_darwin_arm64.tar.gz --repo 0xmhha/garret
+tar -xzf garret_<version>_darwin_arm64.tar.gz
+```
+
+The attestation shows that this repository's CI built the archive from the
+tagged commit ([release.md](docs/specs/release.md)). The macOS binaries are
+not notarized: download with `curl`, or allow the first run under System
+Settings › Privacy & Security.
+
+To build from source instead: `make release` (needs Go and Node), which
+writes `bin/garret`. Then:
 
 ```sh
 # On the host machine. The first start asks how members will join

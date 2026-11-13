@@ -33,7 +33,12 @@ export function Shell() {
         for (const key of invalidationsFor(ev)) void qc.invalidateQueries({ queryKey: key });
       },
       onEnded: () => navigate("/login"),
-      onStatus: setStatus,
+      onStatus: (s) => {
+        setStatus(s);
+        // Events sent while the socket was not open are lost; refetching
+        // what is on screen on every (re)connection covers that gap.
+        if (s === "live") void qc.invalidateQueries();
+      },
     });
   }, [signedIn, qc, navigate]);
 
