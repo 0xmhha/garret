@@ -8,9 +8,10 @@ import { Button } from "../ui/Button";
 import { IconBranch, IconChevronDown } from "../ui/icons";
 import { Conversation } from "./Conversation";
 import { Files } from "./Files";
-import { buildThreads, type Review } from "./model";
+import { buildThreads, type Review, type Revision } from "./model";
 import { reviewPath, useComments, useReview, useReviewAction, useUsers } from "./queries";
 import { Revisions } from "./Revisions";
+import { parseView, viewParams, type DiffView } from "./views";
 import { name } from "./Thread";
 import "./review.css";
 
@@ -35,6 +36,7 @@ export function ReviewPage() {
   const latest = revisions.at(-1);
   const wanted = Number(params.get("rev"));
   const revision = revisions.find((r) => r.number === wanted) ?? latest;
+  const view: DiffView = revision ? parseView(params, revision, revisions) : { kind: "revision" };
   const comments = useComments(project, number, revision?.number ?? 0);
   const threads = useMemo(() => buildThreads(comments.data ?? []), [comments.data]);
 
@@ -132,11 +134,12 @@ export function ReviewPage() {
           element={
             revision ? (
               <div className="files-wrap">
-                <RevisionPicker revisions={revisions.map((r) => r.number)} current={revision.number} />
+                <ViewPicker revisions={revisions} current={revision} view={view} />
                 <Files
                   project={project}
                   number={number}
                   revision={revision}
+                  view={view}
                   threads={threads}
                   users={users.data}
                   now={now}
@@ -145,7 +148,7 @@ export function ReviewPage() {
                   onLineComment={(a, body) =>
                     comment.mutateAsync({
                       body,
-                      anchor: { revision: revision.number, view: "revision", from: revision.base_sha, to: revision.head_sha, path: a.path, side: a.side, start_line: a.line, end_line: a.line },
+                      anchor: { revision: revision.number, view: a.view, from: a.from, to: a.to, path: a.path, side: a.side, start_line: a.line, end_line: a.line },
                     })
                   }
                 />
@@ -158,28 +161,97 @@ export function ReviewPage() {
   );
 }
 
-function RevisionPicker({ revisions, current }: { revisions: number[]; current: number }) {
+/**
+ * ViewPicker chooses the revision and what to compare inside it: all its
+ * changes, one commit, a run of commits, or an earlier revision's head.
+ */
+function ViewPicker({ revisions, current, view }: { revisions: Revision[]; current: Revision; view: DiffView }) {
   const t = useT();
   const [params, setParams] = useSearchParams();
+  const commits = current.commits;
+  const go = (next: DiffView) => setParams(viewParams(params, next));
+  const value =
+    view.kind === "commit" ? `commit:${view.sha}` : view.kind === "pair" ? `pair:${view.base}` : view.kind;
+  const choose = (v: string) => {
+    const [kind, arg = ""] = v.split(":");
+    if (kind === "commit") go({ kind: "commit", sha: arg });
+    else if (kind === "pair") go({ kind: "pair", base: Number(arg) });
+    else if (kind === "range" && commits.length > 0) go({ kind: "range", first: commits[0]!.sha, last: commits.at(-1)!.sha });
+    else go({ kind: "revision" });
+  };
+  const label = (i: number) => t("files.commitOption", { n: i + 1, total: commits.length, subject: commits[i]?.subject ?? "" });
+
   return (
     <div className="revpicker">
       <label htmlFor="revpicker">{t("files.revision")}</label>
       <select
         id="revpicker"
-        value={current}
+        value={current.number}
         onChange={(e) => {
-          const next = new URLSearchParams(params);
+          const next = viewParams(params, { kind: "revision" });
           next.set("rev", e.target.value);
-          next.delete("file");
           setParams(next);
         }}
       >
-        {[...revisions].reverse().map((n) => (
-          <option key={n} value={n}>
-            {t("revisions.title", { number: n })}
+        {[...revisions].reverse().map((r) => (
+          <option key={r.number} value={r.number}>
+            {t("revisions.title", { number: r.number })}
           </option>
         ))}
       </select>
+      <label htmlFor="viewpicker">{t("files.show")}</label>
+      <select id="viewpicker" value={value} onChange={(e) => choose(e.target.value)}>
+        <option value="revision">{t("files.allChanges")}</option>
+        {commits.length > 1 ? (
+          <optgroup label={t("files.commits")}>
+            {commits.map((c, i) => (
+              <option key={c.sha} value={`commit:${c.sha}`}>
+                {label(i)}
+              </option>
+            ))}
+            <option value="range">{t("files.range")}</option>
+          </optgroup>
+        ) : null}
+        {current.number > 1 ? (
+          <optgroup label={t("files.compare")}>
+            {revisions
+              .filter((r) => r.number < current.number)
+              .reverse()
+              .map((r) => (
+                <option key={r.number} value={`pair:${r.number}`}>
+                  {t("files.compareWith", { number: r.number })}
+                </option>
+              ))}
+          </optgroup>
+        ) : null}
+      </select>
+      {view.kind === "range" ? (
+        <span className="revpicker__range">
+          <label htmlFor="rangefirst">{t("files.rangeFirst")}</label>
+          <select id="rangefirst" value={view.first} onChange={(e) => go({ kind: "range", first: e.target.value, last: later(commits, e.target.value, view.last) })}>
+            {commits.map((c, i) => (
+              <option key={c.sha} value={c.sha}>
+                {label(i)}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="rangelast">{t("files.rangeLast")}</label>
+          <select id="rangelast" value={view.last} onChange={(e) => go({ kind: "range", first: view.first, last: e.target.value })}>
+            {commits.slice(commits.findIndex((c) => c.sha === view.first)).map((c) => (
+              <option key={c.sha} value={c.sha}>
+                {label(commits.indexOf(c))}
+              </option>
+            ))}
+          </select>
+        </span>
+      ) : null}
     </div>
   );
+}
+
+// later keeps last when it is still at or after first, otherwise moves it to first.
+function later(commits: Revision["commits"], first: string, last: string): string {
+  const i = commits.findIndex((c) => c.sha === first);
+  const j = commits.findIndex((c) => c.sha === last);
+  return j >= i ? last : first;
 }

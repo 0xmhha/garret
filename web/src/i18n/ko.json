@@ -236,5 +236,15 @@
   "admin.erasePrompt": "완전히 지울까요? 되돌릴 수 없습니다.",
   "admin.erased": "지웠습니다.",
   "admin.eraseLink": "영구 삭제…",
-  "admin.eraseHistoryLink": "기록 삭제…"
+  "admin.eraseHistoryLink": "기록 삭제…",
+  "files.show": "보기",
+  "files.allChanges": "모든 변경",
+  "files.commits": "커밋",
+  "files.commitOption": "커밋 {n}/{total}: {subject}",
+  "files.range": "커밋 범위…",
+  "files.rangeFirst": "처음",
+  "files.rangeLast": "끝",
+  "files.compare": "비교",
+  "files.compareWith": "리비전 {number} 이후 변경",
+  "files.pairNoComments": "댓글은 리비전, 커밋, 커밋 범위에 답니다. 댓글을 달려면 그중 하나로 바꾸세요."
 }

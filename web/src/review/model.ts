@@ -175,8 +175,8 @@ export const lineKey = (side: string, line: number) => `${side}:${line}`;
  * revision, in the browser only (a per-viewer convenience). A storage that
  * throws (private mode) just forgets.
  */
-export function reviewedStore(storage: Storage, project: string, review: number, revision: number) {
-  const key = `garret.reviewed.${project}.${review}.${revision}`;
+export function reviewedStore(storage: Storage, project: string, review: number, scope: number | string) {
+  const key = `garret.reviewed.${project}.${review}.${scope}`;
   const read = (): Set<string> => {
     try {
       const raw = storage.getItem(key);
