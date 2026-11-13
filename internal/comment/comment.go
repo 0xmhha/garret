@@ -393,8 +393,20 @@ func (s *Service) ListForReview(ctx context.Context, actor auth.User, projectNam
 		if err != nil {
 			return err
 		}
+		// Anchors store the revision's ID; callers read its number.
+		revs, err := q.ListRevisions(ctx, par.reviewID)
+		if err != nil {
+			return err
+		}
+		numbers := make(map[string]int64, len(revs))
+		for _, rv := range revs {
+			numbers[rv.ID] = rv.Number
+		}
 		for _, r := range rows {
 			c := toComment(commentFromReviewRow(r), r.Body)
+			if c.Anchor != nil {
+				c.Anchor.Revision = numbers[c.RevisionID]
+			}
 			if c.Attachments, err = attachmentIDs(ctx, q, c); err != nil {
 				return err
 			}
