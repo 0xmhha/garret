@@ -112,6 +112,15 @@ brief in `.impeccable/surfaces/`).
 - `make check` and the required macOS CI job pass, including the frontend
   steps.
 
-## 8. Open
+## 8. Tooling
 
-- The frontend unit test runner is decided with the first tests.
+- Unit tests: Vitest with happy-dom and Testing Library, sharing the Vite
+  configuration; browser differences happy-dom misses are caught by the
+  Playwright scenarios in real Chrome and WebKit. Chosen over Vitest with
+  jsdom (about twenty more packages) and over the Node test runner with
+  Playwright only (every component test in a browser, too slow for
+  test-first work).
+- Every version is exact (`save-exact`) and at least 7 days old when
+  added. Install scripts are disabled (`ignore-scripts`): no dependency
+  runs code at install time; Playwright browsers are installed by an
+  explicit step.
