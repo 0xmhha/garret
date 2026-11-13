@@ -87,5 +87,17 @@
   "review.sections": "리뷰 영역",
   "review.tab.conversation": "대화",
   "review.tab.revisions": "리비전 ({count})",
-  "review.tab.files": "파일"
+  "review.tab.files": "파일",
+  "collab.placeholder": "수정 내용, 확인 방법, 남은 일을 적으세요.",
+  "collab.edit": "작성",
+  "collab.preview": "미리 보기",
+  "collab.empty": "아직 쓴 내용이 없습니다.",
+  "collab.failed": "설명을 열지 못했습니다.",
+  "collab.status.connecting": "연결하는 중…",
+  "collab.status.live": "실시간",
+  "collab.status.offline": "다시 연결하는 중…",
+  "conversation.description": "설명",
+  "collab.others": {
+    "other": "{count}명이 함께 편집 중"
+  }
 }

@@ -154,6 +154,10 @@
   font-size: var(--text-lg);
 }
 
+.section-title--spaced {
+  margin-top: var(--space-8);
+}
+
 .timeline {
   margin: 0;
   padding: 0;

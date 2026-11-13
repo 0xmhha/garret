@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useLocale, useT } from "../app/context";
 import type { User } from "../app/session";
 import { formatRelative } from "../i18n/i18n";
+import { DescriptionEditor } from "../collab/DescriptionEditor";
 import { Composer } from "./Composer";
 import type { Thread } from "./model";
 import { useHistory, type HistoryEvent } from "./queries";
@@ -9,6 +10,7 @@ import { name, ThreadView } from "./Thread";
 
 interface Props {
   project: string;
+  descriptionDoc: string;
   number: number;
   threads: Thread[];
   users: Map<string, User> | undefined;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 /** Conversation shows the review-wide threads, then the review's history. */
-export function Conversation({ project, number, threads, users, now, onComment, onReply, onResolve }: Props) {
+export function Conversation({ project, descriptionDoc, number, threads, users, now, onComment, onReply, onResolve }: Props) {
   const t = useT();
   const locale = useLocale();
   const history = useHistory(project, number);
@@ -28,7 +30,9 @@ export function Conversation({ project, number, threads, users, now, onComment, 
   return (
     <div className="conversation">
       <section aria-labelledby="conv-threads">
-        <h2 id="conv-threads" className="section-title">{t("conversation.threads")}</h2>
+        <h2 id="conv-description" className="section-title">{t("conversation.description")}</h2>
+        <DescriptionEditor project={project} doc={descriptionDoc} label={t("conversation.description")} />
+        <h2 id="conv-threads" className="section-title section-title--spaced">{t("conversation.threads")}</h2>
         {general.length === 0 ? <p className="muted">{t("conversation.empty")}</p> : null}
         {general.map((th) => (
           <ThreadView key={th.root.id} thread={th} users={users} now={now} onReply={onReply} onResolve={onResolve} />

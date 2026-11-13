@@ -115,6 +115,7 @@ export function ReviewPage() {
           element={
             <Conversation
               project={project}
+              descriptionDoc={review.description_doc_id}
               number={number}
               threads={threads}
               users={users.data}
