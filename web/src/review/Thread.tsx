@@ -6,6 +6,7 @@ import { useMe, type User } from "../app/session";
 import { formatRelative } from "../i18n/i18n";
 import { Button } from "../ui/Button";
 import { Markdown } from "../ui/Markdown";
+import { AttachmentList } from "./attachments";
 import { Composer } from "./Composer";
 import type { Comment, Thread } from "./model";
 
@@ -13,12 +14,14 @@ interface Props {
   thread: Thread;
   users: Map<string, User> | undefined;
   now: Date;
-  onReply: (rootId: string, body: string) => Promise<unknown>;
+  onReply: (rootId: string, body: string, attachments: string[]) => Promise<unknown>;
+  /** The project replies upload files to. */
+  project: string;
   onResolve: (rootId: string, resolved: boolean) => void;
 }
 
 /** ThreadView shows a thread, its replies, and reply and resolve actions. */
-export function ThreadView({ thread, users, now, onReply, onResolve }: Props) {
+export function ThreadView({ thread, users, now, onReply, onResolve, project }: Props) {
   const t = useT();
   const [replying, setReplying] = useState(false);
   const resolved = thread.root.resolved;
@@ -33,8 +36,9 @@ export function ThreadView({ thread, users, now, onReply, onResolve }: Props) {
             label={t("thread.reply")}
             submitLabel={t("thread.reply")}
             onCancel={() => setReplying(false)}
-            onSubmit={async (body) => {
-              await onReply(thread.root.id, body);
+            project={project}
+            onSubmit={async (body, attachments) => {
+              await onReply(thread.root.id, body, attachments);
               setReplying(false);
             }}
           />
@@ -88,6 +92,7 @@ function CommentView({ comment, users, now, origin: where }: { comment: Comment;
         ) : null}
       </div>
       {comment.deleted ? <p className="muted">{t("comment.deleted")}</p> : <Markdown source={comment.body} />}
+      {!comment.deleted && comment.attachments.length > 0 ? <AttachmentList ids={comment.attachments} /> : null}
     </div>
   );
 }

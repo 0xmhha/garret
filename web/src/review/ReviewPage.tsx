@@ -42,7 +42,7 @@ export function ReviewPage() {
   const openGeneral = unresolved(threads.filter((th) => !th.root.anchor));
   const openCode = unresolved(threads.filter((th) => th.root.anchor));
 
-  const comment = useReviewAction<{ body: string; anchor?: unknown; reply_to?: string }>(project, number, () => `${reviewPath(project, number)}/comments`, (v) => v);
+  const comment = useReviewAction<{ body: string; anchor?: unknown; reply_to?: string; attachments?: string[] }>(project, number, () => `${reviewPath(project, number)}/comments`, (v) => v);
   const resolve = useReviewAction<{ id: string; resolved: boolean }>(project, number, (v) => `/api/v1/comments/${encodeURIComponent(v.id)}/resolve`, (v) => ({ resolved: v.resolved }));
   const verdict = useReviewAction<"approve" | "request_changes">(project, number, () => `${reviewPath(project, number)}/verdicts`, (value) => ({ value }));
   const setState = useReviewAction<{ from: Review["state"]; to: Review["state"] }>(project, number, () => `${reviewPath(project, number)}/state`, (v) => v);
@@ -55,7 +55,7 @@ export function ReviewPage() {
   const home = `/p/${encodeURIComponent(project)}/r/${number}`;
   const mine = me.data?.id === review.author_id;
   const open = review.state === "open";
-  const onReply = (rootId: string, body: string) => comment.mutateAsync({ body, reply_to: rootId });
+  const onReply = (rootId: string, body: string, attachments: string[]) => comment.mutateAsync({ body, reply_to: rootId, attachments });
   const onResolve = (id: string, resolved: boolean) => resolve.mutate({ id, resolved });
 
   return (
@@ -139,7 +139,7 @@ export function ReviewPage() {
               threads={threads}
               users={users.data}
               now={now}
-              onComment={(body) => comment.mutateAsync({ body })}
+              onComment={(body, attachments) => comment.mutateAsync({ body, attachments })}
               onReply={onReply}
               onResolve={onResolve}
             />
@@ -162,9 +162,10 @@ export function ReviewPage() {
                   now={now}
                   onReply={onReply}
                   onResolve={onResolve}
-                  onLineComment={(a, body) =>
+                  onLineComment={(a, body, attachments) =>
                     comment.mutateAsync({
                       body,
+                      attachments,
                       anchor: { revision: revision.number, view: a.view, from: a.from, to: a.to, path: a.path, side: a.side, start_line: a.line, end_line: a.line },
                     })
                   }

@@ -41,7 +41,7 @@ export function DiscussionPage() {
   });
   const threads = useMemo(() => buildThreads(comments.data?.comments ?? []), [comments.data]);
   const post = useMutation({
-    mutationFn: (v: { body: string; reply_to?: string }) => api.request("POST", `${base}/comments`, v),
+    mutationFn: (v: { body: string; reply_to?: string; attachments?: string[] }) => api.request("POST", `${base}/comments`, v),
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });
   const resolve = useMutation({
@@ -62,9 +62,9 @@ export function DiscussionPage() {
           <DescriptionEditor project={project} doc={d.data.body_doc_id} label={t("discussion.body")} />
           <h2 className="section-title section-title--spaced">{t("conversation.threads")}</h2>
           {threads.map((th) => (
-            <ThreadView key={th.root.id} thread={th} users={users.data} now={now} onReply={(root, body) => post.mutateAsync({ body, reply_to: root })} onResolve={(rid, r) => resolve.mutate({ id: rid, resolved: r })} />
+            <ThreadView key={th.root.id} thread={th} users={users.data} now={now} onReply={(root, body, attachments) => post.mutateAsync({ body, reply_to: root, attachments })} onResolve={(rid, r) => resolve.mutate({ id: rid, resolved: r })} project={project} />
           ))}
-          <Composer label={t("conversation.newComment")} submitLabel={t("conversation.comment")} onSubmit={(body) => post.mutateAsync({ body })} />
+          <Composer label={t("conversation.newComment")} submitLabel={t("conversation.comment")} onSubmit={(body, attachments) => post.mutateAsync({ body, attachments })} project={project} />
         </div>
         <aside aria-labelledby="discussion-history">
           <h2 id="discussion-history" className="section-title">{t("conversation.history")}</h2>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "./en.json";
 import ko from "./ko.json";
-import { catalogs, createTranslator, formatDate, formatRelative, pickLocale } from "./i18n";
+import { catalogs, createTranslator, formatDate, formatRelative, formatSize, pickLocale } from "./i18n";
 
 describe("pickLocale", () => {
   it.each([
@@ -80,4 +80,14 @@ describe("formatDate", () => {
   it("returns nothing for an invalid date", () => {
     expect(formatDate("ko", new Date("nope"))).toBe("");
   });
+});
+
+describe("formatSize", () => {
+  it.each([
+    [0, "0 byte"],
+    [999, "999 byte"],
+    [1500, "1.5 kB"],
+    [2_400_000, "2.4 MB"],
+    [26_214_400, "26.2 MB"],
+  ])("%d -> %s", (bytes, want) => expect(formatSize("en", bytes).replace(/ /g, " ")).toMatch(new RegExp(`^${want.replace(".", "\\.")}s?$`)));
 });
