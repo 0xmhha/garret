@@ -341,3 +341,15 @@ func TestCommentAttachments(t *testing.T) {
 		}
 	}
 }
+
+func TestListKeepsTheAnchorRevisionNumber(t *testing.T) {
+	f := newFixture(t)
+	ctx := context.Background()
+	if _, err := f.svc.Create(ctx, carol, "libfoo", NewComment{Review: 1, Anchor: f.anchor(2, 2), Body: "x"}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := f.svc.ListForReview(ctx, bob, "libfoo", 1)
+	if err != nil || len(list) != 1 || list[0].Anchor == nil || list[0].Anchor.Revision != 1 {
+		t.Fatalf("anchor %+v, %v", list, err)
+	}
+}
