@@ -7,6 +7,7 @@ garret can check that this repository's CI built it.
 ## 1. Trigger
 
 Pushing a tag `v<major>.<minor>.<patch>` runs `.github/workflows/release.yml`.
+A tag with a suffix, such as `v0.1.0-rc.1`, is published as a pre-release.
 A pull request that changes the workflow or the `Makefile` runs the same
 build as a dry run, without attesting or publishing anything.
 

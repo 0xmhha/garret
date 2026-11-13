@@ -56,5 +56,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          # A tag with a suffix (v0.1.0-rc.1) is a pre-release.
+          pre=""
+          case "$TAG" in *-*) pre="--prerelease" ;; esac
           gh release create "$TAG" dist/garret_"$TAG"_*.tar.gz dist/SHA256SUMS \
-            --repo "$GITHUB_REPOSITORY" --verify-tag --title "garret $TAG" --generate-notes
+            --repo "$GITHUB_REPOSITORY" --verify-tag --title "garret $TAG" --generate-notes $pre
