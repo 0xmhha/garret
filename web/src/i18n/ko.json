@@ -70,7 +70,6 @@
   "review.loadFailed": "리뷰를 불러오지 못했습니다.",
   "review.requestChanges": "변경 요청",
   "review.approve": "승인",
-  "review.more": "더 보기",
   "review.complete": "완료",
   "review.abandon": "포기",
   "review.reopen": "다시 열기",
@@ -82,7 +81,7 @@
   "review.actionFailed": "처리하지 못했습니다. 새로 고친 뒤 다시 시도해 주세요.",
   "review.sections": "리뷰 영역",
   "review.tab.conversation": "대화",
-  "review.tab.revisions": "리비전 ({count})",
+  "review.tab.revisions": "리비전",
   "review.tab.files": "파일",
   "collab.placeholder": "수정 내용, 확인 방법, 남은 일을 적으세요.",
   "collab.edit": "작성",
@@ -105,14 +104,14 @@
   "project.state.all": "전체",
   "project.noReviews": "이 목록에 리뷰가 없습니다.",
   "project.noDiscussions": "아직 토론이 없습니다.",
-  "project.newReview": "리뷰 열기",
+  "project.newReview": "새 리뷰",
   "project.source": "검토할 브랜치",
   "project.target": "대상 브랜치",
   "project.chooseBranch": "브랜치를 고르세요",
   "project.title": "제목",
   "project.open": "리뷰 열기",
   "project.openFailed": "리뷰를 열지 못했습니다. 브랜치에 이미 열린 리뷰가 있거나, 대상 브랜치보다 앞선 커밋이 없을 수 있습니다.",
-  "project.newDiscussion": "토론 시작",
+  "project.newDiscussion": "새 토론",
   "project.create": "토론 시작",
   "project.createFailed": "토론을 시작하지 못했습니다.",
   "discussion.loadFailed": "토론을 불러오지 못했습니다.",
@@ -242,5 +241,22 @@
   "files.rangeLast": "끝",
   "files.compare": "비교",
   "files.compareWith": "리비전 {number} 이후 변경",
-  "files.pairNoComments": "댓글은 리비전, 커밋, 커밋 범위에 답니다. 댓글을 달려면 그중 하나로 바꾸세요."
+  "files.pairNoComments": "댓글은 리비전, 커밋, 커밋 범위에 답니다. 댓글을 달려면 그중 하나로 바꾸세요.",
+  "shell.connection.connecting": "연결 중…",
+  "shell.connection.live": "연결됨",
+  "shell.connection.offline": "다시 연결 중…",
+  "shell.connectionHint": "서버의 실시간 갱신",
+  "review.stateMenu": "리뷰 상태",
+  "review.breadcrumb": "위치",
+  "review.unresolved": {
+    "other": "미해결 {count}건"
+  },
+  "thread.unresolved": "미해결",
+  "thread.origin": "리비전 {revision}, {line}번째 줄",
+  "thread.originCommit": "리비전 {revision}, 커밋 {commit}, {line}번째 줄",
+  "thread.ported": "리비전 {revision}의 {line}번째 줄에서 옮겨 옴",
+  "files.reviewedMark": "검토함",
+  "files.openThreads": {
+    "other": "미해결 스레드 {count}건"
+  }
 }

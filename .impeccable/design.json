@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T05:46:21+00:00",
+  "title": "Design System: garret",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Review Blue",
+        "canonical": "#1f5fbf",
+        "tonalRamp": [
+          "oklch(15% 0.160 259)",
+          "oklch(25% 0.160 259)",
+          "oklch(35% 0.160 259)",
+          "oklch(47% 0.160 259)",
+          "oklch(59% 0.160 259)",
+          "oklch(71% 0.160 259)",
+          "oklch(83% 0.160 259)",
+          "oklch(95% 0.160 259)"
+        ]
+      },
+      "add-fg": {
+        "role": "secondary",
+        "displayName": "Addition Green",
+        "canonical": "#17703a",
+        "tonalRamp": [
+          "oklch(15% 0.118 151)",
+          "oklch(25% 0.118 151)",
+          "oklch(35% 0.118 151)",
+          "oklch(47% 0.118 151)",
+          "oklch(59% 0.118 151)",
+          "oklch(71% 0.118 151)",
+          "oklch(83% 0.118 151)",
+          "oklch(95% 0.118 151)"
+        ]
+      },
+      "del-fg": {
+        "role": "secondary",
+        "displayName": "Removal Red",
+        "canonical": "#b42121",
+        "tonalRamp": [
+          "oklch(15% 0.160 27)",
+          "oklch(25% 0.160 27)",
+          "oklch(35% 0.160 27)",
+          "oklch(47% 0.160 27)",
+          "oklch(59% 0.160 27)",
+          "oklch(71% 0.160 27)",
+          "oklch(83% 0.160 27)",
+          "oklch(95% 0.160 27)"
+        ]
+      },
+      "warn-fg": {
+        "role": "tertiary",
+        "displayName": "Unresolved Amber",
+        "canonical": "#7a4f00",
+        "tonalRamp": [
+          "oklch(15% 0.099 73)",
+          "oklch(25% 0.099 73)",
+          "oklch(35% 0.099 73)",
+          "oklch(47% 0.099 73)",
+          "oklch(59% 0.099 73)",
+          "oklch(71% 0.099 73)",
+          "oklch(83% 0.099 73)",
+          "oklch(95% 0.099 73)"
+        ]
+      },
+      "fg": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1b2027",
+        "tonalRamp": [
+          "oklch(15% 0.015 257)",
+          "oklch(25% 0.015 257)",
+          "oklch(35% 0.015 257)",
+          "oklch(47% 0.015 257)",
+          "oklch(59% 0.015 257)",
+          "oklch(71% 0.015 257)",
+          "oklch(83% 0.015 257)",
+          "oklch(95% 0.015 257)"
+        ]
+      },
+      "fg-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#586370",
+        "tonalRamp": [
+          "oklch(15% 0.025 253)",
+          "oklch(25% 0.025 253)",
+          "oklch(35% 0.025 253)",
+          "oklch(47% 0.025 253)",
+          "oklch(59% 0.025 253)",
+          "oklch(71% 0.025 253)",
+          "oklch(83% 0.025 253)",
+          "oklch(95% 0.025 253)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d5dbe1",
+        "tonalRamp": [
+          "oklch(15% 0.011 248)",
+          "oklch(25% 0.011 248)",
+          "oklch(35% 0.011 248)",
+          "oklch(47% 0.011 248)",
+          "oklch(59% 0.011 248)",
+          "oklch(71% 0.011 248)",
+          "oklch(83% 0.011 248)",
+          "oklch(95% 0.011 248)"
+        ]
+      },
+      "bg-subtle": {
+        "role": "neutral",
+        "displayName": "Subtle Ground",
+        "canonical": "#f5f7f9",
+        "tonalRamp": [
+          "oklch(15% 0.003 248)",
+          "oklch(25% 0.003 248)",
+          "oklch(35% 0.003 248)",
+          "oklch(47% 0.003 248)",
+          "oklch(59% 0.003 248)",
+          "oklch(71% 0.003 248)",
+          "oklch(83% 0.003 248)",
+          "oklch(95% 0.003 248)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Review titles and shell page titles."
+      },
+      "title-lg": {
+        "displayName": "Title Large",
+        "purpose": "Sign-in card title."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section titles, settings headings, project names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All running UI text and comments; Markdown capped at 72ch."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Metadata, tables, breadcrumbs, labels, file tree."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Pills, counts, badges, comment metadata."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Diffs, paths, branches, digests, one-time values."
+      }
+    },
+    "shadows": [
+      {
+        "name": "menu",
+        "value": "0 8px 24px rgb(15 23 32 / 0.14), 0 1px 3px rgb(15 23 32 / 0.08)",
+        "purpose": "Menus and popovers only (light)."
+      },
+      {
+        "name": "menu-dark",
+        "value": "0 8px 24px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.3)",
+        "purpose": "Menus and popovers only (dark)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-change",
+        "value": "120ms ease-out",
+        "purpose": "Button background and border transitions; reduced to 0.01ms under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "collapse",
+        "value": "960px",
+        "purpose": "Two-column grids collapse to one column."
+      },
+      {
+        "name": "topbar-wrap",
+        "value": "720px",
+        "purpose": "Top bar wraps."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Everyday action: subtle ground, hairline border.",
+      "html": "<button class=\"ds-btn\">Mark as reviewed</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2, 8px); min-height: 32px; padding: 0 var(--space-3, 12px); border: 1px solid var(--border, #d5dbe1); border-radius: var(--radius, 6px); background: var(--bg-subtle, #f5f7f9); color: var(--fg, #1b2027); font: 500 14px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out; } .ds-btn:hover { background: var(--bg-muted, #eef1f4); border-color: var(--border-strong, #b8c1ca); } .ds-btn:active { background: var(--border, #d5dbe1); } .ds-btn:focus-visible { outline: 2px solid var(--focus, #1f5fbf); outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per region, such as Approve.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Approve</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2, 8px); min-height: 32px; padding: 0 var(--space-3, 12px); border: 1px solid var(--border, #d5dbe1); border-radius: var(--radius, 6px); background: var(--bg-subtle, #f5f7f9); color: var(--fg, #1b2027); font: 500 14px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out; } .ds-btn:hover { background: var(--bg-muted, #eef1f4); border-color: var(--border-strong, #b8c1ca); } .ds-btn:active { background: var(--border, #d5dbe1); } .ds-btn:focus-visible { outline: 2px solid var(--focus, #1f5fbf); outline-offset: 2px; } .ds-btn-primary { background: var(--accent, #1f5fbf); border-color: var(--accent, #1f5fbf); color: var(--on-accent, #ffffff); } .ds-btn-primary:hover { background: var(--accent-hover, #1a51a3); border-color: var(--accent-hover, #1a51a3); }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Cancel and secondary in-line actions.",
+      "html": "<button class=\"ds-btn ds-btn-quiet\">Cancel</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2, 8px); min-height: 32px; padding: 0 var(--space-3, 12px); border: 1px solid var(--border, #d5dbe1); border-radius: var(--radius, 6px); background: var(--bg-subtle, #f5f7f9); color: var(--fg, #1b2027); font: 500 14px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out; } .ds-btn:hover { background: var(--bg-muted, #eef1f4); border-color: var(--border-strong, #b8c1ca); } .ds-btn:active { background: var(--border, #d5dbe1); } .ds-btn:focus-visible { outline: 2px solid var(--focus, #1f5fbf); outline-offset: 2px; } .ds-btn-quiet { background: transparent; border-color: transparent; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Irreversible actions only, always as the confirm step.",
+      "html": "<span class=\"ds-confirm\"><span class=\"ds-confirm-prompt\">Revoke this token?</span><button class=\"ds-btn ds-btn-danger\">Revoke</button><button class=\"ds-btn ds-btn-quiet\">Cancel</button></span>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2, 8px); min-height: 32px; padding: 0 var(--space-3, 12px); border: 1px solid var(--border, #d5dbe1); border-radius: var(--radius, 6px); background: var(--bg-subtle, #f5f7f9); color: var(--fg, #1b2027); font: 500 14px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out; } .ds-btn:hover { background: var(--bg-muted, #eef1f4); border-color: var(--border-strong, #b8c1ca); } .ds-btn:active { background: var(--border, #d5dbe1); } .ds-btn:focus-visible { outline: 2px solid var(--focus, #1f5fbf); outline-offset: 2px; } .ds-btn-quiet { background: transparent; border-color: transparent; } .ds-btn-danger { border-color: var(--del-fg, #b42121); background: var(--bg, #ffffff); color: var(--del-fg, #b42121); } .ds-btn-danger:hover { background: var(--del-bg, #fde8e8); } .ds-confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; } .ds-confirm-prompt { font-size: 13px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "Labelled single-line input with blue focus and red error.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Token name</span><input class=\"ds-input\" placeholder=\"laptop\"></label>",
+      "css": ".ds-field { display: grid; gap: 4px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color: var(--fg, #1b2027); } .ds-field-label { font-size: 13px; font-weight: 600; } .ds-input { min-height: 34px; padding: 0 12px; border: 1px solid var(--border-strong, #b8c1ca); border-radius: var(--radius, 6px); background: var(--bg, #ffffff); color: var(--fg, #1b2027); font: 14px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; } .ds-input:focus { outline: 2px solid var(--focus, #1f5fbf); outline-offset: -1px; border-color: var(--focus, #1f5fbf); }"
+    },
+    {
+      "name": "Review Tabs with Counts",
+      "kind": "nav",
+      "refersTo": "count-unresolved",
+      "description": "Tabs; amber counts for unresolved threads, grey for totals.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-active\" href=\"#\">Conversation<span class=\"ds-count\">2</span></a><a class=\"ds-tab\" href=\"#\">Revisions<span class=\"ds-count ds-count-total\">3</span></a><a class=\"ds-tab\" href=\"#\">Files<span class=\"ds-count\">1</span></a></nav>",
+      "css": ".ds-tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--border, #d5dbe1); font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; } .ds-tab { padding: 8px 0 12px; border-bottom: 2px solid transparent; color: var(--fg-muted, #586370); font-weight: 500; text-decoration: none; } .ds-tab:hover { color: var(--fg, #1b2027); } .ds-tab:focus-visible { outline: 2px solid var(--focus, #1f5fbf); outline-offset: 2px; } .ds-tab.is-active { border-bottom-color: var(--accent, #1f5fbf); color: var(--fg, #1b2027); } .ds-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 8px; padding: 0 4px; border-radius: 999px; background: var(--warn-bg, #fdf3d6); color: var(--warn-fg, #7a4f00); font-size: 12px; font-weight: 600; } .ds-count-total { background: var(--bg-muted, #eef1f4); color: var(--fg-muted, #586370); }"
+    },
+    {
+      "name": "Top Bar",
+      "kind": "nav",
+      "refersTo": "topbar",
+      "description": "Shell bar: brand, nav, account and a hueless connection state.",
+      "html": "<header class=\"ds-topbar\"><a class=\"ds-brand\" href=\"#\">garret</a><nav class=\"ds-nav\"><a href=\"#\" aria-current=\"page\">Projects</a><a href=\"#\">Inbox</a></nav><span class=\"ds-account\"><span class=\"ds-conn\"><span class=\"ds-dot\"></span>Live</span>reviewer</span></header>",
+      "css": ".ds-topbar { display: flex; align-items: center; gap: 24px; height: 48px; padding: 0 16px; border-bottom: 1px solid var(--border, #d5dbe1); background: var(--bg-subtle, #f5f7f9); font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; } .ds-brand { color: var(--fg, #1b2027); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; text-decoration: none; } .ds-nav { display: flex; gap: 16px; } .ds-nav a { color: var(--fg-muted, #586370); font-weight: 500; text-decoration: none; } .ds-nav a:hover { text-decoration: underline; } .ds-nav a[aria-current=page] { color: var(--fg, #1b2027); } .ds-nav a:focus-visible { outline: 2px solid var(--focus, #1f5fbf); outline-offset: 2px; } .ds-account { display: flex; align-items: center; gap: 8px; margin-left: auto; color: var(--fg-muted, #586370); font-size: 13px; } .ds-conn { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; } .ds-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }"
+    },
+    {
+      "name": "Thread",
+      "kind": "card",
+      "refersTo": "thread",
+      "description": "Bordered comment thread with amber Unresolved badge.",
+      "html": "<div class=\"ds-thread\"><div class=\"ds-comment\"><div class=\"ds-meta\"><span class=\"ds-author\">reviewer</span><span>2 min ago</span></div><p>Check the bound before the copy.</p></div><div class=\"ds-actions\"><button class=\"ds-quiet\">Reply</button><button class=\"ds-quiet\">Resolve</button><span class=\"ds-badge\">Unresolved</span></div></div>",
+      "css": ".ds-thread { border: 1px solid var(--border, #d5dbe1); border-radius: 6px; background: var(--bg, #ffffff); color: var(--fg, #1b2027); font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; } .ds-comment { padding: 12px 16px; } .ds-comment p { margin: 0; } .ds-meta { display: flex; gap: 8px; margin-bottom: 4px; color: var(--fg-muted, #586370); font-size: 12px; } .ds-author { color: var(--fg, #1b2027); font-weight: 600; } .ds-actions { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-top: 1px solid var(--border, #d5dbe1); background: var(--bg-subtle, #f5f7f9); } .ds-quiet { min-height: 32px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--fg, #1b2027); font: 500 14px/1 inherit; cursor: pointer; } .ds-quiet:hover { background: var(--bg-muted, #eef1f4); } .ds-quiet:focus-visible { outline: 2px solid var(--focus, #1f5fbf); outline-offset: 2px; } .ds-badge { margin-left: auto; padding: 1px 8px; border-radius: 999px; background: var(--warn-bg, #fdf3d6); color: var(--warn-fg, #7a4f00); font-size: 12px; font-weight: 600; }"
+    },
+    {
+      "name": "Diff Lines",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Signature unified diff: green additions, red removals, blue hunk tint.",
+      "html": "<table class=\"ds-diff\"><tr class=\"ds-hunk\"><td colspan=\"3\">@@ -12,3 +12,4 @@</td></tr><tr><td class=\"ds-no\">12</td><td class=\"ds-sign\"> </td><td>n := len(buf)</td></tr><tr class=\"ds-del\"><td class=\"ds-no\">13</td><td class=\"ds-sign\">-</td><td>copy(dst, buf)</td></tr><tr class=\"ds-add\"><td class=\"ds-no\">13</td><td class=\"ds-sign\">+</td><td>if n &gt; len(dst) { return errShort }</td></tr></table>",
+      "css": ".ds-diff { width: 100%; border-collapse: collapse; background: var(--bg, #ffffff); color: var(--fg, #1b2027); font: 13px/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; } .ds-diff td { padding: 0 8px; white-space: pre; } .ds-no { width: 48px; color: var(--fg-muted, #586370); text-align: right; user-select: none; } .ds-sign { width: 16px; color: var(--fg-muted, #586370); } .ds-hunk td { padding: 4px 12px; background: var(--accent-subtle, #e8f0fc); color: var(--fg-muted, #586370); } .ds-add { background: var(--add-bg, #e3f5e8); } .ds-add .ds-no { background: var(--add-bg-strong, #c4ebcf); } .ds-del { background: var(--del-bg, #fde8e8); } .ds-del .ds-no { background: var(--del-bg-strong, #f8c9c9); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Category Standard, Played Straight",
+    "overview": "garret looks like the code review tools its users already trust, and is finished to their level: a neutral ground, one blue, system type, 1px borders and small radii. Nothing is themed and nothing decorates. The diff, the threads and the verdict are the interface; the chrome stays quiet so engineers can read code for hours.\n\nDensity is that of a working tool: 14px body text, a strict 4px spacing grid, compact 32px controls, and colour that only ever carries meaning. Light and dark follow the system setting and get equal care; every colour token has a dark counterpart tuned for contrast rather than inverted.\n\nSeveral choices are product constraints, not taste. The server sends a same-origin Content Security Policy with no inline styles or scripts and no third-party fonts or assets, so the system UI stack and the system monospace are intentional and permanent. Markdown HTML reaches the page only through a Trusted Types policy behind an allow-list sanitizer. Every screen meets WCAG 2.2 AA, checked by axe in the browser suite in Chrome and WebKit.",
+    "keyCharacteristics": [
+      "Neutral grey-blue ground in light and dark, following `prefers-color-scheme`.",
+      "Colour is semantic only: blue acts, green and red mean change, amber means unresolved.",
+      "System UI face for everything, system monospace for code, paths and branches.",
+      "4px spacing grid, 1px borders, 4px and 6px radii, pills for counts.",
+      "Flat surfaces; the only shadow belongs to menus and popovers.",
+      "Keyboard first: a visible 2px blue focus ring on every interactive element."
+    ],
+    "rules": [
+      {
+        "name": "The One Job Rule",
+        "body": "Each hue has one meaning. Blue acts or marks where you are; green and red mean added, removed, or a verdict; amber means unresolved work. Anything else is neutral grey.",
+        "section": "colors"
+      },
+      {
+        "name": "The Amber Is Owed Work Rule",
+        "body": "Amber appears only where a person still has something to resolve. Totals, revision counts, Resolved threads and a healthy Live connection are grey.",
+        "section": "colors"
+      },
+      {
+        "name": "The Grey Totals Rule",
+        "body": "A count that is not unresolved work (revisions, files, items) uses the neutral pill: muted ground, muted ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Platform Face Rule",
+        "body": "Type is the system UI stack and the system monospace, always. The CSP forbids third-party fonts; never add a webfont.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Labels, tabs and headings are sentence case with no added tracking. There is no uppercase small-label style.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Frames Rule",
+        "body": "Shell pages are centred at 960px; the review body is full width at 24px padding. A new page picks one of the two, never a third width.",
+        "section": "layout"
+      },
+      {
+        "name": "The Menus Only Rule",
+        "body": "A shadow means \"this floats above the page\". Cards, threads, buttons and panels never cast one.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Side Stripe Rule",
+        "body": "Containers, notices, list items and threads never carry a coloured left or right stripe. Meaning goes into a pill, a badge or a tinted background. The 1px neutral rule on a Markdown blockquote is the medium's own device and stays.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Confirm Before Loss Rule",
+        "body": "An irreversible action is never one press. A revoke or delete starts as a default button that swaps for a prompt, a red Danger confirm and a quiet Cancel, with focus on Cancel. Purging a project takes a red-outlined danger zone where the project name must be typed.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do take every value from `tokens.css`: 4px spacing steps, 4px and 6px radii, 1px borders.",
+      "Do give each hue its one job: blue acts, green and red mean change or a verdict, amber means unresolved.",
+      "Do show totals and non-urgent counts in the grey neutral pill.",
+      "Do put every irreversible action behind a confirm step, ending in a red-outlined Danger button.",
+      "Do design the dark mode as carefully as the light one, using the `-dark` tokens.",
+      "Do keep a visible 2px blue focus ring on every interactive element.",
+      "Do use authored 16px SVG icons on a 1.5px stroke in `currentColor`."
+    ],
+    "donts": [
+      "Don't use amber for anything except unresolved work.",
+      "Don't use green or red for status that is not an addition, a removal or a verdict.",
+      "Don't add a shadow to anything that does not float.",
+      "Don't add coloured side stripes to cards, notices, threads or list items.",
+      "Don't load a webfont, an inline style or an inline script; the CSP forbids all three.",
+      "Don't inject Markdown HTML except through the sanitizer and its Trusted Types policy.",
+      "Don't add uppercase eyebrow labels, gradients or decorative imagery.",
+      "Don't invent a third page width; use the 960px shell frame or the full-width review frame."
+    ]
+  }
+}

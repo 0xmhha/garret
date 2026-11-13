@@ -247,47 +247,49 @@ function Invitations() {
       {revoke.error ? <p className="form-error" role="alert">{errorMessage(revoke.error, t)}</p> : null}
       {list.isError ? <p className="form-error" role="alert">{errorMessage(list.error, t)}</p> : null}
       {list.data && list.data.length > 0 ? (
-        <table className="table">
-          <thead>
-            <tr>
-              <th scope="col">{t("admin.role")}</th>
-              <th scope="col">{t("table.created")}</th>
-              <th scope="col">{t("admin.expires")}</th>
-              <th scope="col">{t("table.status")}</th>
-              <th scope="col">
-                <span className="visually-hidden">{t("table.actions")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.data.map((inv) => {
-              const status = invitationStatus(inv, now);
-              const by = inv.used_by ? (users.data?.get(inv.used_by)?.display_name ?? inv.used_by.slice(0, 8)) : "";
-              return (
-                <tr key={inv.id}>
-                  <td>
-                    <span className="table__strong">{t(`role.${inv.role}`)}</span>
-                  </td>
-                  <td>
-                    <time dateTime={inv.created_at}>{formatDate(locale, new Date(inv.created_at))}</time>
-                  </td>
-                  <td>
-                    <time dateTime={inv.expires_at}>{formatDate(locale, new Date(inv.expires_at))}</time>
-                  </td>
-                  <td>
-                    <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
-                    {by ? <span className="table__sub">{t("admin.usedBy", { name: by })}</span> : null}
-                  </td>
-                  <td className="table__action">
-                    {status === "pending" ? (
-                      <ConfirmButton label={t("app.revoke")} prompt={t("admin.inviteRevokePrompt")} isDisabled={revoke.isPending} onConfirm={() => revoke.mutate(inv.id)} />
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">{t("admin.role")}</th>
+                <th scope="col">{t("table.created")}</th>
+                <th scope="col">{t("admin.expires")}</th>
+                <th scope="col">{t("table.status")}</th>
+                <th scope="col">
+                  <span className="visually-hidden">{t("table.actions")}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.data.map((inv) => {
+                const status = invitationStatus(inv, now);
+                const by = inv.used_by ? (users.data?.get(inv.used_by)?.display_name ?? inv.used_by.slice(0, 8)) : "";
+                return (
+                  <tr key={inv.id}>
+                    <td>
+                      <span className="table__strong">{t(`role.${inv.role}`)}</span>
+                    </td>
+                    <td>
+                      <time dateTime={inv.created_at}>{formatDate(locale, new Date(inv.created_at))}</time>
+                    </td>
+                    <td>
+                      <time dateTime={inv.expires_at}>{formatDate(locale, new Date(inv.expires_at))}</time>
+                    </td>
+                    <td>
+                      <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
+                      {by ? <span className="table__sub">{t("admin.usedBy", { name: by })}</span> : null}
+                    </td>
+                    <td className="table__action">
+                      {status === "pending" ? (
+                        <ConfirmButton label={t("app.revoke")} prompt={t("admin.inviteRevokePrompt")} isDisabled={revoke.isPending} onConfirm={() => revoke.mutate(inv.id)} />
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );
@@ -318,50 +320,52 @@ function Users({ self }: { self: string }) {
       {disable.error ? <p className="form-error" role="alert">{errorMessage(disable.error, t)}</p> : null}
       {list.isError ? <p className="form-error" role="alert">{errorMessage(list.error, t)}</p> : null}
       {list.data && list.data.length > 0 ? (
-        <table className="table">
-          <thead>
-            <tr>
-              <th scope="col">{t("admin.user")}</th>
-              <th scope="col">{t("admin.role")}</th>
-              <th scope="col">{t("admin.joined")}</th>
-              <th scope="col">{t("table.status")}</th>
-              <th scope="col">
-                <span className="visually-hidden">{t("table.actions")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.data.map((u) => {
-              const status = u.disabled ? "disabled" : "active";
-              return (
-                <tr key={u.id}>
-                  <td>
-                    <span className="table__strong">{u.display_name}</span>
-                    <span className="table__sub">{u.username}</span>
-                  </td>
-                  <td>{t(`role.${u.role}`)}</td>
-                  <td>
-                    <time dateTime={u.created_at}>{formatDate(locale, new Date(u.created_at))}</time>
-                  </td>
-                  <td>
-                    <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
-                  </td>
-                  <td className="table__action">
-                    {!u.disabled && u.id !== self ? (
-                      <ConfirmButton
-                        label={t("admin.disable")}
-                        aria-label={t("admin.disableLabel", { name: u.display_name })}
-                        prompt={t("admin.disablePrompt", { name: u.display_name })}
-                        isDisabled={disable.isPending}
-                        onConfirm={() => disable.mutate(u.id)}
-                      />
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">{t("admin.user")}</th>
+                <th scope="col">{t("admin.role")}</th>
+                <th scope="col">{t("admin.joined")}</th>
+                <th scope="col">{t("table.status")}</th>
+                <th scope="col">
+                  <span className="visually-hidden">{t("table.actions")}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.data.map((u) => {
+                const status = u.disabled ? "disabled" : "active";
+                return (
+                  <tr key={u.id}>
+                    <td>
+                      <span className="table__strong">{u.display_name}</span>
+                      <span className="table__sub">{u.username}</span>
+                    </td>
+                    <td>{t(`role.${u.role}`)}</td>
+                    <td>
+                      <time dateTime={u.created_at}>{formatDate(locale, new Date(u.created_at))}</time>
+                    </td>
+                    <td>
+                      <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
+                    </td>
+                    <td className="table__action">
+                      {!u.disabled && u.id !== self ? (
+                        <ConfirmButton
+                          label={t("admin.disable")}
+                          aria-label={t("admin.disableLabel", { name: u.display_name })}
+                          prompt={t("admin.disablePrompt", { name: u.display_name })}
+                          isDisabled={disable.isPending}
+                          onConfirm={() => disable.mutate(u.id)}
+                        />
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

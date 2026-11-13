@@ -106,49 +106,51 @@ function Tokens() {
       {list.isError ? <p className="form-error" role="alert">{errorMessage(list.error, t)}</p> : null}
       {list.data?.length === 0 ? <p className="muted">{t("account.tokensEmpty")}</p> : null}
       {list.data && list.data.length > 0 ? (
-        <table className="table">
-          <thead>
-            <tr>
-              <th scope="col">{t("account.tokenName")}</th>
-              <th scope="col">{t("table.created")}</th>
-              <th scope="col">{t("account.lastUsed")}</th>
-              <th scope="col">{t("table.status")}</th>
-              <th scope="col">
-                <span className="visually-hidden">{t("table.actions")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.data.map((tok) => {
-              const status = tokenStatus(tok);
-              return (
-                <tr key={tok.id}>
-                  <td>
-                    <span className="table__strong">{tok.name}</span>
-                  </td>
-                  <td>
-                    <time dateTime={tok.created_at}>{formatDate(locale, new Date(tok.created_at))}</time>
-                  </td>
-                  <td>{tok.last_used_at ? <time dateTime={tok.last_used_at}>{formatRelative(locale, new Date(tok.last_used_at), now)}</time> : <span className="muted">{t("account.neverUsed")}</span>}</td>
-                  <td>
-                    <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
-                  </td>
-                  <td className="table__action">
-                    {status === "active" ? (
-                      <ConfirmButton
-                        label={t("app.revoke")}
-                        aria-label={t("account.tokenRevokeLabel", { name: tok.name })}
-                        prompt={t("account.tokenRevokePrompt", { name: tok.name })}
-                        isDisabled={revoke.isPending}
-                        onConfirm={() => revoke.mutate(tok.id)}
-                      />
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">{t("account.tokenName")}</th>
+                <th scope="col">{t("table.created")}</th>
+                <th scope="col">{t("account.lastUsed")}</th>
+                <th scope="col">{t("table.status")}</th>
+                <th scope="col">
+                  <span className="visually-hidden">{t("table.actions")}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.data.map((tok) => {
+                const status = tokenStatus(tok);
+                return (
+                  <tr key={tok.id}>
+                    <td>
+                      <span className="table__strong">{tok.name}</span>
+                    </td>
+                    <td>
+                      <time dateTime={tok.created_at}>{formatDate(locale, new Date(tok.created_at))}</time>
+                    </td>
+                    <td>{tok.last_used_at ? <time dateTime={tok.last_used_at}>{formatRelative(locale, new Date(tok.last_used_at), now)}</time> : <span className="muted">{t("account.neverUsed")}</span>}</td>
+                    <td>
+                      <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
+                    </td>
+                    <td className="table__action">
+                      {status === "active" ? (
+                        <ConfirmButton
+                          label={t("app.revoke")}
+                          aria-label={t("account.tokenRevokeLabel", { name: tok.name })}
+                          prompt={t("account.tokenRevokePrompt", { name: tok.name })}
+                          isDisabled={revoke.isPending}
+                          onConfirm={() => revoke.mutate(tok.id)}
+                        />
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );
@@ -184,52 +186,54 @@ function Certificates() {
       {list.isError ? <p className="form-error" role="alert">{errorMessage(list.error, t)}</p> : null}
       {list.data?.length === 0 ? <p className="muted">{t("account.certificatesEmpty")}</p> : null}
       {list.data && list.data.length > 0 ? (
-        <table className="table">
-          <thead>
-            <tr>
-              <th scope="col">{t("account.device")}</th>
-              <th scope="col">{t("account.issuedVia")}</th>
-              <th scope="col">{t("account.validUntil")}</th>
-              <th scope="col">{t("table.status")}</th>
-              <th scope="col">
-                <span className="visually-hidden">{t("table.actions")}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.data.map((c) => {
-              const status = certificateStatus(c, now);
-              const device = c.device_name || t("account.unnamedDevice");
-              const via = issuedVia[c.issued_via];
-              return (
-                <tr key={c.serial}>
-                  <td>
-                    <span className="table__strong">{device}</span>
-                    <code className="table__sub">{c.serial}</code>
-                  </td>
-                  <td>{via ? t(via) : c.issued_via}</td>
-                  <td>
-                    <time dateTime={c.not_after}>{formatDate(locale, new Date(c.not_after))}</time>
-                  </td>
-                  <td>
-                    <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
-                  </td>
-                  <td className="table__action">
-                    {status === "active" || status === "current" ? (
-                      <ConfirmButton
-                        label={t("app.revoke")}
-                        aria-label={t("account.certRevokeLabel", { name: device })}
-                        prompt={t(status === "current" ? "account.certRevokeCurrent" : "account.certRevokePrompt", { name: device })}
-                        isDisabled={revoke.isPending}
-                        onConfirm={() => revoke.mutate(c.serial)}
-                      />
-                    ) : null}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">{t("account.device")}</th>
+                <th scope="col">{t("account.issuedVia")}</th>
+                <th scope="col">{t("account.validUntil")}</th>
+                <th scope="col">{t("table.status")}</th>
+                <th scope="col">
+                  <span className="visually-hidden">{t("table.actions")}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.data.map((c) => {
+                const status = certificateStatus(c, now);
+                const device = c.device_name || t("account.unnamedDevice");
+                const via = issuedVia[c.issued_via];
+                return (
+                  <tr key={c.serial}>
+                    <td>
+                      <span className="table__strong">{device}</span>
+                      <code className="table__sub">{c.serial}</code>
+                    </td>
+                    <td>{via ? t(via) : c.issued_via}</td>
+                    <td>
+                      <time dateTime={c.not_after}>{formatDate(locale, new Date(c.not_after))}</time>
+                    </td>
+                    <td>
+                      <span className={`pill pill--${status}`}>{t(`status.${status}`)}</span>
+                    </td>
+                    <td className="table__action">
+                      {status === "active" || status === "current" ? (
+                        <ConfirmButton
+                          label={t("app.revoke")}
+                          aria-label={t("account.certRevokeLabel", { name: device })}
+                          prompt={t(status === "current" ? "account.certRevokeCurrent" : "account.certRevokePrompt", { name: device })}
+                          isDisabled={revoke.isPending}
+                          onConfirm={() => revoke.mutate(c.serial)}
+                        />
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : null}
     </section>
   );

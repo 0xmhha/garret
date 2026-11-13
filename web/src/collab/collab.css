@@ -41,11 +41,13 @@
 }
 
 .collab__status--live {
-  color: var(--add-fg);
+  color: var(--fg-muted);
 }
 
+/* Same as the top bar: plain, bold text, no hue (amber is owed work). */
 .collab__status--offline {
-  color: var(--warn-fg);
+  color: var(--fg);
+  font-weight: 600;
 }
 
 .collab__others {

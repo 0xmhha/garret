@@ -1,6 +1,7 @@
 /* Account and administration: sections of forms and tables, one column. */
 .settings__section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   padding: var(--space-6) 0;
   border-top: 1px solid var(--border);
@@ -107,6 +108,11 @@
 
 .reveal .onetime {
   justify-self: stretch;
+}
+
+/* Narrow windows scroll a wide table instead of the page. */
+.table-scroll {
+  overflow-x: auto;
 }
 
 .table {

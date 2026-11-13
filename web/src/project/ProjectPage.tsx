@@ -43,6 +43,7 @@ export function ProjectPage() {
     queryFn: ({ signal }) => api.request<{ discussions: Discussion[] }>("GET", `${base}/discussions`, undefined, { signal }),
   });
   const now = new Date();
+  const [creating, setCreating] = useState<"review" | "discussion" | null>(null);
 
   return (
     <main className="page project">
@@ -58,7 +59,11 @@ export function ProjectPage() {
                 </button>
               ))}
             </nav>
+            <Button aria-expanded={creating === "review"} onPress={() => setCreating(creating === "review" ? null : "review")}>
+              {t("project.newReview")}
+            </Button>
           </div>
+          {creating === "review" ? <NewReview project={project} onCancel={() => setCreating(null)} /> : null}
           {reviews.data?.reviews.length === 0 ? <p className="muted">{t("project.noReviews")}</p> : null}
           <ul className="list">
             {(reviews.data?.reviews ?? []).map((r) => (
@@ -74,10 +79,15 @@ export function ProjectPage() {
               </li>
             ))}
           </ul>
-          <NewReview project={project} />
         </section>
         <section aria-labelledby="discussions-title">
-          <h2 id="discussions-title" className="section-title">{t("project.discussions")}</h2>
+          <div className="project__head">
+            <h2 id="discussions-title" className="section-title">{t("project.discussions")}</h2>
+            <Button aria-expanded={creating === "discussion"} onPress={() => setCreating(creating === "discussion" ? null : "discussion")}>
+              {t("project.newDiscussion")}
+            </Button>
+          </div>
+          {creating === "discussion" ? <NewDiscussion project={project} onCancel={() => setCreating(null)} /> : null}
           {discussions.data?.discussions.length === 0 ? <p className="muted">{t("project.noDiscussions")}</p> : null}
           <ul className="list">
             {(discussions.data?.discussions ?? []).map((d) => (
@@ -87,14 +97,13 @@ export function ProjectPage() {
               </li>
             ))}
           </ul>
-          <NewDiscussion project={project} />
         </section>
       </div>
     </main>
   );
 }
 
-function NewReview({ project }: { project: string }) {
+function NewReview({ project, onCancel }: { project: string; onCancel: () => void }) {
   const t = useT();
   const api = useApi();
   const qc = useQueryClient();
@@ -117,9 +126,8 @@ function NewReview({ project }: { project: string }) {
   });
   const list = branches.data ?? [];
   return (
-    <details className="newform">
-      <summary>{t("project.newReview")}</summary>
-      <Form className="newform__body" onSubmit={(e) => { e.preventDefault(); open.mutate(); }}>
+    <div className="newform">
+      <Form className="newform__body" aria-label={t("project.newReview")} onSubmit={(e) => { e.preventDefault(); open.mutate(); }}>
         <label className="field">
           <span className="field__label">{t("project.source")}</span>
           <select className="field__input" value={source} onChange={(e) => setSource(e.target.value)} required>
@@ -135,13 +143,16 @@ function NewReview({ project }: { project: string }) {
         </label>
         <TextField label={t("project.title")} value={title} onChange={setTitle} isRequired maxLength={200} />
         {open.isError ? <p className="form-error" role="alert">{t("project.openFailed")}</p> : null}
-        <Button type="submit" variant="primary" isDisabled={open.isPending || !source || !title.trim()}>{t("project.open")}</Button>
+        <div className="newform__actions">
+          <Button variant="quiet" onPress={onCancel}>{t("app.cancel")}</Button>
+          <Button type="submit" variant="primary" isDisabled={open.isPending || !source || !title.trim()}>{t("project.open")}</Button>
+        </div>
       </Form>
-    </details>
+    </div>
   );
 }
 
-function NewDiscussion({ project }: { project: string }) {
+function NewDiscussion({ project, onCancel }: { project: string; onCancel: () => void }) {
   const t = useT();
   const api = useApi();
   const qc = useQueryClient();
@@ -155,13 +166,15 @@ function NewDiscussion({ project }: { project: string }) {
     },
   });
   return (
-    <details className="newform">
-      <summary>{t("project.newDiscussion")}</summary>
-      <Form className="newform__body" onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
+    <div className="newform">
+      <Form className="newform__body" aria-label={t("project.newDiscussion")} onSubmit={(e) => { e.preventDefault(); create.mutate(); }}>
         <TextField label={t("project.title")} value={title} onChange={setTitle} isRequired maxLength={200} />
         {create.isError ? <p className="form-error" role="alert">{t("project.createFailed")}</p> : null}
-        <Button type="submit" variant="primary" isDisabled={create.isPending || !title.trim()}>{t("project.create")}</Button>
+        <div className="newform__actions">
+          <Button variant="quiet" onPress={onCancel}>{t("app.cancel")}</Button>
+          <Button type="submit" variant="primary" isDisabled={create.isPending || !title.trim()}>{t("project.create")}</Button>
+        </div>
       </Form>
-    </details>
+    </div>
   );
 }

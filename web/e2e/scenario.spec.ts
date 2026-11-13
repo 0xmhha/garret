@@ -70,7 +70,7 @@ test("step 4: carol comments on single commits; bob and carol write the descript
 
 test("step 5: bob force-pushes; revision 2 appears and carol's comments move with the code", async () => {
   await carol.goto(reviewURL());
-  await expect(carol.getByRole("link", { name: "Revisions (1)" })).toBeVisible();
+  await expect(carol.getByRole("link", { name: "Revisions 1", exact: true })).toBeVisible();
 
   // Revision 2: the last commit is rewritten and adds a line on top of
   // src/len.c, so the line carol commented on moves from 6 to 7.
@@ -83,7 +83,7 @@ test("step 5: bob force-pushes; revision 2 appears and carol's comments move wit
   git(s, "checkout", "-q", "fix");
 
   // The event stream brings revision 2 without a reload.
-  await expect(carol.getByRole("link", { name: "Revisions (2)" })).toBeVisible();
+  await expect(carol.getByRole("link", { name: "Revisions 2", exact: true })).toBeVisible();
 
   await carol.goto(`${reviewURL()}/files?rev=2`);
   await carol.getByLabel("Show").selectOption({ label: "Changes since revision 1" });
@@ -101,7 +101,7 @@ test("step 6: carol approves and completes; verdict and state are recorded with 
   await carol.goto(reviewURL());
   await carol.getByRole("button", { name: "Approve" }).click();
   await expect(carol.getByText("Carol: approved")).toBeVisible();
-  await carol.getByRole("button", { name: "More actions" }).click();
+  await carol.getByRole("button", { name: "Review state" }).click();
   await carol.getByRole("menuitem", { name: "Complete" }).click();
   await expect(carol.locator(".review__meta .state")).toHaveText("Completed");
 

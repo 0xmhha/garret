@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
-import { NavLink, Navigate, Route, Routes, useParams, useSearchParams } from "react-router";
+import { Link, NavLink, Navigate, Route, Routes, useParams, useSearchParams } from "react-router";
 import { useT } from "../app/context";
 import type { MessageKey } from "../i18n/i18n";
 import { useMe } from "../app/session";
@@ -11,7 +11,7 @@ import { Files } from "./Files";
 import { buildThreads, type Review, type Revision } from "./model";
 import { reviewPath, useComments, useReview, useReviewAction, useUsers } from "./queries";
 import { Revisions } from "./Revisions";
-import { parseView, viewParams, type DiffView } from "./views";
+import { parseView, unresolved, viewParams, type DiffView } from "./views";
 import { name } from "./Thread";
 import "./review.css";
 
@@ -39,6 +39,8 @@ export function ReviewPage() {
   const view: DiffView = revision ? parseView(params, revision, revisions) : { kind: "revision" };
   const comments = useComments(project, number, revision?.number ?? 0);
   const threads = useMemo(() => buildThreads(comments.data ?? []), [comments.data]);
+  const openGeneral = unresolved(threads.filter((th) => !th.root.anchor));
+  const openCode = unresolved(threads.filter((th) => th.root.anchor));
 
   const comment = useReviewAction<{ body: string; anchor?: unknown; reply_to?: string }>(project, number, () => `${reviewPath(project, number)}/comments`, (v) => v);
   const resolve = useReviewAction<{ id: string; resolved: boolean }>(project, number, (v) => `/api/v1/comments/${encodeURIComponent(v.id)}/resolve`, (v) => ({ resolved: v.resolved }));
@@ -59,6 +61,11 @@ export function ReviewPage() {
   return (
     <main className="review">
       <header className="review__header">
+        <nav className="review__crumbs" aria-label={t("review.breadcrumb")}>
+          <Link to={`/p/${encodeURIComponent(project)}`}>{project}</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">#{review.number}</span>
+        </nav>
         <div className="review__titleline">
           <h1 className="review__title">
             {review.title} <span className="review__number">#{review.number}</span>
@@ -75,8 +82,8 @@ export function ReviewPage() {
               </>
             ) : null}
             <MenuTrigger>
-              <Button aria-label={t("review.more")}>
-                <IconChevronDown />
+              <Button>
+                {t("review.stateMenu")} <IconChevronDown />
               </Button>
               <Popover className="menu-popover" placement="bottom end">
                 <Menu
@@ -94,6 +101,7 @@ export function ReviewPage() {
         </div>
         <p className="review__meta">
           <span className={`state state--${review.state}`}>{t(`review.state.${review.state}` as MessageKey)}</span>
+          {openGeneral + openCode > 0 ? <span className="unresolved">{t("review.unresolved", { count: openGeneral + openCode })}</span> : null}
           <span>{t("review.openedBy", { author: name(users.data, review.author_id) })}</span>
           <span className="review__branches">
             <IconBranch /> <code>{shortRef(review.source_branch)}</code> → <code>{shortRef(review.target_branch)}</code>
@@ -106,9 +114,18 @@ export function ReviewPage() {
         </p>
         {(verdict.isError || setState.isError) ? <p className="form-error" role="alert">{t("review.actionFailed")}</p> : null}
         <nav className="tabs" aria-label={t("review.sections")}>
-          <NavLink end to={home} className="tabs__tab">{t("review.tab.conversation")}</NavLink>
-          <NavLink to={`${home}/revisions`} className="tabs__tab">{t("review.tab.revisions", { count: revisions.length })}</NavLink>
-          <NavLink to={`${home}/files${revision ? `?rev=${revision.number}` : ""}`} className="tabs__tab">{t("review.tab.files")}</NavLink>
+          <NavLink end to={home} className="tabs__tab">
+            {t("review.tab.conversation")}
+            <TabCount count={openGeneral} />
+          </NavLink>
+          <NavLink to={`${home}/revisions`} className="tabs__tab">
+            {t("review.tab.revisions")}
+            <span className="tabs__count tabs__count--total">{revisions.length}</span>
+          </NavLink>
+          <NavLink to={`${home}/files${revision ? `?rev=${revision.number}` : ""}`} className="tabs__tab">
+            {t("review.tab.files")}
+            <TabCount count={openCode} />
+          </NavLink>
         </nav>
       </header>
       <Routes>
@@ -158,6 +175,18 @@ export function ReviewPage() {
         />
       </Routes>
     </main>
+  );
+}
+
+/** TabCount shows a tab's open threads; screen readers hear "N unresolved". */
+function TabCount({ count }: { count: number }) {
+  const t = useT();
+  if (count === 0) return null;
+  return (
+    <span className="tabs__count">
+      <span aria-hidden="true">{count}</span>
+      <span className="visually-hidden">{t("review.unresolved", { count })}</span>
+    </span>
   );
 }
 
