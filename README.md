@@ -112,17 +112,36 @@ Build and installation instructions will be added with the first working
 version. The intended workflow looks like this:
 
 ```sh
-# On the host machine: prints the allowed network and the CA fingerprint
+# On the host machine. The first start asks how members will join
+# (see below) and prints the allowed network and the CA fingerprint.
 garret serve
+garret admin setup        # in a second terminal: the first administrator
+```
 
-# On a developer machine on the same network, once per device
-garret enroll '<invitation link>'
+Members join in one of two ways, chosen when the server first starts:
 
-# Then use Git as usual
+1. **Each member runs `garret enroll` once** (recommended). The device gets a
+   client certificate, and only enrolled devices can even reach the sign-in
+   page:
+
+   ```sh
+   garret enroll '<invitation link>'
+   ```
+
+2. **A browser and a password only.** Client certificates are off, so no
+   program runs on members' machines. The administrator creates each account
+   under Administration and passes on its temporary password; the member
+   opens `https://<host>:8443`, signs in and changes the password under
+   Account. Anyone on the allowed network can reach the sign-in page.
+
+`garret serve --client-cert=on|off` overrides the choice for one run.
+
+```sh
+# Then use Git as usual, with a personal access token as the password
 git remote add review https://<host-ip>:8443/git/<project>.git
 git push review fix/my-branch
 
-# Then open https://<host-ip>:8443 in a browser
+# And review at https://<host-ip>:8443
 ```
 
 Requirements (planned): macOS or Linux, Git on the host machine, and Go 1.26.11

@@ -51,6 +51,11 @@ where they apply and marked **(review)**.
      rejects the handshake unless `ActiveSerials.Active(SerialString(serial))`
      **(review)**.
    - `--client-cert=off`: `tls.NoClientCert`, and a warning at every start.
+   - Without `--client-cert`, the mode is the one kept in the data directory
+     (`join-mode`: `enroll` or `browser`, decision D14). On the first start
+     with no kept mode, `serve` asks how members will join when standard
+     input is a terminal, and otherwise takes `enroll`; either way it keeps
+     the answer. The flag wins for one run and never changes the kept mode.
    - `--insecure-http`: plain HTTP, implies `--client-cert=off`, warning at
      every start.
 4. Active serials are loaded once before the first `Accept` **(review)**,
@@ -393,7 +398,7 @@ before the access list is changed.
 
 | Command | Purpose |
 |---|---|
-| `garret serve` | Start the server. Flags: `--data`, `--host`, `--allow` (repeatable CIDR), `--listen`, `--enroll-listen`, `--client-cert=on\|off`, `--tls-cert`, `--tls-key`, `--insecure-http` |
+| `garret serve` | Start the server. Flags: `--data`, `--host`, `--allow` (repeatable CIDR), `--listen`, `--enroll-listen`, `--client-cert=on\|off` (default: the mode chosen at the first start, D14), `--tls-cert`, `--tls-key`, `--insecure-http` |
 | `garret admin setup` | On the host: open the data directory directly, create the first administrator (prompting for the account like `enroll`), issue the administrator's certificate and install it on this machine. Refuses once an administrator exists |
 | `garret enroll <link>` | 6.2 |
 | `garret renew [--server <url>]` | 6.3; without `--server`, renews every installed server that is due |

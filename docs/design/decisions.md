@@ -230,3 +230,30 @@ as an automated test, together with the quality gates. See
 
 Supported server platforms: macOS (required) and Linux (verified in CI, not
 release-blocking). Windows is not a target.
+
+## D14. How members join is chosen when the server first starts
+
+`garret serve` asks once, on its first start with a new data directory, how
+members will join, and keeps the answer in the data directory:
+
+1. **garret enroll on each laptop** (client certificates on, the default and
+   the recommendation): D11 unchanged.
+2. **A browser and a password only** (client certificates off): the
+   administrator creates accounts under Administration and passes on a
+   temporary password; members change it under Account. No program runs on
+   members' machines.
+
+Later starts use the kept answer. `--client-cert=on|off` still wins for one
+run without changing it; a start without a terminal and without a kept
+answer uses client certificates on and keeps that.
+
+- **Why**: some teams cannot ask members to install and run a program, and
+  the server already supports both modes. Asking at the first start makes
+  the choice deliberate and visible instead of a flag a team has to know
+  about, while the product keeps device certificates as its default promise.
+- **Rejected**: client certificates off by default (gives up the promise of
+  D11 for every team); keeping enrollment as the only documented way (shuts
+  out teams that cannot run a program); certificate files downloaded in the
+  browser (members would re-import a new file every 7 days, and the server
+  would generate their private keys).
+
