@@ -119,6 +119,16 @@ brief in `.impeccable/surfaces/`).
    collaborative documents carry an "Erase" link for administrators that
    opens the erasure form filled in.
 
+Attachments (PRODUCT.md, up to 25 MiB): every comment box, in reviews
+and discussions, has an "Attach files" button. Each file uploads at once
+(`POST /projects/{project}/attachments`) and shows as a chip with its
+name, size and a remove button until the comment is sent with their IDs;
+a file over 25 MiB is refused before upload, and removing a chip deletes
+the upload. A comment lists its files under the body: images the server
+serves inline appear as images (same origin, so the CSP allows them),
+everything else as a download link with name and size. Names and sizes
+come from `GET /attachments/{id}/meta`, added for this screen.
+
 ## 7. Done criteria (stage 6)
 
 - Steps 4, 5 and 6 of the end-to-end scenario in
