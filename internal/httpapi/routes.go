@@ -47,6 +47,7 @@ func (a *API) routes() {
 
 	h("POST "+p+"/{project}/attachments", a.authed(a.upload))
 	h("GET "+basePath+"/attachments/{id}", a.authed(a.download))
+	h("GET "+basePath+"/attachments/{id}/meta", a.authed(a.attachmentMeta))
 	h("DELETE "+basePath+"/attachments/{id}", a.authed(a.deleteAttachment))
 
 	h("GET "+basePath+"/inbox", a.authed(a.listInbox))
