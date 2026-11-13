@@ -297,5 +297,6 @@
   "admin.projectSourceHint": "garret을 실행하는 기기에 있는 Git 저장소의 전체 경로입니다. 예: /Users/you/work/libfoo. 그 브랜치를 복사해 옵니다.",
   "admin.projectSourceCheck": "확인",
   "admin.projectSourceBranches": "찾은 브랜치: {names}",
-  "admin.projectSourceNone": "저장소에 아직 브랜치가 없습니다."
+  "admin.projectSourceNone": "저장소에 아직 브랜치가 없습니다.",
+  "project.noOpenReviews": "열린 리뷰가 없습니다. “새 리뷰”에서 변경이 있는 브랜치와 합칠 대상 브랜치를 고르세요."
 }

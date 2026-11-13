@@ -301,5 +301,6 @@
   "admin.projectSourceHint": "The full path of a Git repository on the machine running garret, such as /Users/you/work/libfoo. Its branches are copied in.",
   "admin.projectSourceCheck": "Check",
   "admin.projectSourceBranches": "Branches found: {names}",
-  "admin.projectSourceNone": "The repository has no branches yet."
+  "admin.projectSourceNone": "The repository has no branches yet.",
+  "project.noOpenReviews": "No open reviews. Use New review: pick the branch with the change and the branch it goes into."
 }
