@@ -54,7 +54,7 @@ func setup(t *testing.T) *Service {
 				return err
 			}
 		}
-		_, err := tx.ExecContext(ctx, "INSERT INTO projects VALUES ('01JD0000000000000000PROJ01', 'libfoo', '', ?, 1, 1)", admin.ID)
+		_, err := tx.ExecContext(ctx, "INSERT INTO projects VALUES ('01JD0000000000000000PROJ01', 'libfoo', '', ?, 1, 1, NULL)", admin.ID)
 		return err
 	}); err != nil {
 		t.Fatal(err)
