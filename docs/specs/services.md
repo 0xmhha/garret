@@ -295,6 +295,10 @@ upstream ships its own fix (transport.md, T-D4).
   `verdict_on_my_review`, `revision_on_reviewed`). A user is never notified
   of their own action.
 - `List`, `MarkRead`; a daily sweep deletes notifications older than 90 days.
+  `List` also returns where each notification points, for the web interface
+  to link: the project's name, and the review number (for a review, a
+  revision or a review comment) or the discussion ID (for a discussion or a
+  discussion comment).
 
 ## 9. Attachments (`internal/attachment` service part)
 
