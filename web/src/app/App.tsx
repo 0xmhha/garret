@@ -4,6 +4,7 @@ import type { Client } from "../api/client";
 import type { Locale } from "../i18n/i18n";
 import { NotFound } from "../routes/NotFound";
 import { Projects } from "../routes/Projects";
+import { ReviewPage } from "../review/ReviewPage";
 import { Shell } from "../routes/Shell";
 import { SignIn } from "../routes/SignIn";
 import { EnvProvider } from "./context";
@@ -16,6 +17,7 @@ export const routes: RouteObject[] = [
     element: <Shell />,
     children: [
       { index: true, element: <Projects /> },
+      { path: "p/:project/r/:number/*", element: <ReviewPage /> },
       { path: "*", element: <NotFound /> },
     ],
   },
