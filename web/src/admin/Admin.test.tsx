@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { json, memoryStorage, renderApp } from "../test/render";
 import { Admin } from "./Admin";
@@ -20,6 +20,7 @@ function setup({ me = admin, path = "/admin", zip = emptyZip() } = {}) {
     if (url === "/api/v1/projects" && method === "GET") return json(200, { projects: [{ id: "p1", name: "libfoo", description: "" }] });
     if (url === "/api/v1/admin/invitations" && method === "POST") return json(201, { invitation: {}, link: "https://h:8443/enroll#ca=ab", code: "WXYZ-1234" });
     if (url === "/api/v1/admin/invitations") return json(200, { invitations: [] });
+    if (url === "/api/v1/admin/users" && method === "POST") return json(201, { user: { ...bob, id: "u3", username: "dave", display_name: "Dave" }, password: "alpha-bravo-charlie-delta-echo-foxtrot" });
     if (url === "/api/v1/admin/users") return json(200, { users: [admin, bob] });
     if (url.endsWith("/export")) return new Response(zip, { status: 200, headers: { "Content-Disposition": 'attachment; filename="libfoo-export.zip"' } });
     return json(204);
@@ -89,4 +90,14 @@ it("does not offer to disable yourself", async () => {
   setup();
   expect(await screen.findByRole("button", { name: "Disable Bob" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Disable Ann" })).toBeNull();
+});
+
+it("creates an account and shows its temporary password once", async () => {
+  const calls = setup();
+  const form = await screen.findByRole("form", { name: "Create account" });
+  fireEvent.change(within(form).getByRole("textbox", { name: "Username" }), { target: { value: "dave" } });
+  fireEvent.change(within(form).getByRole("textbox", { name: "Display name" }), { target: { value: "Dave" } });
+  fireEvent.click(within(form).getByRole("button", { name: "Create account" }));
+  expect(await screen.findByText("alpha-bravo-charlie-delta-echo-foxtrot")).toBeTruthy();
+  expect(calls).toContainEqual({ method: "POST", url: "/api/v1/admin/users", body: { username: "dave", display_name: "Dave", role: "member" } });
 });

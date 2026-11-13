@@ -18,8 +18,8 @@ function setup() {
   });
   const storage = memoryStorage();
   storage.setItem("garret.csrf", "tok");
-  renderApp([{ path: "/account", element: <Account /> }], "/account", fetch, storage);
-  return calls;
+  const view = renderApp([{ path: "/account", element: <Account /> }, { path: "/login", element: <p>signed out</p> }], "/account", fetch, storage);
+  return Object.assign(calls, { view, storage });
 }
 
 it("creates a token and shows its secret once", async () => {
@@ -53,4 +53,17 @@ it("switches the interface language", async () => {
   setup();
   fireEvent.click(await screen.findByRole("radio", { name: "한국어" }));
   expect(await screen.findByRole("heading", { level: 1, name: "계정" })).toBeTruthy();
+});
+
+it("changes the password, then goes back to sign-in without a session", async () => {
+  const calls = setup();
+  const pw = (name: string, value: string) => fireEvent.change(screen.getByLabelText(name, { selector: "input" }), { target: { value } });
+  await screen.findByRole("heading", { name: "Password" });
+  pw("Current password", "alpha-bravo-charlie-delta-echo-foxtrot");
+  pw("New password", "a much longer passphrase");
+  pw("New password again", "a much longer passphrase");
+  fireEvent.click(screen.getByRole("button", { name: "Change password" }));
+  await waitFor(() => expect(calls.view.router.state.location.search).toBe("?changed=1"));
+  expect(calls).toContainEqual({ method: "POST", url: "/api/v1/me/password", body: { current: "alpha-bravo-charlie-delta-echo-foxtrot", new: "a much longer passphrase" } });
+  expect(calls.storage.getItem("garret.csrf")).toBeNull();
 });
