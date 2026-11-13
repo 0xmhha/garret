@@ -1,0 +1,64 @@
+.collab {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.collab__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.collab__modes {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.collab__modes button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--fg-muted);
+  font: 500 var(--text-sm) var(--font-ui);
+  cursor: pointer;
+}
+
+.collab__modes button[aria-pressed="true"] {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.collab__status {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--fg-muted);
+}
+
+.collab__status--live {
+  color: var(--add-fg);
+}
+
+.collab__status--offline {
+  color: var(--warn-fg);
+}
+
+.collab__others {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+}
+
+.collab__others + .collab__status {
+  margin-left: 0;
+}
+
+.collab__preview {
+  padding: var(--space-3) var(--space-4);
+  min-height: 120px;
+}

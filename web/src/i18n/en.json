@@ -88,5 +88,18 @@
   "review.sections": "Review sections",
   "review.tab.conversation": "Conversation",
   "review.tab.revisions": "Revisions ({count})",
-  "review.tab.files": "Files"
+  "review.tab.files": "Files",
+  "collab.placeholder": "Describe the fix, how to verify it and what is still open.",
+  "collab.edit": "Write",
+  "collab.preview": "Preview",
+  "collab.empty": "Nothing written yet.",
+  "collab.failed": "The description could not be opened.",
+  "collab.status.connecting": "Connecting…",
+  "collab.status.live": "Live",
+  "collab.status.offline": "Reconnecting…",
+  "conversation.description": "Description",
+  "collab.others": {
+    "one": "{count} other person editing",
+    "other": "{count} others editing"
+  }
 }
