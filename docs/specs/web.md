@@ -97,9 +97,21 @@ brief in `.impeccable/surfaces/`).
 2. Sign-in, and the shell: projects list, navigation, inbox.
 3. Project: branches, reviews list with filters, discussions.
 4. Discussion: collaborative body, comments, history.
-5. Account: tokens, certificates and devices, language.
-6. Administration: invitations (code shown once, the link without a
-   secret), users, disabling, permanent erasure, export and purge.
+5. Account: tokens, certificates and devices, language. A new token's
+   secret is shown once, with a copy button. Revoking the certificate this
+   browser presents warns that the device is locked out until it enrolls
+   again. The language choice is kept in `localStorage` (`garret.locale`)
+   and wins over the browser's preference.
+6. Administration: projects (create, export, purge), invitations (code
+   shown once, the link without a secret), users, disabling, permanent
+   erasure. Every destructive action asks once more before it runs, with
+   focus on Cancel; purge also needs the project name typed. Export reads
+   the archive into memory, checks that it ends with a zip
+   end-of-central-directory record, and only then saves it and shows its
+   SHA-256: browsers do not expose the `X-Garret-Export-SHA256` trailer, and
+   an archive cut short by a server error lacks that record. Comments and
+   collaborative documents carry an "Erase" link for administrators that
+   opens the erasure form filled in.
 
 ## 7. Done criteria (stage 6)
 
