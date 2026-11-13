@@ -84,7 +84,7 @@ func seed(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for _, q := range []string{
 		"INSERT INTO users VALUES ('U1', 'alice', 'Alice', 'h', 'admin', 1, NULL)",
-		"INSERT INTO projects VALUES ('P1', 'garret', '', 'U1', 1, 1)",
+		"INSERT INTO projects VALUES ('P1', 'garret', '', 'U1', 1, 1, NULL)",
 		"INSERT INTO collab_documents VALUES ('D1', 'P1', 'review_description', 1, 1, 1)",
 		"INSERT INTO collab_documents VALUES ('D2', 'P1', 'discussion_body', 1, 1, 1)",
 		"INSERT INTO collab_documents VALUES ('D3', 'P1', 'review_description', 1, 1, 1)",
@@ -117,8 +117,11 @@ func TestSchemaConstraints(t *testing.T) {
 		{"completed review on the same branch", "INSERT INTO reviews VALUES ('R2','P1',2,'Again','refs/heads/fix','refs/heads/main','completed','U1','D3',1,1)", true},
 		{"invitation used without user", "INSERT INTO invitations VALUES ('I1'," + dig32 + ",'member','U1',1,2,NULL,5,NULL)", false},
 		{"short token digest", "INSERT INTO invitations VALUES ('I1',x'00','member','U1',1,2,NULL,NULL,NULL)", false},
-		{"text in an integer column", "INSERT INTO projects VALUES ('P2','other','','U1','soon',1)", false},
-		{"unknown user", "INSERT INTO projects VALUES ('P2','other','','U9',1,1)", false},
+		{"text in an integer column", "INSERT INTO projects VALUES ('P2','other','','U1','soon',1,NULL)", false},
+		{"unknown user", "INSERT INTO projects VALUES ('P2','other','','U9',1,1,NULL)", false},
+		{"relative source path", "INSERT INTO projects VALUES ('P2','other','','U1',1,1,'work/fix')", false},
+		{"empty source path", "INSERT INTO projects VALUES ('P2','other','','U1',1,1,'')", false},
+		{"absolute source path", "INSERT INTO projects VALUES ('P3','third','','U1',1,1,'/Users/me/fix')", true},
 		{"audit data not an object", "INSERT INTO audit_events VALUES ('A1','P1','U1','review.created','review','R1','[]',1)", false},
 		{"audit event", "INSERT INTO audit_events VALUES ('A1','P1','U1','review.created','review','R1','{}',1)", true},
 		{"same state change", "INSERT INTO review_state_changes VALUES ('X1','R1','open','open','U1',1)", false},
