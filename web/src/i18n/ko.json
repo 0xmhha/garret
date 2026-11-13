@@ -1,9 +1,5 @@
 {
-  "app.name": "garret",
   "app.loading": "불러오는 중…",
-  "review.commentCount": {
-    "other": "댓글 {count}개"
-  },
   "review.openedBy": "{author} 님이 열었습니다",
   "signIn.title": "garret에 로그인",
   "signIn.lede": "관리자가 초대한 계정으로 로그인하세요.",
