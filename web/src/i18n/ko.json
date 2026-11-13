@@ -1,6 +1,25 @@
 {
   "app.name": "garret",
   "app.loading": "불러오는 중…",
-  "review.commentCount": { "other": "댓글 {count}개" },
-  "review.openedBy": "{author} 님이 열었습니다"
+  "review.commentCount": {
+    "other": "댓글 {count}개"
+  },
+  "review.openedBy": "{author} 님이 열었습니다",
+  "signIn.title": "garret에 로그인",
+  "signIn.lede": "관리자가 초대한 계정으로 로그인하세요.",
+  "signIn.username": "사용자 이름",
+  "signIn.password": "비밀번호",
+  "signIn.submit": "로그인",
+  "signIn.submitting": "로그인하는 중…",
+  "signIn.failed": "사용자 이름이나 비밀번호가 올바르지 않습니다.",
+  "error.network": "서버에 연결할 수 없습니다. 같은 네트워크에 있는지 확인하세요.",
+  "error.generic": "문제가 생겼습니다. 다시 시도해 주세요.",
+  "shell.projects": "프로젝트",
+  "shell.signOut": "로그아웃",
+  "shell.account": "{name}(으)로 로그인됨",
+  "projects.title": "프로젝트",
+  "projects.empty": "아직 프로젝트가 없습니다. 관리자가 첫 프로젝트를 만듭니다.",
+  "projects.loadFailed": "프로젝트를 불러오지 못했습니다.",
+  "notFound.title": "페이지를 찾을 수 없습니다",
+  "notFound.back": "프로젝트로 돌아가기"
 }

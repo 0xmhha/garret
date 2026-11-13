@@ -1,6 +1,26 @@
 {
   "app.name": "garret",
   "app.loading": "Loading…",
-  "review.commentCount": { "one": "{count} comment", "other": "{count} comments" },
-  "review.openedBy": "Opened by {author}"
+  "review.commentCount": {
+    "one": "{count} comment",
+    "other": "{count} comments"
+  },
+  "review.openedBy": "Opened by {author}",
+  "signIn.title": "Sign in to garret",
+  "signIn.lede": "Use the account your administrator invited you with.",
+  "signIn.username": "Username",
+  "signIn.password": "Password",
+  "signIn.submit": "Sign in",
+  "signIn.submitting": "Signing in…",
+  "signIn.failed": "The username or password is not correct.",
+  "error.network": "The server cannot be reached. Check that you are on the same network.",
+  "error.generic": "Something went wrong. Try again.",
+  "shell.projects": "Projects",
+  "shell.signOut": "Sign out",
+  "shell.account": "Signed in as {name}",
+  "projects.title": "Projects",
+  "projects.empty": "No projects yet. An administrator creates the first one.",
+  "projects.loadFailed": "The projects could not be loaded.",
+  "notFound.title": "Page not found",
+  "notFound.back": "Back to projects"
 }

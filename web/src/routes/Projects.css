@@ -1,0 +1,43 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+}
+
+.page__title {
+  margin-bottom: var(--space-5);
+  font-size: var(--text-2xl);
+  line-height: 1.25;
+}
+
+.muted {
+  color: var(--fg-muted);
+}
+
+.project-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.project-list__item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+}
+
+.project-list__item + .project-list__item {
+  border-top: 1px solid var(--border);
+}
+
+.project-list__name {
+  font-weight: 600;
+  font-size: var(--text-lg);
+}
+
+.project-list__clone {
+  color: var(--fg-muted);
+  font-size: var(--text-xs);
+}

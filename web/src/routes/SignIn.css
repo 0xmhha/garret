@@ -1,0 +1,43 @@
+.signin {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: var(--space-8) var(--space-4);
+  background: var(--bg-subtle);
+}
+
+.signin__card {
+  display: grid;
+  gap: var(--space-4);
+  width: min(100%, 360px);
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.signin__head {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.signin__head h1 {
+  font-size: var(--text-xl);
+  line-height: 1.25;
+}
+
+.signin__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.signin__lede {
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
