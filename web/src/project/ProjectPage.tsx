@@ -10,6 +10,7 @@ import { useUsers } from "../review/queries";
 import { name } from "../review/Thread";
 import { Button } from "../ui/Button";
 import { TextField } from "../ui/TextField";
+import { CodeSource, useBranches } from "./CodeSource";
 import "../review/review.css";
 import "./project.css";
 
@@ -48,6 +49,7 @@ export function ProjectPage() {
   return (
     <main className="page project">
       <h1 className="page__title">{project}</h1>
+      <CodeSource project={project} />
       <div className="project__grid">
         <section aria-labelledby="reviews-title">
           <div className="project__head">
@@ -109,11 +111,7 @@ function NewReview({ project, onCancel }: { project: string; onCancel: () => voi
   const qc = useQueryClient();
   const navigate = useNavigate();
   const base = `/api/v1/projects/${encodeURIComponent(project)}`;
-  const branches = useQuery({
-    queryKey: [...keys.project(project), "branches"],
-    queryFn: ({ signal }) => api.request<{ branches: Record<string, string> }>("GET", `${base}/branches`, undefined, { signal }),
-    select: (r) => Object.keys(r.branches).sort(),
-  });
+  const branches = useBranches(project);
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("refs/heads/main");
   const [title, setTitle] = useState("");
