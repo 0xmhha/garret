@@ -2,10 +2,13 @@ import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
+import { eraseHref } from "../admin/model";
 import { useApi, useT } from "../app/context";
+import { useMe } from "../app/session";
 import type { MessageKey } from "../i18n/i18n";
 import { Markdown } from "../ui/Markdown";
 import { connectDoc } from "./provider";
@@ -37,6 +40,7 @@ const theme = EditorView.theme({
 export function DescriptionEditor({ project, doc, label }: { project: string; doc: string; label: string }) {
   const api = useApi();
   const t = useT();
+  const me = useMe();
   const [session, setSession] = useState(0);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [text, setText] = useState("");
@@ -118,6 +122,11 @@ export function DescriptionEditor({ project, doc, label }: { project: string; do
         </div>
         {status === "live" && others > 0 ? <span className="collab__others">{t("collab.others", { count: others })}</span> : null}
         <span className={`collab__status collab__status--${status}`}>{t(`collab.status.${status}` as MessageKey)}</span>
+        {me.data?.role === "admin" ? (
+          <Link className="collab__erase" to={eraseHref("collab_document", doc)}>
+            {t("admin.eraseHistoryLink")}
+          </Link>
+        ) : null}
       </div>
       <div ref={host} className="collab__editor" hidden={mode !== "edit"} />
       {mode === "preview" ? <div className="collab__preview">{text.trim() ? <Markdown source={text} /> : <p className="muted">{t("collab.empty")}</p>}</div> : null}

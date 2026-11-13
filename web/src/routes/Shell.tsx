@@ -53,9 +53,18 @@ export function Shell() {
             {t("shell.inbox")}
             {unread.data && unread.data.length > 0 ? <span className="topbar__count" aria-label={t("shell.unread", { count: unread.data.length })}>{unread.data.length}</span> : null}
           </Link>
+          {me.data?.role === "admin" ? (
+            <Link to="/admin" aria-current={location.pathname === "/admin" ? "page" : undefined}>
+              {t("shell.admin")}
+            </Link>
+          ) : null}
         </nav>
         <div className="topbar__account">
-          {me.data ? <span className="topbar__user">{t("shell.account", { name: me.data.display_name })}</span> : null}
+          {me.data ? (
+            <Link className="topbar__user" to="/account" aria-current={location.pathname === "/account" ? "page" : undefined} title={t("shell.accountSettings")}>
+              {t("shell.account", { name: me.data.display_name })}
+            </Link>
+          ) : null}
           <Button variant="quiet" aria-label={t("shell.signOut")} onPress={() => signOut.mutate(undefined, { onSettled: () => navigate("/login") })}>
             <IconSignOut />
           </Button>

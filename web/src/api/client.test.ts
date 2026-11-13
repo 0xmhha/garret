@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ApiError, createClient, type Storage } from "./client";
+import { ApiError, createClient, fileName, type Storage } from "./client";
 
 function memoryStorage(): Storage {
   const m = new Map<string, string>();
@@ -95,4 +95,33 @@ describe("request", () => {
     await api.request("GET", "/api/v1/me", undefined, { signal: ctl.signal });
     expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].signal).toBe(ctl.signal);
   });
+});
+
+describe("download", () => {
+  it("posts with the CSRF header and returns the body as a Blob with its file name", async () => {
+    const fetch = vi.fn(async () => new Response(new Uint8Array([80, 75]), { status: 200, headers: { "Content-Disposition": 'attachment; filename="libfoo-export.zip"' } }));
+    const api = createClient({ fetch, storage: memoryStorage() });
+    api.setCsrf("tok");
+    const got = await api.download("/api/v1/admin/projects/libfoo/export");
+    expect(got.name).toBe("libfoo-export.zip");
+    expect(got.blob.size).toBe(2);
+    const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(init.method).toBe("POST");
+    expect(new Headers(init.headers).get("X-CSRF-Token")).toBe("tok");
+  });
+
+  it("maps errors like request does", async () => {
+    const api = createClient({ fetch: vi.fn(async () => reply(403, { error: { code: "forbidden", message: "not allowed" } })), storage: memoryStorage() });
+    await expect(api.download("/api/v1/admin/projects/x/export")).rejects.toMatchObject({ status: 403, code: "forbidden" });
+  });
+});
+
+describe("fileName", () => {
+  it.each([
+    ['attachment; filename="a-export.zip"', "a-export.zip"],
+    ["attachment; filename=b.zip", "b.zip"],
+    ['attachment; filename="../x.zip"', ""],
+    ['attachment; filename="a\\\\b.zip"', ""],
+    [null, ""],
+  ])("%s -> %s", (h, want) => expect(fileName(h)).toBe(want));
 });

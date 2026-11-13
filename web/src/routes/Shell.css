@@ -65,3 +65,11 @@
   font-size: var(--text-xs);
   font-weight: 600;
 }
+
+.topbar__user {
+  color: var(--fg-muted);
+}
+
+.topbar__user[aria-current="page"] {
+  color: var(--fg);
+}

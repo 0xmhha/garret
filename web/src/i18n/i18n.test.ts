@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import en from "./en.json";
 import ko from "./ko.json";
-import { catalogs, createTranslator, formatRelative, pickLocale } from "./i18n";
+import { catalogs, createTranslator, formatDate, formatRelative, pickLocale } from "./i18n";
 
 describe("pickLocale", () => {
   it.each([
@@ -70,5 +70,14 @@ describe("formatRelative", () => {
     ["en", new Date("2026-11-13T11:59:58Z"), "now"],
   ] as const)("%s %s", (locale, date, want) => {
     expect(formatRelative(locale, date, now)).toBe(want);
+  });
+});
+
+describe("formatDate", () => {
+  it("writes a medium date with a short time", () => {
+    expect(formatDate("en", new Date(2026, 10, 13, 9, 5))).toBe("Nov 13, 2026, 9:05 AM");
+  });
+  it("returns nothing for an invalid date", () => {
+    expect(formatDate("ko", new Date("nope"))).toBe("");
   });
 });

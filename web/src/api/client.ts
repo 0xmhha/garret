@@ -40,11 +40,11 @@ export interface ClientOptions {
 export function createClient(opts: ClientOptions) {
   const { fetch, storage, onUnauthenticated } = opts;
 
-  async function request<T = unknown>(method: Method, path: string, body?: unknown, init: { signal?: AbortSignal } = {}): Promise<T> {
+  async function send(method: Method, path: string, accept: string, body?: unknown, signal?: AbortSignal): Promise<Response> {
     if (!path.startsWith(apiPrefix)) {
       throw new Error(`not an API path: ${path}`);
     }
-    const headers = new Headers({ Accept: "application/json" });
+    const headers = new Headers({ Accept: accept });
     if (body !== undefined) headers.set("Content-Type", "application/json");
     const token = storage.getItem(csrfKey);
     if (method !== "GET" && token) headers.set(csrfHeader, token);
@@ -55,7 +55,7 @@ export function createClient(opts: ClientOptions) {
         headers,
         credentials: "same-origin",
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        ...(init.signal ? { signal: init.signal } : {}),
+        ...(signal ? { signal } : {}),
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
@@ -66,12 +66,27 @@ export function createClient(opts: ClientOptions) {
       onUnauthenticated?.();
     }
     if (!resp.ok) throw await toError(resp);
+    return resp;
+  }
+
+  async function request<T = unknown>(method: Method, path: string, body?: unknown, init: { signal?: AbortSignal } = {}): Promise<T> {
+    const resp = await send(method, path, "application/json", body, init.signal);
     if (resp.status === 204) return undefined as T;
     return (await resp.json()) as T;
   }
 
+  /**
+   * download posts to path and returns the response body as a Blob, with
+   * the file name from Content-Disposition (empty when there is none).
+   */
+  async function download(path: string, body?: unknown): Promise<{ blob: Blob; name: string }> {
+    const resp = await send("POST", path, "*/*", body);
+    return { blob: await resp.blob(), name: fileName(resp.headers.get("Content-Disposition")) };
+  }
+
   return {
     request,
+    download,
     setCsrf: (token: string) => storage.setItem(csrfKey, token),
     clearSession: () => storage.removeItem(csrfKey),
     hasSession: () => storage.getItem(csrfKey) !== null,
@@ -92,4 +107,12 @@ async function toError(resp: Response): Promise<ApiError> {
     // Not JSON: a proxy page or a crash; reported as internal below.
   }
   return new ApiError(resp.status, "internal", "the server could not handle the request");
+}
+
+/** fileName returns the plain filename parameter of a Content-Disposition header. */
+export function fileName(header: string | null): string {
+  const m = /filename="([^"]*)"/.exec(header ?? "") ?? /filename=([^;\s]+)/.exec(header ?? "");
+  const name = m?.[1] ?? "";
+  // A name with a path separator would be refused by the browser anyway.
+  return /[\\/]/.test(name) ? "" : name;
 }

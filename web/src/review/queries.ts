@@ -18,7 +18,7 @@ export function useReview(project: string, n: number) {
 export function useUsers() {
   const api = useApi();
   return useQuery({
-    queryKey: ["users"],
+    queryKey: keys.users(),
     queryFn: ({ signal }) => api.request<{ users: User[] }>("GET", "/api/v1/users", undefined, { signal }),
     select: (r) => new Map(r.users.map((u) => [u.id, u])),
     staleTime: 5 * 60_000,
