@@ -48,9 +48,12 @@ type Serve struct {
 	Port         uint16
 	EnrollPort   uint16
 	ClientCerts  bool
-	TLSCert      string
-	TLSKey       string
-	InsecureHTTP bool
+	// ClientCertsSet reports that --client-cert or --insecure-http chose the
+	// mode for this run, over the one kept in the data directory (D14).
+	ClientCertsSet bool
+	TLSCert        string
+	TLSKey         string
+	InsecureHTTP   bool
 }
 
 // ParseServe parses the flags of garret serve and validates them.
@@ -78,6 +81,11 @@ func ParseServe(args []string, env Environment) (Serve, error) {
 	if fs.NArg() > 0 {
 		return Serve{}, fmt.Errorf("%w: unexpected argument %q", ErrInvalid, fs.Arg(0))
 	}
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "client-cert" || f.Name == "insecure-http" {
+			c.ClientCertsSet = true
+		}
+	})
 	for _, a := range allows {
 		p, err := netip.ParsePrefix(a)
 		if err != nil || !netguard.IsPrivate(p.Masked()) {
