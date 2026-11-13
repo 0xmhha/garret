@@ -70,7 +70,7 @@ stated otherwise.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/projects/{project}/reviews/{n}/comments` | Threads. Query `rev` returns ported positions for that revision |
+| `GET` | `/projects/{project}/reviews/{n}/comments` | Threads. Query `rev` returns ported positions for that revision. A root comment has an empty `thread_root_id`; a reply carries its root's ID |
 | `POST` | `/projects/{project}/reviews/{n}/comments` | New thread (with optional anchor) or reply |
 | `GET` `POST` | `/projects/{project}/discussions/{id}/comments` | Same for discussions |
 | `PATCH` | `/comments/{id}` | Edit body (author only). Adds a version |
