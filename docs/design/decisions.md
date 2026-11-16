@@ -285,3 +285,26 @@ laptops still bring their branches with `git push`.
   browser or a scan of the home folder in the web interface (exposes the
   server's file system; a browser's folder picker cannot give a path).
 
+## D16. Reviewers take a revision home as a patch file
+
+The Files tab has a "Download patch" button for the view on screen: a whole
+revision, one commit, or a run of commits. The server answers with the
+commits as `git format-patch` output (one mbox file, binary changes
+included), and a reviewer applies it to their own clone with `git am`.
+
+- **Why**: reviewers want to build and run the fix on their own laptop.
+  With members joining by browser (D14) their machines trust neither
+  garret's certificate authority nor hold a token, so fetching with Git
+  would mean setup work for every reviewer. A file needs only the browser,
+  and it is exactly the revision under review: earlier revisions are pinned
+  under hidden refs that Git does not serve.
+- **Limits**: a comparison of two revisions has no patch (the revisions may
+  have different bases); the base commit must exist in the reviewer's clone,
+  which holds for a fix to a public project; output over the 64 MiB command
+  output limit is refused.
+- **Rejected**: commands to fetch the branch with Git (a token and the
+  certificate authority on every reviewer's machine, and only the latest
+  revision); serving the hidden revision refs (the same setup, and a change
+  to what Git advertises); a bundle per revision (needs Git setup to read
+  and is larger).
+

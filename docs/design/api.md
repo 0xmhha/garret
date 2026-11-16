@@ -65,6 +65,7 @@ stated otherwise.
 | `POST` | `/projects/{project}/reviews/{n}/state` | Complete, abandon or reopen |
 | `GET` | `/projects/{project}/reviews/{n}/revisions` | Revisions with their commits |
 | `GET` | `/projects/{project}/reviews/{n}/diff` | Structured diff. Query: `rev`, or `commit`, or `from`+`to` (commit range or revision pair) |
+| `GET` | `/projects/{project}/reviews/{n}/patch` | The commits of a view as `git format-patch --stdout --binary` output, as a download named `<project>-<n>-r<revision>[-<commit>].patch`. Query: `rev`, or `commit`, or `from`+`to` commits (a comparison of two revisions answers 400). Output over 64 MiB answers 413 (decision D16) |
 | `GET` | `/projects/{project}/reviews/{n}/diff/file` | One file's hunks. Query: `from`, `to` (commits of the review), `old`, `new` (paths; empty for a side that does not exist). A file over the size limits answers 413 |
 | `GET` | `/projects/{project}/reviews/{n}/file` | File content at a commit, for expanding context. Query: `commit`, `path`. Text up to 2 MiB; binary files answer 400 |
 | `POST` | `/projects/{project}/reviews/{n}/verdicts` | Record `approve` or `request_changes` on the latest revision |

@@ -99,7 +99,9 @@ brief in `.impeccable/surfaces/`).
    threads written on exactly its commits; the whole-revision view also
    shows unresolved threads ported from earlier revisions. Comments are
    written on the first three views, not on a comparison of revisions,
-   whose line numbers no anchor can hold.
+   whose line numbers no anchor can hold. Next to the view picker, "Download
+   patch" saves the view's commits as a patch file for `git am` (decision
+   D16); it is absent for a comparison of revisions.
 2. Sign-in, and the shell: projects list, navigation, inbox.
 3. Project: branches, reviews list with filters, discussions. A project
    with no branches yet says how to bring code in: the `git remote add` and
