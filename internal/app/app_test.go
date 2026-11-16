@@ -99,6 +99,21 @@ func get(c *http.Client, url string) (*http.Response, error) {
 	return c.Do(req)
 }
 
+// signIn posts a wrong password with origin and returns the status.
+func signIn(t *testing.T, c *http.Client, base, origin string) int {
+	t.Helper()
+	body := strings.NewReader(`{"username":"nobody","password":"wrong-password"}`)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/api/v1/auth/login", body)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", origin)
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	return resp.StatusCode
+}
+
 func TestAppRequiresClientCertificates(t *testing.T) {
 	a, out, stop := start(t, testConfig(t, true))
 	for _, want := range []string{a.MainURL(), "192.168.1.0/24", a.Fingerprint()} {
@@ -140,6 +155,14 @@ func TestAppServesWithCertificatesOff(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("api without session %d", resp.StatusCode)
+	}
+	// A sign-in from the server's loopback address reaches the password
+	// check (decisions.md D17); one from another site does not.
+	byIP := strings.Replace(a.MainURL(), "localhost", "127.0.0.1", 1)
+	for origin, want := range map[string]int{byIP: http.StatusUnauthorized, "https://evil.example": http.StatusForbidden} {
+		if got := signIn(t, clientFor(a, nil), a.MainURL(), origin); got != want {
+			t.Errorf("sign-in with Origin %s: %d, want %d", origin, got, want)
+		}
 	}
 	// No invitation: the enrollment port is closed.
 	if c, err := (&net.Dialer{Timeout: time.Second}).DialContext(context.Background(), "tcp", "127.0.0.1:"+strconv.Itoa(int(cfg.EnrollListen.Port()))); err == nil {

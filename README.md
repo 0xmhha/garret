@@ -148,6 +148,26 @@ Members join in one of two ways, chosen when the server first starts:
    under Administration and passes on its temporary password; the member
    opens `https://<host>:8443`, signs in and changes the password under
    Account. Anyone on the allowed network can reach the sign-in page.
+   The host name and the host's IP address on the network both work, so
+   use the address if the `.local` name does not resolve on a member's
+   machine.
+
+   Browsers warn about the certificate until the member trusts garret's
+   certificate authority once. The administrator passes on
+   `tls/ca.crt` from the data directory (on macOS
+   `~/Library/Application Support/garret`) together with the CA fingerprint
+   that `garret serve` prints. The file is a public certificate, not a
+   secret. On the member's Mac:
+
+   ```sh
+   # Compare with the fingerprint from the administrator (ignore the colons)
+   openssl x509 -in ca.crt -noout -fingerprint -sha256
+   security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ca.crt
+   ```
+
+   Then restart the browser. The certificate authority can only vouch for
+   the server's own names and network, so trusting it does not let garret
+   speak for other sites.
 
 `garret serve --client-cert=on|off` overrides the choice for one run.
 

@@ -308,3 +308,28 @@ included), and a reviewer applies it to their own clone with `git am`.
   to what Git advertises); a bundle per revision (needs Git setup to read
   and is larger).
 
+
+## D17. The server's own addresses count as its origin
+
+A state-changing request or a WebSocket upgrade must name the server in its
+`Origin` header. The server accepts its host name (`--host`, the address in
+the banner and in clone URLs) and also the other addresses its certificate
+already covers: `localhost`, loopback, and each local-network address it
+listens on, all on the main port.
+
+- **Why**: members who join by browser (D14) type whatever address works on
+  their machine. The default host name ends in `.local` and depends on
+  multicast name lookup, which some networks block; members then use the IP
+  address, and with a single accepted origin they could load every page but
+  not sign in. The address may also change when the lease runs out; the
+  listen addresses, the certificate and the accepted origins follow it at
+  the next start, without a new certificate authority.
+- **Safety**: every accepted origin is this server on its main port, so a
+  page that can send it is a page garret served. A cross-site page still
+  cannot name any of them. The CSRF token and the `SameSite=Strict` session
+  cookie are unchanged, and each origin keeps its own cookie and token.
+- **Rejected**: a host name that is an IP address (the certificate authority
+  would have to be replaced, and every member would have to trust the new
+  one, whenever the address changed); accepting any origin whose host
+  matches the request's `Host` header (the header is the client's to set);
+  dropping the `Origin` check (the CSRF token would be the only defence).

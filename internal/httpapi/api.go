@@ -32,8 +32,9 @@ const (
 	basePath      = "/api/v1"
 )
 
-// Config holds the API's dependencies. Origin is the server origin that
-// state-changing requests must name, for example https://review.local:8443.
+// Config holds the API's dependencies. Origin is the server's main origin,
+// for example https://review.local:8443: clone URLs are built on it, and
+// state-changing requests must name it or one of Aliases.
 type Config struct {
 	Auth        *auth.Service
 	Projects    *project.Service
@@ -46,6 +47,9 @@ type Config struct {
 	Hub         *realtime.Hub
 	Collab      *collab.Service
 	Origin      string
+	// Aliases are the other origins of the same server, such as its
+	// local-network address on the same port (decisions.md D17).
+	Aliases     []string
 	ClientCerts bool
 	// Active is consulted on every request: TLS checks the serial only at
 	// handshake, so a connection opened before a revocation must not keep
@@ -63,14 +67,21 @@ type Config struct {
 
 // API is the JSON API handler.
 type API struct {
-	cfg    Config
-	mux    *http.ServeMux
-	limits connLimits
+	cfg     Config
+	origins map[string]bool
+	mux     *http.ServeMux
+	limits  connLimits
 }
 
 // New returns the API with every route registered.
 func New(cfg Config) *API {
-	a := &API{cfg: cfg, mux: http.NewServeMux()}
+	origins := make(map[string]bool, 1+len(cfg.Aliases))
+	for _, o := range append([]string{cfg.Origin}, cfg.Aliases...) {
+		if o != "" {
+			origins[o] = true
+		}
+	}
+	a := &API{cfg: cfg, origins: origins, mux: http.NewServeMux()}
 	a.routes()
 	return a
 }
@@ -114,7 +125,7 @@ func (a *API) public(h handler) http.Handler {
 			writeError(w, r, a.cfg.Log, auth.ErrUnauthenticated)
 			return
 		}
-		if changesState(r) && r.Header.Get("Origin") != a.cfg.Origin {
+		if changesState(r) && !a.ownOrigin(r) {
 			writeError(w, r, a.cfg.Log, auth.ErrForbidden)
 			return
 		}
@@ -123,6 +134,12 @@ func (a *API) public(h handler) http.Handler {
 			writeError(w, r, a.cfg.Log, err)
 		}
 	})
+}
+
+// ownOrigin reports whether the request's Origin header names this server,
+// by its main origin or an alias.
+func (a *API) ownOrigin(r *http.Request) bool {
+	return a.origins[r.Header.Get("Origin")]
 }
 
 // authed wraps a handler that needs a signed-in user. State-changing
