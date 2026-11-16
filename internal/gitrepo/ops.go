@@ -293,3 +293,13 @@ func (r *Runner) ResolveRef(ctx context.Context, dir, ref string) (string, error
 	}
 	return sha, nil
 }
+
+// FormatPatch returns the commits in from..to as one mbox of patches, the
+// output of git format-patch with binary changes, for git am (decisions.md
+// D16). Output over the runner's cap returns ErrTooLarge.
+func (r *Runner) FormatPatch(ctx context.Context, dir, from, to string) ([]byte, error) {
+	if !isObjectName(from) || !isObjectName(to) {
+		return nil, fmt.Errorf("%w: format-patch", ErrBadArgument)
+	}
+	return r.run(ctx, true, "--git-dir", dir, "format-patch", "--stdout", "--binary", "--no-signature", from+".."+to)
+}

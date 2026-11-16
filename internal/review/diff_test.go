@@ -186,3 +186,49 @@ func TestReviewNotifications(t *testing.T) {
 		t.Error("pusher notified of their own revision")
 	}
 }
+
+func TestPatch(t *testing.T) {
+	f := newFixture(t)
+	r := f.open(t)
+	ctx := context.Background()
+	d, _ := f.svc.Get(ctx, bob, "libfoo", r.Number)
+	rev := d.Revisions[0]
+	c := rev.Commits
+	tests := []struct {
+		name     string
+		q        DiffQuery
+		wantName string
+		subjects int
+	}{
+		{"whole revision", DiffQuery{Revision: 1}, "libfoo-1-r1.patch", 3},
+		{"one commit", DiffQuery{Commit: c[1].SHA}, "libfoo-1-r1-" + c[1].SHA[:7] + ".patch", 1},
+		{"a range", DiffQuery{From: c[0].SHA, To: c[2].SHA}, "libfoo-1-r1-" + c[0].SHA[:7] + "-" + c[2].SHA[:7] + ".patch", 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p, err := f.svc.Patch(ctx, carol, "libfoo", r.Number, tt.q)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if p.Name != tt.wantName {
+				t.Fatalf("name %q, want %q", p.Name, tt.wantName)
+			}
+			if n := strings.Count(string(p.Data), "\nSubject: [PATCH"); n != tt.subjects {
+				t.Fatalf("%d patches, want %d:\n%s", n, tt.subjects, p.Data)
+			}
+		})
+	}
+	for name, q := range map[string]DiffQuery{
+		"revision pair":  {FromRevision: 1, ToRevision: 1},
+		"unknown rev":    {Revision: 9},
+		"foreign commit": {Commit: strings.Repeat("a", 40)},
+		"nothing":        {},
+	} {
+		if _, err := f.svc.Patch(ctx, carol, "libfoo", r.Number, q); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	if _, err := f.svc.Patch(ctx, carol, "libfoo", r.Number, DiffQuery{FromRevision: 1, ToRevision: 1}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("revision pair: %v", err)
+	}
+}

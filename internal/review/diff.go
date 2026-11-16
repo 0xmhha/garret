@@ -52,6 +52,59 @@ func (s *Service) Diff(ctx context.Context, actor auth.User, projectName string,
 	return DiffSummary{From: from, To: to, Files: files, BasesDiffer: differ}, nil
 }
 
+// Patch is a view's commits as one patch file (decisions.md D16).
+type Patch struct {
+	Name string // a download name such as libfoo-12-r2.patch
+	Data []byte
+}
+
+// shortSHA is how many characters of a commit a patch name carries.
+const shortSHA = 7
+
+// Patch returns the commits of a revision, a commit or a range as git
+// format-patch output for git am. A comparison of two revisions has no
+// patch, since the revisions may have different bases.
+func (s *Service) Patch(ctx context.Context, actor auth.User, projectName string, number int64, q DiffQuery) (Patch, error) {
+	if q.FromRevision != 0 || q.ToRevision != 0 {
+		return Patch{}, fmt.Errorf("%w: a comparison of revisions has no patch", ErrInvalid)
+	}
+	_, dir, revs, err := s.revisions(ctx, actor, projectName, number)
+	if err != nil {
+		return Patch{}, err
+	}
+	from, to, _, err := resolveView(revs, q)
+	if err != nil {
+		return Patch{}, err
+	}
+	name := fmt.Sprintf("%s-%d-r%d", projectName, number, patchRevision(revs, q, to))
+	switch {
+	case q.Commit != "":
+		name += "-" + to[:shortSHA]
+	case q.From != "":
+		name += "-" + from[:shortSHA] + "-" + to[:shortSHA]
+	}
+	data, err := s.runner.FormatPatch(ctx, dir, from, to)
+	if err != nil {
+		return Patch{}, err
+	}
+	return Patch{Name: name + ".patch", Data: data}, nil
+}
+
+// patchRevision is the revision a patch comes from: the one asked for, or
+// the latest revision holding the patch's last commit.
+func patchRevision(revs []revisionInfo, q DiffQuery, to string) int64 {
+	if q.Revision != 0 {
+		return q.Revision
+	}
+	var n int64
+	for _, r := range revs {
+		if slices.Contains(r.commits, to) {
+			n = r.row.Number
+		}
+	}
+	return n
+}
+
 // FileDiff returns the hunks of one file between two commits of the review.
 // Pass both paths for a rename and "" for a side that does not exist. Files
 // over the limits return gitrepo.ErrTooLarge.

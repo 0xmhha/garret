@@ -304,5 +304,7 @@
   "admin.projectSourceNone": "The repository has no branches yet.",
   "project.noOpenReviews": "No open reviews. Use New review: pick the branch with the change and the branch it goes into.",
   "project.targetHintSource": "Not in the list? Press “Sync from source” above to bring in new branches, including the source's origin/… branches.",
-  "project.targetHintPush": "Not in the list? Push the branch first; it appears here once pushed."
+  "project.targetHintPush": "Not in the list? Push the branch first; it appears here once pushed.",
+  "files.patch": "Download patch",
+  "files.patchHint": "Save these commits as a patch file and apply them in your clone with git am <file>."
 }

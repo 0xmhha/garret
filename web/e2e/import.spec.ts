@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import { contextFor, signIn, state, violations, watchCSP } from "./state";
 
@@ -31,6 +32,15 @@ test("a project starts from a repository on the server and a review opens from i
   await page.getByRole("button", { name: "Open review" }).click();
   await expect(page.getByRole("heading", { name: /Imported fix/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Revisions 1", exact: true })).toBeVisible();
+
+  // Reviewers take the revision home as a patch for git am (D16).
+  await page.getByRole("link", { name: /^Files/ }).click();
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download patch" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(new RegExp(`^${name}-\\d+-r1\\.patch$`));
+  const text = readFileSync(await file.path(), "utf8");
+  expect(text.match(/\nSubject: \[PATCH/g)?.length).toBe(3);
   expect(await violations(page)).toEqual([]);
   await ctx.close();
 });

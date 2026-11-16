@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -140,5 +141,44 @@ func TestFetchBranchesAndMove(t *testing.T) {
 	refs, _ := r.AllRefs(ctx, bare)
 	if _, ok := refs[ImportRefPrefix+"main"]; ok || refs["refs/heads/main"] != main2 {
 		t.Fatalf("refs after %v", refs)
+	}
+}
+
+func TestFormatPatch(t *testing.T) {
+	r := newRunner(t, 2)
+	ctx := context.Background()
+	src, main1, main2, _ := sourceRepo(t)
+	bare := filepath.Join(t.TempDir(), "p.git")
+	if err := r.InitBare(ctx, bare); err != nil {
+		t.Fatal(err)
+	}
+	branches, _ := r.SourceBranches(ctx, src)
+	if err := r.FetchBranches(ctx, bare, src, branches); err != nil {
+		t.Fatal(err)
+	}
+	out, err := r.FormatPatch(ctx, bare, main1, main2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	patch := string(out)
+	for _, want := range []string{"From " + main2, "Subject: [PATCH] two", "-one", "+two"} {
+		if !strings.Contains(patch, want) {
+			t.Fatalf("patch lacks %q:\n%s", want, patch)
+		}
+	}
+	// The patch applies with git am on a clone at the base.
+	clone := filepath.Join(t.TempDir(), "clone")
+	work(t, filepath.Dir(clone), "clone", "-q", src, clone)
+	work(t, clone, "checkout", "-q", main1)
+	pf := filepath.Join(t.TempDir(), "x.patch")
+	if err := os.WriteFile(pf, out, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	work(t, clone, "am", "-q", pf)
+	if got, _ := os.ReadFile(filepath.Join(clone, "a.txt")); string(got) != "two\n" {
+		t.Fatalf("after git am a.txt = %q", got)
+	}
+	if _, err := r.FormatPatch(ctx, bare, "HEAD", main2); !errors.Is(err, ErrBadArgument) {
+		t.Fatalf("not an object name: %v", err)
 	}
 }

@@ -59,6 +59,7 @@ it("diffs one commit and anchors a new comment to it", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Comment on line 1" }));
   expect(gets).toContain(`/api/v1/projects/libfoo/reviews/1/diff?commit=${c2}`);
   expect((screen.getByRole("combobox", { name: "Show" }) as HTMLSelectElement).value).toBe(`commit:${c2}`);
+  expect(screen.getByRole("link", { name: "Download patch" }).getAttribute("href")).toBe(`/api/v1/projects/libfoo/reviews/1/patch?commit=${c2}`);
   fireEvent.change(document.querySelector("textarea")!, { target: { value: "Why int?" } });
   fireEvent.click(screen.getByRole("button", { name: "Comment" }));
   await waitFor(() =>

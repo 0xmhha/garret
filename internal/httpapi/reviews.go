@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"fmt"
+	"mime"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -395,6 +396,32 @@ func (a *API) diff(w http.ResponseWriter, r *http.Request) error {
 			Deleted: f.Deleted, Binary: f.Binary, Similarity: f.Similarity}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"from": s.From, "to": s.To, "bases_differ": s.BasesDiffer, "files": files})
+	return nil
+}
+
+// patch sends a view's commits as a patch file for git am (decisions.md
+// D16). The content is member-written, so it is a download with the same
+// sandboxing policy as attachments.
+func (a *API) patch(w http.ResponseWriter, r *http.Request) error {
+	n, err := number(r)
+	if err != nil {
+		return err
+	}
+	q, err := diffQuery(r)
+	if err != nil {
+		return err
+	}
+	p, err := a.cfg.Reviews.Patch(r.Context(), user(r), r.PathValue("project"), n, q)
+	if err != nil {
+		return err
+	}
+	h := w.Header()
+	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	h.Set("Content-Type", "application/octet-stream")
+	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": p.Name}))
+	h.Set("Content-Length", strconv.Itoa(len(p.Data)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(p.Data)
 	return nil
 }
 
