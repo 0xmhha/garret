@@ -101,14 +101,21 @@ brief in `.impeccable/surfaces/`).
    written on the first three views, not on a comparison of revisions,
    whose line numbers no anchor can hold.
 2. Sign-in, and the shell: projects list, navigation, inbox.
-3. Project: branches, reviews list with filters, discussions.
+3. Project: branches, reviews list with filters, discussions. A project
+   with no branches yet says how to bring code in: the `git remote add` and
+   `git push` commands with its clone URL. A project with a source path
+   (D15) has a "Sync from source" button that reports which branches were
+   created, updated or left alone, and offers to overwrite branches the
+   source rewrote.
 4. Discussion: collaborative body, comments, history.
 5. Account: tokens, certificates and devices, language. A new token's
    secret is shown once, with a copy button. Revoking the certificate this
    browser presents warns that the device is locked out until it enrolls
    again. The language choice is kept in `localStorage` (`garret.locale`)
    and wins over the browser's preference.
-6. Administration: projects (create, export, purge), invitations (code
+6. Administration: projects (create, optionally from a repository path on
+   the server's machine after a check that lists its branches; export,
+   purge), invitations (code
    shown once, the link without a secret), users, disabling, permanent
    erasure. Every destructive action asks once more before it runs, with
    focus on Cancel; purge also needs the project name typed. Export reads

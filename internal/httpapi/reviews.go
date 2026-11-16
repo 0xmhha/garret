@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -21,11 +22,12 @@ type projectJSON struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	CloneURL    string    `json:"clone_url"`
+	SourcePath  string    `json:"source_path"`
 }
 
 func (a *API) toProjectJSON(p project.Project) projectJSON {
 	return projectJSON{ID: p.ID, Name: p.Name, Description: p.Description, CreatedAt: p.CreatedAt,
-		CloneURL: a.cfg.Origin + "/git/" + p.Name + ".git"}
+		CloneURL: a.cfg.Origin + "/git/" + p.Name + ".git", SourcePath: p.SourcePath}
 }
 
 func (a *API) listProjects(w http.ResponseWriter, r *http.Request) error {
@@ -45,15 +47,75 @@ func (a *API) createProject(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
+		SourcePath  string `json:"source_path"`
 	}
 	if err := decode(w, r, &in); err != nil {
 		return err
 	}
-	p, err := a.cfg.Projects.Create(r.Context(), user(r), in.Name, in.Description)
+	var p project.Project
+	var err error
+	if in.SourcePath == "" {
+		p, err = a.cfg.Projects.Create(r.Context(), user(r), in.Name, in.Description)
+	} else {
+		p, err = a.cfg.Projects.CreateFromSource(r.Context(), user(r), in.Name, in.Description, in.SourcePath)
+	}
 	if err != nil {
 		return err
 	}
 	writeJSON(w, http.StatusCreated, a.toProjectJSON(p))
+	return nil
+}
+
+// previewRepository lists the branches of a repository on the server's
+// machine before a project is created from it (decisions.md D15).
+func (a *API) previewRepository(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		Path string `json:"path"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	branches, err := a.cfg.Projects.Preview(r.Context(), user(r), in.Path)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"path": in.Path, "branches": branches})
+	return nil
+}
+
+// syncProject copies new commits and branches from the project's source,
+// then records the moves as a push by the caller, as a git push would be.
+func (a *API) syncProject(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		Overwrite bool `json:"overwrite"`
+	}
+	if err := decode(w, r, &in); err != nil {
+		return err
+	}
+	name := r.PathValue("project")
+	res, err := a.cfg.Projects.Sync(r.Context(), user(r), name, in.Overwrite)
+	if err != nil {
+		return err
+	}
+	if len(res.Moves) > 0 {
+		changes := make([]review.RefChange, len(res.Moves))
+		for i, m := range res.Moves {
+			changes[i] = review.RefChange{Ref: m.Ref, Old: m.Old, New: m.New}
+		}
+		// The branches already moved; like a push, a failure to update the
+		// reviews is logged rather than undoing the sync.
+		if err := a.cfg.Reviews.HandlePush(context.WithoutCancel(r.Context()), name, user(r), changes); err != nil {
+			a.cfg.Log.Error("recording a sync failed", "project", name, "err", err)
+		}
+	}
+	list := func(s []string) []string {
+		if s == nil {
+			return []string{}
+		}
+		return s
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"created": list(res.Created), "updated": list(res.Updated),
+		"rewritten": list(res.Rewritten), "unchanged": list(res.Unchanged)})
 	return nil
 }
 

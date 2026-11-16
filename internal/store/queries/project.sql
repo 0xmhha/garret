@@ -1,5 +1,5 @@
 -- name: InsertProject :exec
-INSERT INTO projects (id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?);
+INSERT INTO projects (id, name, description, created_by, created_at, source_path) VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: GetProjectByName :one
 SELECT * FROM projects WHERE name = ?;

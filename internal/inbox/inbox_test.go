@@ -46,7 +46,7 @@ func setup(t *testing.T) (*Service, *store.DB, *testClock) {
 				return err
 			}
 		}
-		_, err := tx.ExecContext(ctx, "INSERT INTO projects VALUES ('P1', 'p', '', ?, 1, 1)", bob.ID)
+		_, err := tx.ExecContext(ctx, "INSERT INTO projects VALUES ('P1', 'p', '', ?, 1, 1, NULL)", bob.ID)
 		return err
 	})
 	if err != nil {

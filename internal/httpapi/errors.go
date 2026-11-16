@@ -49,7 +49,7 @@ var errorMapping = []struct {
 		attachment.ErrForbidden, admin.ErrForbidden}, http.StatusForbidden, codeForbidden, "not allowed"},
 	{[]error{auth.ErrNotFound, project.ErrNotFound, review.ErrNotFound, comment.ErrNotFound, discussion.ErrNotFound,
 		attachment.ErrNotFound, admin.ErrNotFound, collab.ErrNotFound}, http.StatusNotFound, codeNotFound, "not found"},
-	{[]error{auth.ErrConflict, project.ErrConflict, review.ErrConflict, comment.ErrConflict, admin.ErrConflict, collab.ErrStale},
+	{[]error{auth.ErrConflict, project.ErrConflict, project.ErrNoSource, review.ErrConflict, comment.ErrConflict, admin.ErrConflict, collab.ErrStale},
 		http.StatusConflict, codeConflict, "the resource changed; reload and try again"},
 	{[]error{attachment.ErrTooLarge, gitrepo.ErrTooLarge, collab.ErrTooLarge, errBodyTooLarge}, http.StatusRequestEntityTooLarge, codeTooLarge, "too large"},
 	{[]error{auth.ErrInvalid, project.ErrInvalid, review.ErrInvalid, comment.ErrInvalid, discussion.ErrInvalid,

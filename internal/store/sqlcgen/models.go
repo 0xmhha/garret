@@ -164,6 +164,7 @@ type Project struct {
 	CreatedBy        string
 	CreatedAt        int64
 	NextReviewNumber int64
+	SourcePath       sql.NullString
 }
 
 type Review struct {

@@ -118,3 +118,50 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Where the code comes from: the server's repository, sync, push help. */
+.code-source {
+  display: grid;
+  gap: var(--space-3);
+  margin: calc(var(--space-2) * -1) 0 var(--space-6);
+}
+
+.code-source__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.code-source__path {
+  overflow-wrap: anywhere;
+}
+
+.code-source__result,
+.code-source__empty {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+  font-size: var(--text-sm);
+}
+
+.code-source__rewritten {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.code-source__commands {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font: var(--text-sm) / 1.5 var(--font-code);
+}

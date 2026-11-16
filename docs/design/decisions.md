@@ -257,3 +257,31 @@ answer uses client certificates on and keeps that.
   browser (members would re-import a new file every 7 days, and the server
   would generate their private keys).
 
+## D15. Projects can start from a repository on the server's machine
+
+An administrator can create a project from a Git repository that already
+exists on the machine running garret, by typing its path. garret checks that
+the path is a Git repository, shows its branches, and copies them into the
+project. A "Sync from source" button on the project copies new commits and
+branches again, recorded as a push by whoever pressed it. Members on other
+laptops still bring their branches with `git push`.
+
+- **Why**: the person who runs the server usually has the fix in a local
+  repository, and expected to register that repository instead of pushing
+  it into an empty one. A button keeps every revision attributable to a
+  person, as pushes are (PRODUCT.md, principle 2).
+- **Which branches**: the source's local branches, and its remote-tracking
+  branches as `<remote>/<branch>` (for example `origin/master`), because a
+  clone often has its base branch only as a remote-tracking branch. A local
+  branch with the same name wins; `<remote>/HEAD` is skipped.
+- **Sync rules**: new branches and fast-forwards are copied; a branch the
+  source rewrote is listed and copied only when the person confirms an
+  overwrite, because a member may have pushed to the same branch name;
+  branches deleted in the source are kept.
+- **Rejected**: push only, with instructions (still needs a terminal for the
+  most common case); syncing automatically every few seconds (every
+  work-in-progress commit would become a revision, and nobody pressed it);
+  importing once and pushing afterwards (half of the convenience); a folder
+  browser or a scan of the home folder in the web interface (exposes the
+  server's file system; a browser's folder picker cannot give a path).
+

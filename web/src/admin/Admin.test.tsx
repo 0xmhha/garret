@@ -20,6 +20,8 @@ function setup({ me = admin, path = "/admin", zip = emptyZip() } = {}) {
     if (url === "/api/v1/projects" && method === "GET") return json(200, { projects: [{ id: "p1", name: "libfoo", description: "" }] });
     if (url === "/api/v1/admin/invitations" && method === "POST") return json(201, { invitation: {}, link: "https://h:8443/enroll#ca=ab", code: "WXYZ-1234" });
     if (url === "/api/v1/admin/invitations") return json(200, { invitations: [] });
+    if (url === "/api/v1/admin/repository-preview") return json(200, { path: "/Users/me/fix", branches: ["main", "topic"] });
+    if (url === "/api/v1/projects" && method === "POST") return json(201, {});
     if (url === "/api/v1/admin/users" && method === "POST") return json(201, { user: { ...bob, id: "u3", username: "dave", display_name: "Dave" }, password: "alpha-bravo-charlie-delta-echo-foxtrot" });
     if (url === "/api/v1/admin/users") return json(200, { users: [admin, bob] });
     if (url.endsWith("/export")) return new Response(zip, { status: 200, headers: { "Content-Disposition": 'attachment; filename="libfoo-export.zip"' } });
@@ -100,4 +102,17 @@ it("creates an account and shows its temporary password once", async () => {
   fireEvent.click(within(form).getByRole("button", { name: "Create account" }));
   expect(await screen.findByText("alpha-bravo-charlie-delta-echo-foxtrot")).toBeTruthy();
   expect(calls).toContainEqual({ method: "POST", url: "/api/v1/admin/users", body: { username: "dave", display_name: "Dave", role: "member" } });
+});
+
+it("checks a repository on the server and creates the project from it", async () => {
+  const calls = setup();
+  const form = (await screen.findByRole("textbox", { name: "Repository on this server (optional)" })).closest("form")!;
+  fireEvent.change(within(form).getByRole("textbox", { name: "Name" }), { target: { value: "libfix" } });
+  fireEvent.change(within(form).getByRole("textbox", { name: "Repository on this server (optional)" }), { target: { value: " /Users/me/fix " } });
+  fireEvent.click(within(form).getByRole("button", { name: "Check" }));
+  expect(await screen.findByText("Branches found: main, topic")).toBeTruthy();
+  fireEvent.click(within(form).getByRole("button", { name: "Create project" }));
+  await waitFor(() =>
+    expect(calls).toContainEqual({ method: "POST", url: "/api/v1/projects", body: { name: "libfix", description: "", source_path: "/Users/me/fix" } }),
+  );
 });

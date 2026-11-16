@@ -51,7 +51,7 @@ func newService(t *testing.T) *Service {
 				return err
 			}
 		}
-		_, err := tx.ExecContext(ctx, "INSERT INTO projects VALUES (?, 'libfoo', '', ?, 1, 1)", project, admin.ID)
+		_, err := tx.ExecContext(ctx, "INSERT INTO projects VALUES (?, 'libfoo', '', ?, 1, 1, NULL)", project, admin.ID)
 		return err
 	}); err != nil {
 		t.Fatal(err)

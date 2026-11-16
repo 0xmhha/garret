@@ -43,6 +43,7 @@ stated otherwise.
 | `GET` | `/users` | List users for display (any member) |
 | `POST` | `/admin/users/{id}/disable` | Disable a user and revoke their sessions and tokens |
 | `POST` | `/admin/erasures` | Permanently erase one comment, attachment or collaborative text |
+| `POST` | `/admin/repository-preview` | `{path}` → `{path, branches}`: checks that a path on the server's machine is a Git repository and lists its branches, before a project is created from it |
 | `POST` | `/admin/projects/{project}/export` | Stream the export archive as the response; its SHA-256 arrives in the `X-Garret-Export-SHA256` trailer |
 | `POST` | `/admin/projects/{project}/purge` | Erase the project. Requires a completed export and the project name typed again |
 
@@ -50,7 +51,8 @@ stated otherwise.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` `POST` | `/projects` | List projects, or create one (administrators) |
+| `GET` `POST` | `/projects` | List projects, or create one (administrators). Optional `source_path`: an absolute path to a Git repository on the server's machine whose branches are copied in (decision D15) |
+| `POST` | `/projects/{project}/sync` | Copy new commits and branches from the project's source path; `{overwrite}` also moves branches the source rewrote. Returns `{created, updated, rewritten, unchanged}` lists of branch names. Recorded as a push by the caller; 409 when the project has no source |
 | `GET` | `/projects/{project}` | Project details and clone URL |
 | `GET` | `/projects/{project}/branches` | Branches with their heads |
 

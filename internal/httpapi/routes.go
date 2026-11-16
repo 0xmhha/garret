@@ -21,6 +21,7 @@ func (a *API) routes() {
 	h("POST "+p, a.authed(a.createProject))
 	h("GET "+p+"/{project}", a.authed(a.getProject))
 	h("GET "+p+"/{project}/branches", a.authed(a.branches))
+	h("POST "+p+"/{project}/sync", a.authed(a.syncProject))
 
 	rv := p + "/{project}/reviews"
 	h("GET "+rv, a.authed(a.listReviews))
@@ -56,6 +57,7 @@ func (a *API) routes() {
 	h("GET "+basePath+"/users", a.authed(a.listUsers))
 
 	ad := basePath + "/admin"
+	h("POST "+ad+"/repository-preview", a.authed(a.previewRepository))
 	h("GET "+ad+"/invitations", a.authed(a.listInvitations))
 	h("POST "+ad+"/invitations", a.authed(a.createInvitation))
 	h("DELETE "+ad+"/invitations/{id}", a.authed(a.revokeInvitation))

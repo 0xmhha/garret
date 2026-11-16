@@ -42,6 +42,9 @@ type Project struct {
 	Description string
 	CreatedBy   string
 	CreatedAt   time.Time
+	// SourcePath is the repository on the server's machine the project
+	// syncs from, or "" (decisions.md D15).
+	SourcePath string
 }
 
 // Service manages projects and their repositories. It is safe for
@@ -81,6 +84,13 @@ func (s *Service) LockRepo(ctx context.Context, name string) (func(), error) {
 // create projects. The repository directory is created exclusively first,
 // so a concurrent or repeated create never touches an existing repository.
 func (s *Service) Create(ctx context.Context, actor auth.User, name, description string) (Project, error) {
+	return s.create(ctx, actor, name, description, "")
+}
+
+// create creates the project; with a source, it copies the source's
+// branches into the new repository before the project is recorded, so a
+// failed import leaves nothing behind.
+func (s *Service) create(ctx context.Context, actor auth.User, name, description, source string) (Project, error) {
 	if !actor.IsAdmin() {
 		return Project{}, ErrForbidden
 	}
@@ -111,6 +121,11 @@ func (s *Service) Create(ctx context.Context, actor auth.User, name, description
 	if err := s.runner.InitBare(ctx, dir); err != nil {
 		return Project{}, err
 	}
+	if source != "" {
+		if _, err := s.importBranches(ctx, dir, source, false); err != nil {
+			return Project{}, err
+		}
+	}
 	projectID, err := s.ids.New()
 	if err != nil {
 		return Project{}, err
@@ -118,22 +133,27 @@ func (s *Service) Create(ctx context.Context, actor auth.User, name, description
 	now := s.clock.Now()
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		err := sqlcgen.New(tx).InsertProject(ctx, sqlcgen.InsertProjectParams{
-			ID: projectID, Name: name, Description: description, CreatedBy: actor.ID, CreatedAt: now.UnixMilli()})
+			ID: projectID, Name: name, Description: description, CreatedBy: actor.ID, CreatedAt: now.UnixMilli(),
+			SourcePath: sql.NullString{String: source, Valid: source != ""}})
 		if err != nil {
 			if strings.Contains(err.Error(), "UNIQUE constraint failed: projects.name") {
 				return ErrConflict
 			}
 			return err
 		}
+		data := map[string]any{"name": name}
+		if source != "" {
+			data["source_path"] = source
+		}
 		return s.audit.Record(ctx, tx, audit.Event{ProjectID: projectID, ActorID: actor.ID, Action: "project.created",
-			SubjectKind: "project", SubjectID: projectID, Data: map[string]any{"name": name}})
+			SubjectKind: "project", SubjectID: projectID, Data: data})
 	})
 	if err != nil {
 		return Project{}, err
 	}
 	created = true
 	return Project{ID: projectID, Name: name, Description: description, CreatedBy: actor.ID,
-		CreatedAt: time.UnixMilli(now.UnixMilli()).UTC()}, nil
+		CreatedAt: time.UnixMilli(now.UnixMilli()).UTC(), SourcePath: source}, nil
 }
 
 // Get returns the project named name. Every member may see every project.
@@ -213,5 +233,5 @@ func (s *Service) RemoveOrphanRepositories(ctx context.Context) ([]string, error
 
 func toProject(p sqlcgen.Project) Project {
 	return Project{ID: p.ID, Name: p.Name, Description: p.Description, CreatedBy: p.CreatedBy,
-		CreatedAt: time.UnixMilli(p.CreatedAt).UTC()}
+		CreatedAt: time.UnixMilli(p.CreatedAt).UTC(), SourcePath: p.SourcePath.String}
 }

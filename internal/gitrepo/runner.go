@@ -155,7 +155,7 @@ func (r *Runner) exec(ctx context.Context, timeout time.Duration, outputCap int6
 func subcommand(args []string) string {
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; {
-		case a == "--git-dir" || a == "-c":
+		case a == "--git-dir" || a == "-c" || a == "-C":
 			i++
 		case !strings.HasPrefix(a, "-"):
 			return a
