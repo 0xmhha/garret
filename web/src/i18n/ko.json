@@ -300,5 +300,7 @@
   "admin.projectSourceNone": "저장소에 아직 브랜치가 없습니다.",
   "project.noOpenReviews": "열린 리뷰가 없습니다. “새 리뷰”에서 변경이 있는 브랜치와 합칠 대상 브랜치를 고르세요.",
   "project.targetHintSource": "목록에 없나요? 위의 “원본에서 가져오기”를 누르면 원본의 origin/… 브랜치를 포함한 새 브랜치가 들어옵니다.",
-  "project.targetHintPush": "목록에 없나요? 먼저 그 브랜치를 push하세요. push하면 여기에 나타납니다."
+  "project.targetHintPush": "목록에 없나요? 먼저 그 브랜치를 push하세요. push하면 여기에 나타납니다.",
+  "files.patch": "패치 내려받기",
+  "files.patchHint": "이 커밋들을 패치 파일로 저장합니다. 내 clone에서 git am <파일>로 적용하세요."
 }

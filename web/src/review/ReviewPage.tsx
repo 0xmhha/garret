@@ -11,7 +11,7 @@ import { Files } from "./Files";
 import { buildThreads, type Review, type Revision } from "./model";
 import { reviewPath, useComments, useReview, useReviewAction, useUsers } from "./queries";
 import { Revisions } from "./Revisions";
-import { parseView, unresolved, viewParams, type DiffView } from "./views";
+import { parseView, unresolved, viewParams, viewQuery, type DiffView } from "./views";
 import { name } from "./Thread";
 import "./review.css";
 
@@ -151,7 +151,7 @@ export function ReviewPage() {
           element={
             revision ? (
               <div className="files-wrap">
-                <ViewPicker revisions={revisions} current={revision} view={view} />
+                <ViewPicker revisions={revisions} current={revision} view={view} patchURL={`${reviewPath(project, number)}/patch?${viewQuery(view, revision)}`} />
                 <Files
                   project={project}
                   number={number}
@@ -195,7 +195,7 @@ function TabCount({ count }: { count: number }) {
  * ViewPicker chooses the revision and what to compare inside it: all its
  * changes, one commit, a run of commits, or an earlier revision's head.
  */
-function ViewPicker({ revisions, current, view }: { revisions: Revision[]; current: Revision; view: DiffView }) {
+function ViewPicker({ revisions, current, view, patchURL }: { revisions: Revision[]; current: Revision; view: DiffView; patchURL: string }) {
   const t = useT();
   const [params, setParams] = useSearchParams();
   const commits = current.commits;
@@ -275,6 +275,12 @@ function ViewPicker({ revisions, current, view }: { revisions: Revision[]; curre
           </select>
         </span>
       ) : null}
+      {view.kind === "pair" ? null : (
+        // A download: the server names the file. Applied with git am (D16).
+        <a className="btn revpicker__patch" href={patchURL} title={t("files.patchHint")}>
+          {t("files.patch")}
+        </a>
+      )}
     </div>
   );
 }
