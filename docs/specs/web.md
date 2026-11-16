@@ -118,7 +118,8 @@ brief in `.impeccable/surfaces/`).
 6. Administration: projects (create, optionally from a repository path on
    the server's machine after a check that lists its branches; export,
    purge), invitations (code
-   shown once, the link without a secret), users, disabling, permanent
+   shown once, the link without a secret), users, disabling, removing a
+   disabled user (decision D18; removed users leave the list), permanent
    erasure. Every destructive action asks once more before it runs, with
    focus on Cancel; purge also needs the project name typed. Export reads
    the archive into memory, checks that it ends with a zip

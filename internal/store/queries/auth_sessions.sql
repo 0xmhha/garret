@@ -46,3 +46,13 @@ UPDATE access_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL;
 
 -- name: RevokeUserAccessTokens :exec
 UPDATE access_tokens SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL;
+
+-- name: RemoveUser :execrows
+UPDATE users SET removed_at = ?, username = ?, password_hash = ''
+WHERE id = ? AND disabled_at IS NOT NULL AND removed_at IS NULL;
+
+-- name: DeleteUserAccessTokens :exec
+DELETE FROM access_tokens WHERE user_id = ?;
+
+-- name: DeleteUserCertificates :exec
+DELETE FROM client_certificates WHERE user_id = ?;

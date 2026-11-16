@@ -17,11 +17,12 @@ type userJSON struct {
 	DisplayName string    `json:"display_name"`
 	Role        auth.Role `json:"role"`
 	Disabled    bool      `json:"disabled"`
+	Removed     bool      `json:"removed"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
 func toUserJSON(u auth.User) userJSON {
-	return userJSON{ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: u.Role, Disabled: u.Disabled, CreatedAt: u.CreatedAt}
+	return userJSON{ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: u.Role, Disabled: u.Disabled, Removed: u.Removed, CreatedAt: u.CreatedAt}
 }
 
 type tokenJSON struct {

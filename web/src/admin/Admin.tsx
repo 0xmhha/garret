@@ -23,6 +23,8 @@ interface Project {
 
 interface AdminUser extends User {
   disabled: boolean;
+  /** Removed users stay for the names on past records (decisions.md D18). */
+  removed?: boolean;
   created_at: string;
 }
 
@@ -338,13 +340,19 @@ function Users({ self }: { self: string }) {
     queryFn: ({ signal }) => api.request<{ users: AdminUser[] }>("GET", "/api/v1/admin/users", undefined, { signal }),
     select: (r) => r.users,
   });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: keys.adminUsers() });
+    void qc.invalidateQueries({ queryKey: keys.users() });
+  };
   const disable = useMutation({
     mutationFn: (id: string) => api.request("POST", `/api/v1/admin/users/${encodeURIComponent(id)}/disable`),
-    onSettled: () => {
-      void qc.invalidateQueries({ queryKey: keys.adminUsers() });
-      void qc.invalidateQueries({ queryKey: keys.users() });
-    },
+    onSettled: refresh,
   });
+  const remove = useMutation({
+    mutationFn: (id: string) => api.request("POST", `/api/v1/admin/users/${encodeURIComponent(id)}/remove`),
+    onSettled: refresh,
+  });
+  const shown = list.data?.filter((u) => !u.removed);
 
   return (
     <section className="settings__section" aria-labelledby="users-title">
@@ -352,8 +360,9 @@ function Users({ self }: { self: string }) {
       <NewAccount />
       <p className="muted">{t("admin.usersLede")}</p>
       {disable.error ? <p className="form-error" role="alert">{errorMessage(disable.error, t)}</p> : null}
+      {remove.error ? <p className="form-error" role="alert">{errorMessage(remove.error, t)}</p> : null}
       {list.isError ? <p className="form-error" role="alert">{errorMessage(list.error, t)}</p> : null}
-      {list.data && list.data.length > 0 ? (
+      {shown && shown.length > 0 ? (
         <div className="table-scroll">
           <table className="table">
             <thead>
@@ -368,7 +377,7 @@ function Users({ self }: { self: string }) {
               </tr>
             </thead>
             <tbody>
-              {list.data.map((u) => {
+              {shown.map((u) => {
                 const status = u.disabled ? "disabled" : "active";
                 return (
                   <tr key={u.id}>
@@ -391,6 +400,15 @@ function Users({ self }: { self: string }) {
                           prompt={t("admin.disablePrompt", { name: u.display_name })}
                           isDisabled={disable.isPending}
                           onConfirm={() => disable.mutate(u.id)}
+                        />
+                      ) : null}
+                      {u.disabled && u.id !== self ? (
+                        <ConfirmButton
+                          label={t("admin.remove")}
+                          aria-label={t("admin.removeLabel", { name: u.display_name })}
+                          prompt={t("admin.removePrompt", { name: u.display_name })}
+                          isDisabled={remove.isPending}
+                          onConfirm={() => remove.mutate(u.id)}
                         />
                       ) : null}
                     </td>

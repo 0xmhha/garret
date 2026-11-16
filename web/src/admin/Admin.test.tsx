@@ -11,7 +11,7 @@ const emptyZip = () => {
   return b;
 };
 
-function setup({ me = admin, path = "/admin", zip = emptyZip() } = {}) {
+function setup({ me = admin, path = "/admin", zip = emptyZip(), users = [admin, bob] } = {}) {
   const calls: { method: string; url: string; body?: unknown }[] = [];
   const fetch = vi.fn(async (url: string, init: RequestInit) => {
     const method = init.method ?? "GET";
@@ -23,7 +23,7 @@ function setup({ me = admin, path = "/admin", zip = emptyZip() } = {}) {
     if (url === "/api/v1/admin/repository-preview") return json(200, { path: "/Users/me/fix", branches: ["main", "topic"] });
     if (url === "/api/v1/projects" && method === "POST") return json(201, {});
     if (url === "/api/v1/admin/users" && method === "POST") return json(201, { user: { ...bob, id: "u3", username: "dave", display_name: "Dave" }, password: "alpha-bravo-charlie-delta-echo-foxtrot" });
-    if (url === "/api/v1/admin/users") return json(200, { users: [admin, bob] });
+    if (url === "/api/v1/admin/users") return json(200, { users });
     if (url.endsWith("/export")) return new Response(zip, { status: 200, headers: { "Content-Disposition": 'attachment; filename="libfoo-export.zip"' } });
     return json(204);
   });
@@ -92,6 +92,18 @@ it("does not offer to disable yourself", async () => {
   setup();
   expect(await screen.findByRole("button", { name: "Disable Bob" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Disable Ann" })).toBeNull();
+});
+
+it("removes a disabled user and hides removed users", async () => {
+  const carol = { ...bob, id: "u4", username: "carol", display_name: "Carol", disabled: true };
+  const dan = { ...bob, id: "u5", username: "~u5", display_name: "Dan", disabled: true, removed: true };
+  const calls = setup({ users: [admin, bob, carol, dan] });
+  fireEvent.click(await screen.findByRole("button", { name: "Remove Carol" }));
+  const ask = screen.getByRole("group", { name: /Remove Carol\?/ });
+  fireEvent.click(within(ask).getByRole("button", { name: "Remove" }));
+  await waitFor(() => expect(calls).toContainEqual({ method: "POST", url: "/api/v1/admin/users/u4/remove" }));
+  expect(screen.queryByRole("button", { name: "Remove Bob" })).toBeNull();
+  expect(screen.queryByText("Dan")).toBeNull();
 });
 
 it("creates an account and shows its temporary password once", async () => {

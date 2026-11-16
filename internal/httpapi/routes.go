@@ -65,6 +65,7 @@ func (a *API) routes() {
 	h("GET "+ad+"/users", a.authed(a.adminListUsers))
 	h("POST "+ad+"/users", a.authed(a.createUser))
 	h("POST "+ad+"/users/{id}/disable", a.authed(a.disableUser))
+	h("POST "+ad+"/users/{id}/remove", a.authed(a.removeUser))
 	h("POST "+ad+"/erasures", a.authed(a.erase))
 	h("POST "+ad+"/projects/{project}/export", a.authed(a.export))
 	h("POST "+ad+"/projects/{project}/purge", a.authed(a.purge))

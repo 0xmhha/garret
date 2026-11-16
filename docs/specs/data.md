@@ -116,12 +116,13 @@ Column notes: **PK** primary key, **FK** foreign key, **U** unique,
 | Column | Type | Notes |
 |---|---|---|
 | `id` | TEXT | PK |
-| `username` | TEXT | U, `^[a-z0-9][a-z0-9_-]{1,31}$` |
+| `username` | TEXT | U, `^[a-z0-9][a-z0-9_-]{1,31}$`; `~` and the ID once removed |
 | `display_name` | TEXT | 1–64 characters |
 | `password_hash` | TEXT | Argon2id in PHC string format |
 | `role` | TEXT | `admin`, `member` |
 | `created_at` | INTEGER | |
 | `disabled_at` | INTEGER | N |
+| `removed_at` | INTEGER | N, only with `disabled_at` (migration 00005, decision D18) |
 
 **invitations**
 

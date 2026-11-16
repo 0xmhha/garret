@@ -30,6 +30,8 @@ type Querier interface {
 	DeleteNotificationsAbout(ctx context.Context, subjectID string) error
 	DeleteOldNotifications(ctx context.Context, createdAt int64) (int64, error)
 	DeleteSession(ctx context.Context, idSha256 []byte) error
+	DeleteUserAccessTokens(ctx context.Context, userID string) error
+	DeleteUserCertificates(ctx context.Context, userID string) error
 	DeleteUserSessions(ctx context.Context, userID string) error
 	DisableUser(ctx context.Context, arg DisableUserParams) (int64, error)
 	EarliestOpenInvitationExpiry(ctx context.Context, expiresAt int64) (int64, error)
@@ -128,6 +130,7 @@ type Querier interface {
 	PurgeStateChanges(ctx context.Context, projectID string) error
 	PurgeUpdates(ctx context.Context, projectID string) error
 	PurgeVerdicts(ctx context.Context, projectID string) error
+	RemoveUser(ctx context.Context, arg RemoveUserParams) (int64, error)
 	RenameDiscussion(ctx context.Context, arg RenameDiscussionParams) (int64, error)
 	ReviewParticipants(ctx context.Context, review string) ([]string, error)
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) (int64, error)

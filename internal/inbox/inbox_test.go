@@ -42,7 +42,7 @@ func setup(t *testing.T) (*Service, *store.DB, *testClock) {
 	ctx := context.Background()
 	err = db.WriteTx(ctx, func(tx *sql.Tx) error {
 		for _, u := range []auth.User{bob, carol} {
-			if _, err := tx.ExecContext(ctx, "INSERT INTO users VALUES (?, ?, 'N', 'h', 'member', 1, NULL)", u.ID, u.Username); err != nil {
+			if _, err := tx.ExecContext(ctx, "INSERT INTO users (id, username, display_name, password_hash, role, created_at, disabled_at) VALUES (?, ?, 'N', 'h', 'member', 1, NULL)", u.ID, u.Username); err != nil {
 				return err
 			}
 		}

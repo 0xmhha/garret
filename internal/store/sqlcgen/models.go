@@ -228,6 +228,7 @@ type User struct {
 	Role         string
 	CreatedAt    int64
 	DisabledAt   sql.NullInt64
+	RemovedAt    sql.NullInt64
 }
 
 type Verdict struct {

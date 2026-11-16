@@ -77,7 +77,7 @@ func newFixture(t *testing.T) *fixture {
 	t.Cleanup(func() { _ = db.Close() })
 	if err := db.WriteTx(ctx, func(tx *sql.Tx) error {
 		for _, u := range []auth.User{admin, bob, carol} {
-			if _, err := tx.ExecContext(ctx, "INSERT INTO users VALUES (?, ?, 'N', 'h', ?, 1, NULL)", u.ID, u.Username, string(u.Role)); err != nil {
+			if _, err := tx.ExecContext(ctx, "INSERT INTO users (id, username, display_name, password_hash, role, created_at, disabled_at) VALUES (?, ?, 'N', 'h', ?, 1, NULL)", u.ID, u.Username, string(u.Role)); err != nil {
 				return err
 			}
 		}

@@ -130,6 +130,13 @@ certificate, `last_used_at` at most once per minute. `RevokeToken`.
   active serials and closes the user's connections. The last enabled
   administrator cannot be disabled (`ErrConflict`), so setup never reopens
   by accident.
+- `RemoveUser(ctx, admin, userID)` (decision D18): only for a disabled user
+  that is not yet removed (`ErrConflict`; `ErrNotFound` for an unknown ID).
+  In one transaction it sets `removed_at`, sets the username to `~` and the
+  ID and the password hash to an empty string that no password matches,
+  deletes the user's sessions, access tokens and client certificates, and
+  records `user.removed`. Everything else the user wrote stays.
+  `ListUsers` reports `Removed`.
 
 ## 4. Projects (`internal/project`)
 

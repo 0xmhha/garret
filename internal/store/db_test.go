@@ -63,7 +63,7 @@ func TestOpenAppliesSettings(t *testing.T) {
 }
 
 func insertUser(tx *sql.Tx, id string) error {
-	_, err := tx.ExecContext(context.Background(), "INSERT INTO users VALUES (?, ?, 'N', 'h', 'member', 1, NULL)", id, "user-"+id)
+	_, err := tx.ExecContext(context.Background(), "INSERT INTO users (id, username, display_name, password_hash, role, created_at, disabled_at) VALUES (?, ?, 'N', 'h', 'member', 1, NULL)", id, "user-"+id)
 	return err
 }
 

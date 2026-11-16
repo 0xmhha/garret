@@ -36,6 +36,24 @@ func (q *Queries) DeleteSession(ctx context.Context, idSha256 []byte) error {
 	return err
 }
 
+const deleteUserAccessTokens = `-- name: DeleteUserAccessTokens :exec
+DELETE FROM access_tokens WHERE user_id = ?
+`
+
+func (q *Queries) DeleteUserAccessTokens(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteUserAccessTokens, userID)
+	return err
+}
+
+const deleteUserCertificates = `-- name: DeleteUserCertificates :exec
+DELETE FROM client_certificates WHERE user_id = ?
+`
+
+func (q *Queries) DeleteUserCertificates(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteUserCertificates, userID)
+	return err
+}
+
 const deleteUserSessions = `-- name: DeleteUserSessions :exec
 DELETE FROM sessions WHERE user_id = ?
 `
@@ -203,6 +221,25 @@ func (q *Queries) ListUserAccessTokens(ctx context.Context, userID string) ([]Ac
 		return nil, err
 	}
 	return items, nil
+}
+
+const removeUser = `-- name: RemoveUser :execrows
+UPDATE users SET removed_at = ?, username = ?, password_hash = ''
+WHERE id = ? AND disabled_at IS NOT NULL AND removed_at IS NULL
+`
+
+type RemoveUserParams struct {
+	RemovedAt sql.NullInt64
+	Username  string
+	ID        string
+}
+
+func (q *Queries) RemoveUser(ctx context.Context, arg RemoveUserParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, removeUser, arg.RemovedAt, arg.Username, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const revokeAccessToken = `-- name: RevokeAccessToken :execrows

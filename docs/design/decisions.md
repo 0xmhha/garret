@@ -308,3 +308,25 @@ included), and a reviewer applies it to their own clone with `git am`.
   to what Git advertises); a bundle per revision (needs Git setup to read
   and is larger).
 
+
+## D18. Removing a user keeps their record
+
+An administrator can remove a disabled user. The user leaves the user list
+in Administration, their username can be given to a new account, and their
+password hash, access tokens and device certificates are deleted. Reviews,
+verdicts, comments, pushes and the audit log keep pointing at them and keep
+showing their display name.
+
+- **Why**: teams want people who left out of the list and their usernames
+  free again. Their contributions are part of the review record (D8): who
+  approved a change and who asked for it must stay readable.
+- **How**: the row stays, so the foreign keys stay valid. `removed_at` is
+  set and the username becomes `~` followed by the user ID, which no real
+  username can match and no `@mention` can name. Only a disabled user can
+  be removed, which keeps the last-administrator rule of `DisableUser`.
+  Removal cannot be undone.
+- **Rejected**: deleting the row with everything the user wrote (breaks
+  D8); deleting only users who left no records (does not cover the people
+  the request is about); also replacing the display name in past records
+  (the record would no longer say who wrote what; content that must go is
+  erased item by item instead, D8).

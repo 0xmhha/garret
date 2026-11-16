@@ -38,10 +38,11 @@ stated otherwise.
 |---|---|---|
 | `GET` `POST` | `/admin/invitations` | List or create invitations |
 | `DELETE` | `/admin/invitations/{id}` | Revoke an unused invitation |
-| `GET` | `/admin/users` | List users, including whether each is disabled |
+| `GET` | `/admin/users` | List users, including whether each is disabled or removed |
 | `POST` | `/admin/users` | Create an account without a device certificate: `{username, display_name, role}` returns the user and a temporary password once (six words from the invitation wordlist). Only while client certificates are off (`--client-cert=off`); otherwise 409, because such an account could not connect |
-| `GET` | `/users` | List users for display (any member) |
+| `GET` | `/users` | List users for display (any member), removed users included so past records keep their names |
 | `POST` | `/admin/users/{id}/disable` | Disable a user and revoke their sessions and tokens |
+| `POST` | `/admin/users/{id}/remove` | Remove a disabled user (decision D18): frees the username, deletes the password, tokens and certificates, keeps the user's records and display name. 409 if the user is not disabled or already removed |
 | `POST` | `/admin/erasures` | Permanently erase one comment, attachment or collaborative text |
 | `POST` | `/admin/repository-preview` | `{path}` → `{path, branches}`: checks that a path on the server's machine is a Git repository and lists its branches, before a project is created from it |
 | `POST` | `/admin/projects/{project}/export` | Stream the export archive as the response; its SHA-256 arrives in the `X-Garret-Export-SHA256` trailer |
