@@ -33,6 +33,7 @@ func (a *API) routes() {
 	h("GET "+rv+"/{n}/file", a.authed(a.reviewFile))
 	h("GET "+rv+"/{n}/history", a.authed(a.reviewHistory))
 	h("GET "+rv+"/{n}/diff", a.authed(a.diff))
+	h("GET "+rv+"/{n}/patch", a.authed(a.patch))
 	h("GET "+rv+"/{n}/diff/file", a.authed(a.fileDiff))
 	h("GET "+rv+"/{n}/comments", a.authed(a.reviewComments))
 	h("POST "+rv+"/{n}/comments", a.authed(a.createReviewComment))
