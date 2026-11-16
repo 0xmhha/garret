@@ -11,7 +11,7 @@ import { name } from "../review/Thread";
 import { Button } from "../ui/Button";
 import { TextField } from "../ui/TextField";
 import { defaultTarget } from "./branches";
-import { CodeSource, useBranches } from "./CodeSource";
+import { CodeSource, useBranches, useProjectInfo } from "./CodeSource";
 import "../review/review.css";
 import "./project.css";
 
@@ -113,6 +113,7 @@ function NewReview({ project, onCancel }: { project: string; onCancel: () => voi
   const navigate = useNavigate();
   const base = `/api/v1/projects/${encodeURIComponent(project)}`;
   const branches = useBranches(project);
+  const info = useProjectInfo(project);
   const [source, setSource] = useState("");
   const [chosenTarget, setTarget] = useState("");
   const [title, setTitle] = useState("");
@@ -136,12 +137,17 @@ function NewReview({ project, onCancel }: { project: string; onCancel: () => voi
             {list.map((b) => <option key={b} value={b}>{shortRef(b)}</option>)}
           </select>
         </label>
-        <label className="field">
-          <span className="field__label">{t("project.target")}</span>
-          <select className="field__input" value={target} onChange={(e) => setTarget(e.target.value)} required>
+        <div className="field">
+          <label className="field__label" htmlFor="new-review-target">
+            {t("project.target")}
+          </label>
+          <select id="new-review-target" className="field__input" value={target} onChange={(e) => setTarget(e.target.value)} required aria-describedby="target-hint">
             {list.map((b) => <option key={b} value={b}>{shortRef(b)}</option>)}
           </select>
-        </label>
+          <span id="target-hint" className="field__hint">
+            {info.data?.source_path ? t("project.targetHintSource") : t("project.targetHintPush")}
+          </span>
+        </div>
         <TextField label={t("project.title")} value={title} onChange={setTitle} isRequired maxLength={200} />
         {open.isError ? <p className="form-error" role="alert">{t("project.openFailed")}</p> : null}
         <div className="newform__actions">

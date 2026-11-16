@@ -44,11 +44,6 @@
   max-width: 480px;
 }
 
-.field__hint {
-  color: var(--fg-muted);
-  font-size: var(--text-xs);
-}
-
 .field__select {
   padding-right: var(--space-6);
 }

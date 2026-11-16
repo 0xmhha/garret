@@ -24,6 +24,9 @@ it("opens a review into dev when the repository has no main branch", async () =>
   const form = await screen.findByRole("form", { name: "New review" });
   const into = within(form).getByLabelText("Into") as HTMLSelectElement;
   await waitFor(() => expect(into.value).toBe("refs/heads/dev"));
+  // The hint points to syncing, since this project has a source repository.
+  expect(await within(form).findByText(/Press “Sync from source” above/)).toBeTruthy();
+  expect(into.getAttribute("aria-describedby")).toBe("target-hint");
   fireEvent.change(within(form).getByLabelText("Branch to review"), { target: { value: "refs/heads/feat/fix" } });
   fireEvent.change(within(form).getByRole("textbox", { name: "Title" }), { target: { value: "Croissant EIPs" } });
   fireEvent.click(within(form).getByRole("button", { name: "Open review" }));

@@ -302,5 +302,7 @@
   "admin.projectSourceCheck": "Check",
   "admin.projectSourceBranches": "Branches found: {names}",
   "admin.projectSourceNone": "The repository has no branches yet.",
-  "project.noOpenReviews": "No open reviews. Use New review: pick the branch with the change and the branch it goes into."
+  "project.noOpenReviews": "No open reviews. Use New review: pick the branch with the change and the branch it goes into.",
+  "project.targetHintSource": "Not in the list? Press “Sync from source” above to bring in new branches, including the source's origin/… branches.",
+  "project.targetHintPush": "Not in the list? Push the branch first; it appears here once pushed."
 }
