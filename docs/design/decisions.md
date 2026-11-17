@@ -333,6 +333,7 @@ listens on, all on the main port.
   one, whenever the address changed); accepting any origin whose host
   matches the request's `Host` header (the header is the client's to set);
   dropping the `Origin` check (the CSRF token would be the only defence).
+
 ## D18. Removing a user keeps their record
 
 An administrator can remove a disabled user. The user leaves the user list
