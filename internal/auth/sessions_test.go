@@ -330,3 +330,76 @@ func TestConcurrentWrongPasswordsAreCapped(t *testing.T) {
 		t.Fatalf("login allowed after the burst: %v", err)
 	}
 }
+
+func TestRemoveUser(t *testing.T) {
+	e := newEnv(t)
+	admin := e.admin(t)
+	bob := e.member(t, admin, "bob")
+	carol := e.member(t, admin, "carol")
+	ctx := context.Background()
+	if _, _, err := e.svc.CreateToken(ctx, bob.User, "git"); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name   string
+		actor  User
+		target string
+		want   error
+	}{
+		{"by a member", carol.User, bob.User.ID, ErrForbidden},
+		{"an enabled user", admin, bob.User.ID, ErrConflict},
+		{"an unknown user", admin, "01J00000000000000000000000", ErrNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := e.svc.RemoveUser(ctx, tt.actor, tt.target); !errors.Is(err, tt.want) {
+				t.Fatalf("err = %v, want %v", err, tt.want)
+			}
+		})
+	}
+	if err := e.svc.DisableUser(ctx, admin, bob.User.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.RemoveUser(ctx, admin, bob.User.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.svc.RemoveUser(ctx, admin, bob.User.ID); !errors.Is(err, ErrConflict) {
+		t.Fatalf("removed twice: %v", err)
+	}
+	users, err := e.svc.ListUsers(ctx, admin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got User
+	for _, u := range users {
+		if u.ID == bob.User.ID {
+			got = u
+		}
+	}
+	if got.Username != "~"+bob.User.ID || got.DisplayName != bob.User.DisplayName || !got.Removed || !got.Disabled {
+		t.Fatalf("removed user = %+v", got)
+	}
+	var hash string
+	var tokens, certs, sessions int
+	err = e.db.ReadTx(ctx, func(tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `SELECT password_hash,
+			(SELECT count(*) FROM access_tokens WHERE user_id = ?1),
+			(SELECT count(*) FROM client_certificates WHERE user_id = ?1),
+			(SELECT count(*) FROM sessions WHERE user_id = ?1)
+			FROM users WHERE id = ?1`, bob.User.ID)
+		return row.Scan(&hash, &tokens, &certs, &sessions)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hash != "" || tokens != 0 || certs != 0 || sessions != 0 {
+		t.Fatalf("left behind: hash %q, %d tokens, %d certificates, %d sessions", hash, tokens, certs, sessions)
+	}
+	// The username is free again; the new bob is a different user.
+	if again := e.member(t, admin, "bob"); again.User.ID == bob.User.ID {
+		t.Fatal("new bob reused the removed user's ID")
+	}
+	if _, err := e.svc.Login(ctx, LoginInput{Username: got.Username, Password: "", CertSerial: serialOf(bob), Remote: addr}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("removed user logged in: %v", err)
+	}
+}

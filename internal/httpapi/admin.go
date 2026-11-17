@@ -186,6 +186,14 @@ func (a *API) disableUser(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+func (a *API) removeUser(w http.ResponseWriter, r *http.Request) error {
+	if err := a.cfg.Auth.RemoveUser(r.Context(), user(r), r.PathValue("id")); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
 type invitationJSON struct {
 	ID        string     `json:"id"`
 	Role      auth.Role  `json:"role"`

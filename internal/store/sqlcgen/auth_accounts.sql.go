@@ -108,7 +108,7 @@ func (q *Queries) GetRenewalOf(ctx context.Context, renewedFrom sql.NullString) 
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, display_name, password_hash, role, created_at, disabled_at FROM users WHERE id = ?
+SELECT id, username, display_name, password_hash, role, created_at, disabled_at, removed_at FROM users WHERE id = ?
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
@@ -122,12 +122,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 		&i.Role,
 		&i.CreatedAt,
 		&i.DisabledAt,
+		&i.RemovedAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, display_name, password_hash, role, created_at, disabled_at FROM users WHERE username = ?
+SELECT id, username, display_name, password_hash, role, created_at, disabled_at, removed_at FROM users WHERE username = ?
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -141,6 +142,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.Role,
 		&i.CreatedAt,
 		&i.DisabledAt,
+		&i.RemovedAt,
 	)
 	return i, err
 }
@@ -331,7 +333,7 @@ func (q *Queries) ListUserCertificates(ctx context.Context, userID string) ([]Cl
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, display_name, password_hash, role, created_at, disabled_at FROM users ORDER BY username
+SELECT id, username, display_name, password_hash, role, created_at, disabled_at, removed_at FROM users ORDER BY username
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -351,6 +353,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.Role,
 			&i.CreatedAt,
 			&i.DisabledAt,
+			&i.RemovedAt,
 		); err != nil {
 			return nil, err
 		}

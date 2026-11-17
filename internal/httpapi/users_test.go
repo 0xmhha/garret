@@ -52,3 +52,38 @@ func TestAdminCreateAccountRefusals(t *testing.T) {
 		t.Fatalf("with client certificates on %d, want 409", w.Code)
 	}
 }
+
+func TestAdminRemovesDisabledUser(t *testing.T) {
+	e := newEnv(t, false)
+	root := &client{e: e}
+	root.login(t)
+	w := root.do(t, http.MethodPost, basePath+"/admin/users", map[string]string{"username": "dave", "display_name": "Dave", "role": "member"}, nil)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create %d %s", w.Code, w.Body)
+	}
+	dave := decodeBody[struct {
+		User userJSON `json:"user"`
+	}](t, w.Body.Bytes()).User
+	remove := basePath + "/admin/users/" + dave.ID + "/remove"
+	if w := root.do(t, http.MethodPost, remove, nil, nil); w.Code != http.StatusConflict {
+		t.Fatalf("remove an enabled user %d, want 409", w.Code)
+	}
+	if w := root.do(t, http.MethodPost, basePath+"/admin/users/"+dave.ID+"/disable", nil, nil); w.Code != http.StatusNoContent {
+		t.Fatalf("disable %d", w.Code)
+	}
+	if w := root.do(t, http.MethodPost, remove, nil, nil); w.Code != http.StatusNoContent {
+		t.Fatalf("remove %d %s", w.Code, w.Body)
+	}
+	users := decodeBody[struct {
+		Users []userJSON `json:"users"`
+	}](t, root.do(t, http.MethodGet, basePath+"/admin/users", nil, nil).Body.Bytes()).Users
+	for _, u := range users {
+		if u.ID == dave.ID && (!u.Removed || u.DisplayName != "Dave" || u.Username == "dave") {
+			t.Fatalf("removed user listed as %+v", u)
+		}
+	}
+	w = root.do(t, http.MethodPost, basePath+"/admin/users", map[string]string{"username": "dave", "display_name": "Dave 2", "role": "member"}, nil)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("reuse the username %d %s", w.Code, w.Body)
+	}
+}

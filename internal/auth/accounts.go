@@ -46,7 +46,10 @@ type User struct {
 	DisplayName string
 	Role        Role
 	Disabled    bool
-	CreatedAt   time.Time
+	// Removed is set once an administrator removed the user (D18); the
+	// user stays so that past records keep their name.
+	Removed   bool
+	CreatedAt time.Time
 }
 
 // IsAdmin reports whether u is an enabled administrator.
@@ -617,7 +620,7 @@ func (s *Service) RefreshActive(ctx context.Context) error {
 
 func toUser(u sqlcgen.User) User {
 	return User{ID: u.ID, Username: u.Username, DisplayName: u.DisplayName, Role: Role(u.Role),
-		Disabled: u.DisabledAt.Valid, CreatedAt: fromMS(u.CreatedAt)}
+		Disabled: u.DisabledAt.Valid, Removed: u.RemovedAt.Valid, CreatedAt: fromMS(u.CreatedAt)}
 }
 
 func mapUnique(err error) error {
@@ -650,7 +653,7 @@ func (s *Service) ListUsers(ctx context.Context, actor User) ([]User, error) {
 	for i, r := range rows {
 		out[i] = toUser(r)
 		if !actor.IsAdmin() {
-			out[i].Disabled = false
+			out[i].Disabled, out[i].Removed = false, false
 		}
 	}
 	return out, err

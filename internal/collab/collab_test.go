@@ -118,8 +118,8 @@ func seed(ctx context.Context, t *testing.T, db *store.DB) {
 	t.Helper()
 	err := db.WriteTx(ctx, func(tx *sql.Tx) error {
 		for _, q := range []string{
-			"INSERT INTO users VALUES ('" + bob.ID + "', 'bob', 'B', 'h', 'member', 1, NULL)",
-			"INSERT INTO users VALUES ('" + carol.ID + "', 'carol', 'C', 'h', 'member', 1, NULL)",
+			"INSERT INTO users (id, username, display_name, password_hash, role, created_at, disabled_at) VALUES ('" + bob.ID + "', 'bob', 'B', 'h', 'member', 1, NULL)",
+			"INSERT INTO users (id, username, display_name, password_hash, role, created_at, disabled_at) VALUES ('" + carol.ID + "', 'carol', 'C', 'h', 'member', 1, NULL)",
 			"INSERT INTO projects VALUES ('01JD0000000000000000PROJ01', 'libfoo', '', '" + bob.ID + "', 1, 1, NULL)",
 			"INSERT INTO collab_documents VALUES ('" + docID + "', '01JD0000000000000000PROJ01', 'discussion_body', 1, 1, 1)",
 			"INSERT INTO discussions VALUES ('01JD0000000000000000DISC01', '01JD0000000000000000PROJ01', 'Plan', '" + bob.ID + "', '" + docID + "', 1, 1, NULL)",

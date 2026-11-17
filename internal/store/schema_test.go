@@ -83,7 +83,7 @@ const (
 func seed(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for _, q := range []string{
-		"INSERT INTO users VALUES ('U1', 'alice', 'Alice', 'h', 'admin', 1, NULL)",
+		"INSERT INTO users (id, username, display_name, password_hash, role, created_at, disabled_at) VALUES ('U1', 'alice', 'Alice', 'h', 'admin', 1, NULL)",
 		"INSERT INTO projects VALUES ('P1', 'garret', '', 'U1', 1, 1, NULL)",
 		"INSERT INTO collab_documents VALUES ('D1', 'P1', 'review_description', 1, 1, 1)",
 		"INSERT INTO collab_documents VALUES ('D2', 'P1', 'discussion_body', 1, 1, 1)",

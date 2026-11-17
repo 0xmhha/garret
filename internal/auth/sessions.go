@@ -404,3 +404,50 @@ func (s *Service) DisableUser(ctx context.Context, actor User, userID string) er
 	s.onDisable(userID)
 	return nil
 }
+
+// removedPrefix starts the username of a removed user. No valid username
+// starts with it, so the old name is free and no mention can reach the
+// removed user.
+const removedPrefix = "~"
+
+// RemoveUser removes a disabled user (decisions.md D18): the username
+// becomes removedPrefix and the ID, the password hash is cleared, and the
+// user's sessions, access tokens and client certificates are deleted. The
+// row and everything the user wrote stay. It returns ErrForbidden for a
+// non-administrator, ErrNotFound for an unknown user and ErrConflict for a
+// user that is enabled or already removed.
+func (s *Service) RemoveUser(ctx context.Context, actor User, userID string) error {
+	if !actor.IsAdmin() {
+		return ErrForbidden
+	}
+	now := sql.NullInt64{Int64: s.clock.Now().UnixMilli(), Valid: true}
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		q := sqlcgen.New(tx)
+		target, err := q.GetUserByID(ctx, userID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		n, err := q.RemoveUser(ctx, sqlcgen.RemoveUserParams{RemovedAt: now, Username: removedPrefix + target.ID, ID: userID})
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return fmt.Errorf("%w: only a disabled user that is not yet removed can be removed", ErrConflict)
+		}
+		// Sessions go first: they may point at the certificates.
+		if err := q.DeleteUserSessions(ctx, userID); err != nil {
+			return err
+		}
+		if err := q.DeleteUserAccessTokens(ctx, userID); err != nil {
+			return err
+		}
+		if err := q.DeleteUserCertificates(ctx, userID); err != nil {
+			return err
+		}
+		return s.audit.Record(ctx, tx, audit.Event{ActorID: actor.ID, Action: "user.removed", SubjectKind: "user", SubjectID: userID,
+			Data: map[string]any{"username": target.Username}})
+	})
+}
