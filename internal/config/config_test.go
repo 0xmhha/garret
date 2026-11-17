@@ -68,6 +68,7 @@ func TestInvalid(t *testing.T) {
 		"cert without key":  {"--tls-cert", "/x.pem"},
 		"key without cert":  {"--tls-key", "/x.key"},
 		"bad client-cert":   {"--client-cert=maybe"},
+		"empty client-cert": {"--client-cert="},
 		"bad host":          {"--host", "bad host"},
 		"relative data":     {"--data", "relative/dir"},
 		"unknown flag":      {"--wat"},

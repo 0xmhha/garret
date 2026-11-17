@@ -132,13 +132,12 @@ func install(ctx context.Context, d deps, cmd, serverURL string, key *ecdsa.Priv
 
 func enrollCmd(args []string, d deps) int {
 	fs := flag.NewFlagSet("enroll", flag.ContinueOnError)
-	fs.SetOutput(d.stderr)
 	dryRun := fs.Bool("dry-run", false, "print the steps without enrolling or changing anything")
-	if err := fs.Parse(args); err != nil {
-		return exitUsage
+	if code, done := parseFlags(fs, enrollSynopsis, args, d.stdout, d.stderr); done {
+		return code
 	}
 	if fs.NArg() != 1 {
-		_, _ = fmt.Fprintln(d.stderr, "usage: garret enroll [--dry-run] <invitation link>")
+		_, _ = fmt.Fprintln(d.stderr, "usage: "+enrollSynopsis)
 		return exitUsage
 	}
 	link, err := enroll.ParseLink(fs.Arg(0))
@@ -201,9 +200,12 @@ func dryRunEnroll(d deps, link enroll.Link) int {
 
 func renewCmd(args []string, d deps) int {
 	fs := flag.NewFlagSet("renew", flag.ContinueOnError)
-	fs.SetOutput(d.stderr)
 	server := fs.String("server", "", "renew only this server (its URL)")
-	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
+	if code, done := parseFlags(fs, renewSynopsis, args, d.stdout, d.stderr); done {
+		return code
+	}
+	if fs.NArg() > 0 {
+		_, _ = fmt.Fprintln(d.stderr, "usage: "+renewSynopsis)
 		return exitUsage
 	}
 	servers, err := installedServers(d, *server)

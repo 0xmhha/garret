@@ -32,6 +32,14 @@ const (
 	exitUsage = 2
 )
 
+// Usage lines of the commands that take flags.
+const (
+	serveSynopsis  = "garret serve [flags]"
+	enrollSynopsis = "garret enroll [--dry-run] <invitation link>"
+	renewSynopsis  = "garret renew [--server URL]"
+	setupSynopsis  = "garret admin setup [flags]"
+)
+
 const usage = `usage: garret <command> [flags]
 
 commands:
@@ -40,6 +48,8 @@ commands:
   enroll <link>  join a server with an invitation link
   renew          renew this device's certificates
   version        print the version and Git commit
+
+Run garret <command> --help for the flags of a command.
 `
 
 func main() {
@@ -121,7 +131,11 @@ func serve(args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintf(stderr, "garret: %v\n", err)
 		return exitError
 	}
-	cfg, err := config.ParseServe(args, env)
+	fs, finish := config.ServeFlags(env)
+	if code, done := parseFlags(fs, serveSynopsis, args, stdout, stderr); done {
+		return code
+	}
+	cfg, err := finish()
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "garret serve: %v\n", err)
 		return exitUsage
