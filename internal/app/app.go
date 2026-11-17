@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/netip"
 	"runtime"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -41,6 +42,9 @@ import (
 	"github.com/0xmhha/garret/internal/store"
 	"github.com/0xmhha/garret/internal/webui"
 )
+
+// loopbackName is the host name every server certificate also carries.
+const loopbackName = "localhost"
 
 // Intervals of the background work (transport.md 2.5).
 const (
@@ -213,7 +217,7 @@ func (a *App) build(ctx context.Context, dir *datadir.Dir, runner *gitrepo.Runne
 		Attachments: attachment.NewService(a.db, rec, ids, sys.Clock, files, attachment.DefaultMaxSize),
 		Inbox:       a.inbox,
 		Admin:       admin.New(admin.Config{DB: a.db, Audit: rec, IDs: ids, Clock: sys.Clock, Runner: runner, Projects: projects, Files: files, Collab: a.collab}),
-		Hub:         a.hub, Collab: a.collab, Origin: a.mainURL, ClientCerts: cfg.ClientCerts, Active: active,
+		Hub:         a.hub, Collab: a.collab, Origin: a.mainURL, Aliases: aliasOrigins(scheme, port, cfg, addrs), ClientCerts: cfg.ClientCerts, Active: active,
 		EnrollURL: enrollURL, CAFingerprint: pki.Fingerprint(a.ca.Cert), OnInvitationsChanged: a.gate.Changed, Log: sys.Log})
 	git := gitserver.New(gitserver.Config{Auth: a.auth, Projects: projects, Reviews: reviews, Runner: runner,
 		ClientCerts: cfg.ClientCerts, Active: active, Log: sys.Log, MaxPush: gitserver.DefaultMaxPush})
@@ -395,6 +399,25 @@ func caAddresses(addrs []netip.Addr, cfg config.Serve) []netip.Addr {
 	}
 	if cfg.Listen.IsValid() && !cfg.Listen.Addr().IsLoopback() && !cfg.Listen.Addr().IsUnspecified() {
 		out = append(out, cfg.Listen.Addr())
+	}
+	return out
+}
+
+// aliasOrigins returns the origins, other than the main URL, under which
+// the main listener serves the same API: localhost, loopback and every
+// address in the server certificate, with the main scheme and port, in that
+// order and without repeats (decisions.md D17).
+func aliasOrigins(scheme string, port int, cfg config.Serve, addrs []netip.Addr) []string {
+	hosts := []string{loopbackName, netip.AddrFrom4([4]byte{127, 0, 0, 1}).String(), netip.IPv6Loopback().String()}
+	for _, a := range caAddresses(addrs, cfg) {
+		hosts = append(hosts, a.String())
+	}
+	var out []string
+	for _, h := range hosts {
+		o := scheme + "://" + net.JoinHostPort(h, strconv.Itoa(port))
+		if h != cfg.Host && !slices.Contains(out, o) {
+			out = append(out, o)
+		}
 	}
 	return out
 }

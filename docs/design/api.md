@@ -9,7 +9,8 @@ stated otherwise.
 - Base path: `/api/v1`.
 - Browser requests authenticate with the session cookie. State-changing
   requests must also carry the `X-CSRF-Token` header returned at login, and
-  their `Origin` header must match the server origin.
+  their `Origin` header must name the server: its host name or another
+  address it listens on (decision D17).
 - Errors use one shape:
 
   ```json

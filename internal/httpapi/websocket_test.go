@@ -103,6 +103,15 @@ func TestWebSocketRejectsForeignOrigin(t *testing.T) {
 	}
 }
 
+func TestWebSocketAcceptsServerAlias(t *testing.T) {
+	e := newWSEnv(t)
+	conn, _, err := e.dial(t, basePath+"/ws", aliasOrigin) //nolint:bodyclose // the dial response belongs to the upgraded connection
+	if err != nil {
+		t.Fatalf("alias origin: %v", err)
+	}
+	_ = conn.CloseNow()
+}
+
 func TestCollabWebSocket(t *testing.T) {
 	e := newWSEnv(t)
 	path := basePath + "/projects/libfoo/collab/" + e.docID

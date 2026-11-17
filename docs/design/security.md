@@ -188,8 +188,9 @@ UI.
   the Markdown renderer creates after sanitizing.
 - `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
   `X-Frame-Options: DENY` on every response.
-- State-changing requests require the CSRF token header and a matching
-  `Origin`.
+- State-changing requests require the CSRF token header and an `Origin`
+  that names the server: its host name or another address it listens on
+  (decision D17).
 - Attachments are served as downloads with a fixed safe media type for
   anything not on a short list of image types. Original file names are kept
   only as metadata, never as paths.
