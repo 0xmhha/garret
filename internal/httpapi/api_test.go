@@ -40,6 +40,9 @@ func (s *shifted) advance(d time.Duration) { s.off.Add(int64(d)) }
 
 const origin = "https://review.local:8443"
 
+// aliasOrigin is the same test server by its local-network address.
+const aliasOrigin = "https://192.168.1.10:8443"
+
 const password = "correct horse battery staple"
 
 type env struct {
@@ -78,7 +81,7 @@ func newEnv(t *testing.T, clientCerts bool) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
-	api := New(Config{Auth: svc, Origin: origin, ClientCerts: clientCerts, Active: active, Log: slog.New(slog.DiscardHandler)})
+	api := New(Config{Auth: svc, Origin: origin, Aliases: []string{aliasOrigin}, ClientCerts: clientCerts, Active: active, Log: slog.New(slog.DiscardHandler)})
 	return &env{api: api, storeDB: db, auth: svc, active: active, admin: admin, ca: &pki.CA{Cert: caCert, Key: key}, clock: clk}
 }
 
@@ -218,6 +221,35 @@ func TestStateChangesNeedOriginAndCSRF(t *testing.T) {
 	}
 	if w := c.do(t, http.MethodPost, basePath+"/auth/login", map[string]string{"username": "root", "password": password}, map[string]string{"Origin": ""}); w.Code != http.StatusForbidden {
 		t.Fatalf("login without origin %d", w.Code)
+	}
+}
+
+func TestStateChangesAcceptServerAliases(t *testing.T) {
+	e := newEnv(t, false)
+	c := &client{e: e}
+	login := map[string]string{"username": "root", "password": password}
+	w := c.do(t, http.MethodPost, basePath+"/auth/login", login, map[string]string{"Origin": aliasOrigin})
+	if w.Code != http.StatusOK {
+		t.Fatalf("login by alias origin %d %s", w.Code, w.Body)
+	}
+	c.login(t)
+	tests := []struct {
+		name   string
+		origin string
+		want   int
+	}{
+		{"alias", aliasOrigin, http.StatusCreated},
+		{"alias on another port", "https://192.168.1.10:9443", http.StatusForbidden},
+		{"alias over http", "http://192.168.1.10:8443", http.StatusForbidden},
+		{"unknown address", "https://192.168.1.11:8443", http.StatusForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := c.do(t, http.MethodPost, basePath+"/me/tokens", map[string]string{"name": tt.name}, map[string]string{"Origin": tt.origin})
+			if w.Code != tt.want {
+				t.Fatalf("origin %s: %d, want %d", tt.origin, w.Code, tt.want)
+			}
+		})
 	}
 }
 

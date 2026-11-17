@@ -151,8 +151,11 @@ uses `net.ListenConfig`.
 The main handler routes `/api/` to the JSON API, `/git/` to the Git
 endpoint and every other path to the web interface (a placeholder page
 until stage 6). The main URL is `https://<host>:<port>` (`http://` with
-`--insecure-http`), and is the API's origin and the `server_url` given at
-enrollment. With `--tls-cert` the main listener presents that certificate;
+`--insecure-http`), and is the API's origin, the base of clone URLs and the
+`server_url` given at enrollment. The API also accepts, as the same
+server, the same scheme and port with `localhost`, `127.0.0.1`, `[::1]` and
+each address in the server certificate (the local-network listen addresses
+and a non-loopback `--listen` address), decision D17. With `--tls-cert` the main listener presents that certificate;
 the enrollment listener always presents the certificate from garret's CA,
 because the invitation link pins that CA.
 
@@ -173,7 +176,9 @@ its checkpoints, wait for every goroutine, and close the database last.
   **(review)**.
 - State-changing methods (`POST`, `PATCH`, `DELETE`) require the
   `X-CSRF-Token` header checked with `CheckCSRF`, and an `Origin` header equal
-  to the server origin **(review)**. The CSRF token is never read from a
+  to one of the server's origins **(review)**: the host name, `localhost`,
+  loopback and each local-network listen address, on the main port
+  (decision D17). The CSRF token is never read from a
   cookie or the query string.
 - Pagination: `?cursor=&limit=` (at most 100), `next_cursor` in the response.
 - Times are RFC 3339 in UTC.
@@ -244,7 +249,7 @@ so the project always comes from the path **(review)**; api.md is updated.
 ## 5. WebSocket endpoints (`internal/httpapi`)
 
 Both endpoints authenticate before the upgrade, check `Origin` exactly
-against the server origin **(review)**, and run one reader and one writer
+against the server's origins of section 3.1 **(review)**, and run one reader and one writer
 goroutine per connection.
 
 - `/api/v1/ws` (events): subscribes to the hub; the writer sends each event
@@ -313,8 +318,8 @@ Connects to the main port with the current certificate and calls
 serial is the handshake's, never a request field **(review)**. The request
 carries no session: the background job has no password, so the user is the
 certificate's owner (`CertificateUser`). Because a browser presents the
-certificate on its own, the endpoint also requires `Origin` equal to the
-server's URL and `Content-Type: application/json`; a cross-site page can
+certificate on its own, the endpoint also requires `Origin` equal to one of
+the server's origins and `Content-Type: application/json`; a cross-site page can
 send neither without a CORS preflight, which garret never grants. Installs
 the new certificate. Run by the background job when less than half of the
 validity remains (`pki.RenewalDue`), checked every 6 hours (Q4).

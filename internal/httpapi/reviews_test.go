@@ -63,7 +63,7 @@ func fullEnv(t *testing.T) (*env, string) {
 		Reviews:     review.NewService(store, rec, ids, wall{}, runner, projects, nopEvents{}, notifier),
 		Comments:    comment.New(store, rec, ids, wall{}, runner, projects, nopEvents{}, notifier),
 		Discussions: discussion.New(store, rec, ids, wall{}, nopEvents{}),
-		Origin:      origin, Active: e.active, Log: slog.New(slog.DiscardHandler),
+		Origin:      origin, Aliases: []string{aliasOrigin}, Active: e.active, Log: slog.New(slog.DiscardHandler),
 	})
 	if _, err := projects.Create(ctx, e.admin.User, "libfoo", "fix"); err != nil {
 		t.Fatal(err)

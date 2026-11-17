@@ -62,10 +62,10 @@ func (l *connLimits) acquire(user, doc string) (func(), bool) {
 }
 
 // websocketOK checks what a WebSocket upgrade needs beyond authentication:
-// the Origin must be the server's own, exactly, because browsers send
+// the Origin must be one of the server's own, exactly, because browsers send
 // cookies on cross-site WebSocket requests.
 func (a *API) websocketOK(r *http.Request) error {
-	if r.Header.Get("Origin") != a.cfg.Origin {
+	if !a.ownOrigin(r) {
 		return auth.ErrForbidden
 	}
 	return nil
