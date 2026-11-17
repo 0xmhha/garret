@@ -1,7 +1,7 @@
 # garret
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-early%20development-orange.svg)](#project-status)
+[![Status](https://img.shields.io/badge/status-pre--release-orange.svg)](#project-status)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 **A self-hosted, LAN-only code review server for small teams sharing the same access point.**
@@ -21,7 +21,7 @@ a private space inside the house.
 
 - [Why garret](#why-garret)
 - [How it works](#how-it-works)
-- [Planned features](#planned-features)
+- [Features](#features)
 - [Project status](#project-status)
 - [Getting started](#getting-started)
 - [Security model](#security-model)
@@ -78,32 +78,41 @@ short-lived, private room for work that is not ready to be seen.
 4. New pushes to the same branch become new revisions, so earlier comments and
    the history of the fix stay attached to the change.
 
-## Planned features
-
-garret is in early development. The items below describe the intended scope,
-not what works today.
+## Features
 
 - Git repository hosting over HTTPS, so members can `git push` and `git fetch`
-- Branch-based review, read commit by commit or as a whole
+- Projects that start from a Git repository on the server's machine, with a
+  "Sync from source" button to bring in new commits
+- Branch-based review, read as a whole, one commit at a time, a run of
+  commits, or the changes since an earlier revision
 - Revision tracking: each push becomes a new, comparable revision, kept even
   after force pushes
 - Inline comments with threads, carried over to new revisions
 - Review states and verdicts recorded with who decided and when
+- "Download patch" for the view on screen, to apply with `git am` on your
+  own clone
 - Discussion posts and review descriptions edited by several people at once
 - Live updates, an in-app inbox with mentions, and file attachments
-- Invitation-only accounts, device certificates (mutual TLS) and personal
-  access tokens for Git
-- Access restricted to the local subnet and to enrolled devices, with
-  automatically rotated 7-day certificates
-- Edit history for everything, and a purge command for when the work is public
+- Two ways to join: device certificates (mutual TLS) with invitations, or a
+  browser and a password with accounts the administrator creates
+- Personal access tokens for Git
+- Access restricted to the local subnet, with automatically rotated 7-day
+  certificates
+- Administration: disable and remove users (their records stay), erase a
+  single comment, attachment or collaborative text, export a project and
+  purge it when the work is public
+- Edit history for comments and collaborative documents
+- English and Korean, following the browser or chosen under Account
 - A web frontend and an embedded database in the same binary
 
 See [docs/design](docs/design/README.md) for the full design.
 
 ## Project status
 
-garret is under active design. There is no usable release yet, and APIs, data
-formats and configuration may change without notice. Follow the
+The first pre-release, `v0.1.0-rc.1`, is on the
+[Releases](https://github.com/0xmhha/garret/releases) page, and `main` has
+moved on since. APIs, data formats and configuration may still change before
+`v0.1.0`; schema changes come with migrations that run at startup. Follow the
 [Roadmap](#roadmap) and open issues to see what is being worked on.
 
 ## Getting started
@@ -123,8 +132,8 @@ tagged commit ([release.md](docs/specs/release.md)). The macOS binaries are
 not notarized: download with `curl`, or allow the first run under System
 Settings › Privacy & Security.
 
-To build from source instead: `make release` (needs Go and Node), which
-writes `bin/garret`. Then:
+To build from source instead: `make release` (needs Go 1.26.11 or newer and
+Node 24), which writes `bin/garret`. Then:
 
 ```sh
 # On the host machine. The first start asks how members will join
@@ -171,6 +180,10 @@ Members join in one of two ways, chosen when the server first starts:
 
 `garret serve --client-cert=on|off` overrides the choice for one run.
 
+To remove someone who left, disable them under Administration and then
+remove them. Their username becomes free again, while their reviews and
+comments keep their name.
+
 ```sh
 # Then use Git as usual, with a personal access token as the password
 git remote add review https://<host-ip>:8443/git/<project>.git
@@ -179,8 +192,30 @@ git push review fix/my-branch
 # And review at https://<host-ip>:8443
 ```
 
-Requirements (planned): macOS or Linux, Git on the host machine, and Go 1.26.11
-or newer to build from source.
+A project can also start from a repository already on the server's machine:
+under Administration, give its path when creating the project. Members then
+press "Sync from source" on the project page to bring in new commits.
+
+### Server options
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--data` | `~/Library/Application Support/garret` on macOS, `~/.local/share/garret` on Linux | Data directory, mode 700 |
+| `--host` | the machine's name plus `.local` | Host name in the certificate, the banner and clone URLs |
+| `--allow` | the private network of the machine's interfaces | Allowed network in CIDR form, repeatable |
+| `--listen`, `--enroll-listen` | every allowed address and loopback, ports 8443 and 8444 | Address of the main and the enrollment listener |
+| `--client-cert` | chosen at the first start | `on` or `off` |
+| `--tls-cert`, `--tls-key` | none | An externally issued server certificate |
+
+The certificate authority is created at the first start and can vouch only
+for the host name and the allowed networks of that start. If either changes,
+for example when the machine moves to another network, `garret serve`
+refuses to start. To issue a new authority, stop the server and move the
+files in `tls/` under the data directory somewhere else; projects, reviews
+and accounts stay in the database. Members then trust the new `ca.crt`, and
+with client certificates on, enroll again.
+
+Requirements: macOS or Linux, and Git on the host machine.
 
 ## Security model
 
@@ -201,13 +236,14 @@ The full threat model, authentication and encryption design are described in
 ## Roadmap
 
 - [x] Architecture and data model ([docs/design](docs/design/README.md))
-- [ ] Git over HTTP (push and fetch)
-- [ ] Subnet-based access control
-- [ ] Review creation from a pushed branch
-- [ ] Diff view and inline comments
-- [ ] Revisions and review history
-- [ ] Web frontend
-- [ ] First release
+- [x] Git over HTTP (push and fetch)
+- [x] Subnet-based access control
+- [x] Review creation from a pushed branch
+- [x] Diff view and inline comments
+- [x] Revisions and review history
+- [x] Web frontend
+- [x] First pre-release (`v0.1.0-rc.1`)
+- [ ] First release (`v0.1.0`)
 
 ## Contributing
 
