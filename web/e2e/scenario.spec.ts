@@ -12,6 +12,7 @@ const lenComment = "Is SIZE_MAX / size safe when size is 0?";
 const testComment = "Add a case where the product overflows.";
 const bobText = "Bob: bounds the count before the multiplication.";
 const carolText = "Carol: checked on both platforms.";
+const outline = "Fix the length overflow.";
 
 let s: State;
 let branch: string;
@@ -58,7 +59,13 @@ test("step 4: carol comments on single commits; bob and carol write the descript
   await Promise.all([bob.goto(reviewURL()), carol.goto(reviewURL())]);
   const editors = [bob, carol].map((p) => p.locator(".cm-content"));
   for (const p of [bob, carol]) await expect(p.getByText("Live")).toBeVisible();
-  await Promise.all([type(bob, bobText), type(carol, carolText)]);
+  // Bob starts the text, and once carol sees it they type at the same
+  // time at opposite ends. Typing concurrently at one spot would let the
+  // two edits interleave character by character, which is correct merging
+  // but not a fixed result to check.
+  await type(bob, outline, "end");
+  await expect(editors[1]!).toContainText(outline);
+  await Promise.all([type(bob, bobText, "start"), type(carol, carolText, "end")]);
   // Both screens converge on the same text, holding both edits. On a
   // timeout the message shows both texts, to tell a lost edit from a slow one.
   let last: string[] = [];
@@ -67,7 +74,7 @@ test("step 4: carol comments on single commits; bob and carol write the descript
       async () => {
         last = (await Promise.all(editors.map((e) => e.innerText()))).map(clean);
         const [a = "", b = ""] = last;
-        return a === b && a.includes(bobText) && a.includes(carolText);
+        return a === b && a.includes(bobText) && a.includes(carolText) && a.includes(outline);
       },
       { timeout: 20_000, message: "descriptions did not converge" },
     )
@@ -165,10 +172,11 @@ function threadLine(page: Page, body: string) {
     .nth(1);
 }
 
-async function type(page: Page, text: string) {
+// type adds text at the start or the end of the page's editor.
+async function type(page: Page, text: string, at: "start" | "end") {
   await page.locator(".cm-content").click();
-  await page.keyboard.press("ControlOrMeta+End");
-  await page.keyboard.type(` ${text}`, { delay: 15 });
+  await page.keyboard.press(at === "start" ? "ControlOrMeta+Home" : "ControlOrMeta+End");
+  await page.keyboard.type(at === "start" ? `${text} ` : ` ${text}`, { delay: 15 });
 }
 
 // The editor marks widget boundaries with U+2060, which is not text.
