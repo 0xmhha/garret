@@ -58,9 +58,20 @@ type Serve struct {
 
 // ParseServe parses the flags of garret serve and validates them.
 func ParseServe(args []string, env Environment) (Serve, error) {
+	fs, finish := ServeFlags(env)
+	fs.SetOutput(io.Discard)
+	if err := fs.Parse(args); err != nil {
+		return Serve{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	return finish()
+}
+
+// ServeFlags returns the flags of garret serve, with defaults from env, and
+// the function that validates them once the caller has parsed fs. Callers
+// that only parse use ParseServe; the command uses this to print its help.
+func ServeFlags(env Environment) (*flag.FlagSet, func() (Serve, error)) {
 	c := Serve{Port: DefaultPort, EnrollPort: DefaultEnrollPort}
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
 	fs.StringVar(&c.DataDir, "data", DefaultDataDir(env), "data directory")
 	fs.StringVar(&c.Host, "host", DefaultHost(env.Hostname), "host name in the server certificate")
 	var listen, enrollListen, clientCerts string
@@ -71,21 +82,30 @@ func ParseServe(args []string, env Environment) (Serve, error) {
 	})
 	fs.StringVar(&listen, "listen", "", "address:port of the main listener")
 	fs.StringVar(&enrollListen, "enroll-listen", "", "address:port of the enrollment listener")
-	fs.StringVar(&clientCerts, "client-cert", clientCertsOn, "require client certificates: on or off")
+	// No default value: without the flag, serve uses the mode kept from the
+	// first start (decisions.md D14), and help must not claim "on".
+	fs.StringVar(&clientCerts, "client-cert", "", "require client certificates: on or off (default: the mode chosen at the first start)")
 	fs.StringVar(&c.TLSCert, "tls-cert", "", "externally issued server certificate (PEM)")
 	fs.StringVar(&c.TLSKey, "tls-key", "", "key of --tls-cert (PEM)")
 	fs.BoolVar(&c.InsecureHTTP, "insecure-http", false, "serve plain HTTP (implies --client-cert=off)")
-	if err := fs.Parse(args); err != nil {
-		return Serve{}, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
+	return fs, func() (Serve, error) { return c.validate(fs, listen, enrollListen, clientCerts, allows) }
+}
+
+// validate checks the parsed flags and fills the fields derived from them.
+func (c Serve) validate(fs *flag.FlagSet, listen, enrollListen, clientCerts string, allows []string) (Serve, error) {
 	if fs.NArg() > 0 {
 		return Serve{}, fmt.Errorf("%w: unexpected argument %q", ErrInvalid, fs.Arg(0))
 	}
+	clientCertsGiven := false
 	fs.Visit(func(f *flag.Flag) {
 		if f.Name == "client-cert" || f.Name == "insecure-http" {
 			c.ClientCertsSet = true
 		}
+		clientCertsGiven = clientCertsGiven || f.Name == "client-cert"
 	})
+	if clientCertsGiven && clientCerts == "" {
+		return Serve{}, fmt.Errorf("%w: --client-cert must be on or off", ErrInvalid)
+	}
 	for _, a := range allows {
 		p, err := netip.ParsePrefix(a)
 		if err != nil || !netguard.IsPrivate(p.Masked()) {
@@ -104,7 +124,7 @@ func ParseServe(args []string, env Environment) (Serve, error) {
 		return Serve{}, fmt.Errorf("%w: --listen and --enroll-listen must differ", ErrInvalid)
 	}
 	switch clientCerts {
-	case clientCertsOn:
+	case "", clientCertsOn:
 		c.ClientCerts = true
 	case clientCertsOff:
 	default:

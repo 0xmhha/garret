@@ -198,6 +198,8 @@ press "Sync from source" on the project page to bring in new commits.
 
 ### Server options
 
+`garret serve --help` lists every flag; the main ones are:
+
 | Flag | Default | Meaning |
 |---|---|---|
 | `--data` | `~/Library/Application Support/garret` on macOS, `~/.local/share/garret` on Linux | Data directory, mode 700 |

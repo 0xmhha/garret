@@ -28,11 +28,14 @@ var errAdminExists = errors.New("an administrator already exists; ask them for a
 func adminSetup(args []string, d deps) int {
 	env := config.Environment{OS: d.platform.GOOS, Home: d.platform.Home, XDGDataHome: os.Getenv("XDG_DATA_HOME"), Hostname: d.hostname}
 	fset := flag.NewFlagSet("admin setup", flag.ContinueOnError)
-	fset.SetOutput(d.stderr)
 	data := fset.String("data", config.DefaultDataDir(env), "data directory of the server")
 	host := fset.String("host", config.DefaultHost(d.hostname), "host name the server uses")
 	port := fset.Uint("port", config.DefaultPort, "main port of the server")
-	if err := fset.Parse(args); err != nil || fset.NArg() > 0 || *port == 0 || *port > 65535 {
+	if code, done := parseFlags(fset, setupSynopsis, args, d.stdout, d.stderr); done {
+		return code
+	}
+	if fset.NArg() > 0 || *port == 0 || *port > 65535 {
+		_, _ = fmt.Fprintln(d.stderr, "usage: "+setupSynopsis)
 		return exitUsage
 	}
 	if _, err := os.Stat(*data); errors.Is(err, fs.ErrNotExist) {

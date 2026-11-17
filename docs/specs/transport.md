@@ -8,7 +8,7 @@ starts the server and sets up client devices.
 
 | Package | Owns |
 |---|---|
-| `cmd/garret` | Commands: `serve`, `admin setup`, `enroll`, `renew`, `version` |
+| `cmd/garret` | Commands: `serve`, `admin setup`, `enroll`, `renew`, `version`. Each command with flags takes `-h` or `--help`: it prints its usage line and flags to standard output and exits 0. A bad flag prints the error and the same text to standard error and exits 2 |
 | `internal/config` | Flags, defaults and their validation |
 | `internal/server` | Listeners, TLS, request identity, graceful shutdown |
 | `internal/httpapi` | JSON API of [api.md](../design/api.md), errors, CSRF, pagination, and the WebSocket endpoints (they share the request authentication, so they live in the same package rather than a separate `internal/ws`) |
