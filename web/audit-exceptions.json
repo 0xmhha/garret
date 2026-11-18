@@ -1,0 +1,9 @@
+[
+  {
+    "id": "GHSA-fc5q-39xc-vjpf",
+    "package": "picomatch",
+    "reason": "ReDoS from crafted glob patterns; no fixed version exists, and picomatch runs only inside vite and vitest on the repository's own patterns",
+    "added": "2026-11-18",
+    "expires": "2026-12-18"
+  }
+]
