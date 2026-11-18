@@ -375,7 +375,10 @@ interface it is on and the `--allow` flag that would choose it.
 - **Safety**: garret only reuses a boundary that was already set, which is
   what D3 asks for; it never picks a network it has not used before. The
   authority would refuse any other network anyway (the CA cannot vouch
-  for it), so nothing new needs to be stored.
+  for it), so nothing new needs to be stored. The remaining risk is the
+  one D3 already has with a single network: another place that uses the
+  same private range, such as a second `192.168.1.0/24`, is taken for the
+  team's. The banner names the allowed network at every start.
 - **Rejected**: the interface of the default route (a VPN can take it over,
   and its network would then be opened); skipping interfaces by name (the
   names differ between systems and tools, and Internet Sharing uses the same
