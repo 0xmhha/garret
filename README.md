@@ -205,9 +205,13 @@ terminal closes and prints the addresses it listens on:
 scripts/garret.sh start [garret serve flags]   # also: stop, restart, status, log
 ```
 
-It runs `bin/garret`, writes the log to `~/garret.log`, and takes its
-flags from `GARRET_SERVE_FLAGS` when none are given. `stop` waits for the
-server to finish its requests and says when it has stopped.
+It runs `bin/garret`, writes the log to `~/garret.log`, and also prints
+how members join. The flags of a start are kept, so after
+`scripts/garret.sh start --client-cert=off` a plain `start` or `restart`
+uses `--client-cert=off` again; `start --` starts without them. If the
+server is already running with other flags, `start` says so and does not
+change it. `stop` waits for the server to finish its requests and says
+when it has stopped.
 
 ### Server options
 
