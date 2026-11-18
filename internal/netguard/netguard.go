@@ -56,24 +56,51 @@ func IsPrivate(p netip.Prefix) bool {
 	return false
 }
 
-// ResolveAllowed returns the networks garret accepts connections from, sorted.
-// A non-empty explicit list is used as given, masked and without duplicates.
-// Otherwise the single private IPv4 network of the up, non-loopback
-// interfaces is used. It returns ErrNoPrivateNetwork or ErrAmbiguousNetwork
-// when there is not exactly one, and ErrPublicNetwork when a resulting
-// prefix is not private. The inputs are not modified.
-func ResolveAllowed(explicit []netip.Prefix, ifaces []Interface) ([]netip.Prefix, error) {
+// AmbiguousError is returned by ResolveAllowed when several private
+// networks are on the host and none of them is known. It matches
+// ErrAmbiguousNetwork with errors.Is.
+type AmbiguousError struct {
+	// Candidates are sorted by interface name, then prefix.
+	Candidates []Candidate
+}
+
+// Candidate is a private IPv4 network found on an interface.
+type Candidate struct {
+	Interface string
+	Prefix    netip.Prefix
+}
+
+func (e *AmbiguousError) Error() string {
+	names := make([]string, len(e.Candidates))
+	for i, c := range e.Candidates {
+		names[i] = c.Interface + " " + c.Prefix.String()
+	}
+	return ErrAmbiguousNetwork.Error() + ": " + strings.Join(names, ", ")
+}
+
+// Is reports whether target is ErrAmbiguousNetwork.
+func (e *AmbiguousError) Is(target error) bool { return target == ErrAmbiguousNetwork }
+
+// ResolveAllowed returns the allowed networks, sorted and without
+// duplicates. A non-empty explicit list is used as given, masked.
+// Otherwise the private IPv4 network of the up, non-loopback interfaces is
+// used; when there are several, those inside a prefix of known (the
+// networks of the stored CA, decisions.md D19) are used. It returns
+// ErrNoPrivateNetwork when there is none, an *AmbiguousError when there
+// are several and known settles nothing, and ErrPublicNetwork when a
+// resulting prefix is not private. The inputs are not modified.
+func ResolveAllowed(explicit, known []netip.Prefix, ifaces []Interface) ([]netip.Prefix, error) {
 	var allowed []netip.Prefix
 	if len(explicit) > 0 {
 		for _, p := range explicit {
 			allowed = append(allowed, p.Masked())
 		}
 	} else {
-		found, err := detect(ifaces)
+		found, err := detect(ifaces, known)
 		if err != nil {
 			return nil, err
 		}
-		allowed = []netip.Prefix{found}
+		allowed = found
 	}
 	for _, p := range allowed {
 		if !IsPrivate(p) {
@@ -84,38 +111,45 @@ func ResolveAllowed(explicit []netip.Prefix, ifaces []Interface) ([]netip.Prefix
 	return slices.Compact(allowed), nil
 }
 
-// candidate is a private IPv4 network found on an interface.
-type candidate struct {
-	iface  string
-	prefix netip.Prefix
-}
-
-func detect(ifaces []Interface) (netip.Prefix, error) {
-	var found []candidate
+func detect(ifaces []Interface, known []netip.Prefix) ([]netip.Prefix, error) {
+	var found []Candidate
 	for _, ifc := range ifaces {
 		if !ifc.Up || ifc.Loopback {
 			continue
 		}
 		for _, p := range ifc.Prefixes {
 			if p.Addr().Is4() && IsPrivate(p) {
-				found = append(found, candidate{ifc.Name, p.Masked()})
+				found = append(found, Candidate{ifc.Name, p.Masked()})
 			}
 		}
 	}
 	switch len(found) {
 	case 0:
-		return netip.Prefix{}, ErrNoPrivateNetwork
+		return nil, ErrNoPrivateNetwork
 	case 1:
-		return found[0].prefix, nil
+		return []netip.Prefix{found[0].Prefix}, nil
 	}
-	slices.SortFunc(found, func(a, b candidate) int {
-		return cmp.Or(strings.Compare(a.iface, b.iface), comparePrefix(a.prefix, b.prefix))
+	var chosen []netip.Prefix
+	for _, c := range found {
+		if inside(c.Prefix, known) {
+			chosen = append(chosen, c.Prefix)
+		}
+	}
+	if len(chosen) > 0 {
+		return chosen, nil
+	}
+	slices.SortFunc(found, func(a, b Candidate) int {
+		return cmp.Or(strings.Compare(a.Interface, b.Interface), comparePrefix(a.Prefix, b.Prefix))
 	})
-	names := make([]string, len(found))
-	for i, c := range found {
-		names[i] = c.iface + " " + c.prefix.String()
-	}
-	return netip.Prefix{}, fmt.Errorf("%w: %s", ErrAmbiguousNetwork, strings.Join(names, ", "))
+	return nil, &AmbiguousError{Candidates: found}
+}
+
+// inside reports whether p lies entirely within one prefix of set of the
+// same address family.
+func inside(p netip.Prefix, set []netip.Prefix) bool {
+	return slices.ContainsFunc(set, func(r netip.Prefix) bool {
+		return r.Addr().BitLen() == p.Addr().BitLen() && p.Bits() >= r.Bits() && r.Contains(p.Addr())
+	})
 }
 
 // Allowed reports whether a connection from peer may proceed: peer is a

@@ -32,7 +32,8 @@ pushes authenticate with a personal access token.
 By default garret derives the allowed network from the host's interface
 address (for example `192.168.0.12/24` allows `192.168.0.0/24`). An explicit
 `--allow <CIDR>` takes precedence. If more than one candidate interface
-exists, garret refuses to start and asks for `--allow`. Only the TCP peer
+exists, garret refuses to start and asks for `--allow`, unless one of them
+is the network chosen at the first start (D19). Only the TCP peer
 address is trusted; forwarding headers are ignored. Public address ranges are
 refused at startup.
 
@@ -355,3 +356,28 @@ showing their display name.
   the request is about); also replacing the display name in past records
   (the record would no longer say who wrote what; content that must go is
   erased item by item instead, D8).
+
+## D19. The network chosen at the first start settles later ambiguity
+
+When `--allow` is not given and several private networks are on the
+machine, garret uses those that lie inside the networks of its certificate
+authority. The authority was made at the first start for the allowed
+network of that start, either detected or given with `--allow`, and is
+never changed afterwards. When none of the candidates is inside it, or
+there is no authority yet, garret still refuses to start (D3). It then
+prints, on the terminal and not only in the log, each candidate with the
+interface it is on and the `--allow` flag that would choose it.
+
+- **Why**: virtual machines, containers and Internet Sharing add private
+  networks of their own (on macOS a `bridge` interface) at any time. With
+  D3 alone, a server that started yesterday without flags would refuse to
+  start today, though nothing about the team's network had changed.
+- **Safety**: garret only reuses a boundary that was already set, which is
+  what D3 asks for; it never picks a network it has not used before. The
+  authority would refuse any other network anyway (the CA cannot vouch
+  for it), so nothing new needs to be stored.
+- **Rejected**: the interface of the default route (a VPN can take it over,
+  and its network would then be opened); skipping interfaces by name (the
+  names differ between systems and tools, and Internet Sharing uses the same
+  kind of interface as the team's own bridge); keeping D3 as it was (the
+  flag would be needed whenever a virtual machine runs).

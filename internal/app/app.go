@@ -118,15 +118,15 @@ func (a *App) open(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("app: list interfaces: %w", err)
 	}
-	if a.allowed, err = netguard.ResolveAllowed(cfg.Allow, ifaces); err != nil {
+	dir, err := datadir.Open(cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	if a.allowed, err = netguard.ResolveAllowed(cfg.Allow, storedNetworks(dir), ifaces); err != nil {
 		return err
 	}
 	addrs, err := ListenAddrs(a.allowed, ifaces)
 	if err != nil && (!cfg.Listen.IsValid() || !cfg.EnrollListen.IsValid()) {
-		return err
-	}
-	dir, err := datadir.Open(cfg.DataDir)
-	if err != nil {
 		return err
 	}
 	if a.db, err = store.Open(ctx, dir.DBPath()); err != nil {
@@ -420,6 +420,16 @@ func aliasOrigins(scheme string, port int, cfg config.Serve, addrs []netip.Addr)
 		}
 	}
 	return out
+}
+
+// storedNetworks returns the networks of the CA in dir, or nil when there
+// is no usable CA yet; LoadOrCreateCA reports a damaged one later.
+func storedNetworks(dir *datadir.Dir) []netip.Prefix {
+	ca, err := pki.LoadCA(dir)
+	if err != nil {
+		return nil
+	}
+	return ca.Networks()
 }
 
 // listenAt is the override when given, else every address on port.
