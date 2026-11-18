@@ -196,6 +196,19 @@ A project can also start from a repository already on the server's machine:
 under Administration, give its path when creating the project. Members then
 press "Sync from source" on the project page to bring in new commits.
 
+### Running in the background
+
+From a clone, `scripts/garret.sh` keeps the server running after the
+terminal closes and prints the addresses it listens on:
+
+```sh
+scripts/garret.sh start [garret serve flags]   # also: stop, restart, status, log
+```
+
+It runs `bin/garret`, writes the log to `~/garret.log`, and takes its
+flags from `GARRET_SERVE_FLAGS` when none are given. `stop` waits for the
+server to finish its requests and says when it has stopped.
+
 ### Server options
 
 `garret serve --help` lists every flag; the main ones are:
