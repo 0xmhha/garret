@@ -81,7 +81,7 @@ func TestResolveAllowed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ResolveAllowed(tt.explicit, tt.ifaces)
+			got, err := ResolveAllowed(tt.explicit, nil, tt.ifaces)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tt.wantErr)
 			}
@@ -96,7 +96,7 @@ func TestResolveAllowedAmbiguousListsCandidatesInOrder(t *testing.T) {
 	a := Interface{Name: "en1", Up: true, Prefixes: pfxs("10.1.2.3/16")}
 	b := Interface{Name: "en0", Up: true, Prefixes: pfxs("192.168.1.23/24")}
 	for _, order := range [][]Interface{{a, b}, {b, a}} {
-		_, err := ResolveAllowed(nil, order)
+		_, err := ResolveAllowed(nil, nil, order)
 		want := "en0 192.168.1.0/24, en1 10.1.0.0/16"
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Fatalf("err = %v, want it to contain %q", err, want)
@@ -104,10 +104,55 @@ func TestResolveAllowedAmbiguousListsCandidatesInOrder(t *testing.T) {
 	}
 }
 
+func TestResolveAllowedWithKnownNetworks(t *testing.T) {
+	en1 := Interface{Name: "en1", Up: true, Prefixes: pfxs("10.20.30.40/16")}
+	bridge := Interface{Name: "bridge100", Up: true, Prefixes: pfxs("192.168.64.1/24")}
+	tests := []struct {
+		name     string
+		explicit []netip.Prefix
+		known    []netip.Prefix
+		ifaces   []Interface
+		want     []netip.Prefix
+		wantErr  error
+	}{
+		{name: "known picks one", known: pfxs("10.20.0.0/16", "127.0.0.0/8", "::1/128"), ifaces: []Interface{bridge, en1}, want: pfxs("10.20.0.0/16")},
+		{name: "wider known keeps both", known: pfxs("10.0.0.0/8", "192.168.0.0/16"), ifaces: []Interface{bridge, en1}, want: pfxs("10.20.0.0/16", "192.168.64.0/24")},
+		{name: "known holds neither", known: pfxs("172.16.0.0/12"), ifaces: []Interface{bridge, en1}, wantErr: ErrAmbiguousNetwork},
+		{name: "one candidate outside known", known: pfxs("172.16.0.0/12"), ifaces: []Interface{en1}, want: pfxs("10.20.0.0/16")},
+		{name: "explicit ignores known", explicit: pfxs("192.168.64.0/24"), known: pfxs("10.20.0.0/16"), ifaces: []Interface{bridge, en1}, want: pfxs("192.168.64.0/24")},
+		{name: "IPv6 known does not match IPv4", known: pfxs("::/0"), ifaces: []Interface{bridge, en1}, wantErr: ErrAmbiguousNetwork},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveAllowed(tt.explicit, tt.known, tt.ifaces)
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAmbiguousErrorCarriesCandidates(t *testing.T) {
+	en1 := Interface{Name: "en1", Up: true, Prefixes: pfxs("10.20.30.40/16")}
+	bridge := Interface{Name: "bridge100", Up: true, Prefixes: pfxs("192.168.64.1/24")}
+	_, err := ResolveAllowed(nil, nil, []Interface{en1, bridge})
+	var amb *AmbiguousError
+	if !errors.As(err, &amb) {
+		t.Fatalf("err = %v, want *AmbiguousError", err)
+	}
+	want := []Candidate{{Interface: "bridge100", Prefix: pfx("192.168.64.0/24")}, {Interface: "en1", Prefix: pfx("10.20.0.0/16")}}
+	if !slices.Equal(amb.Candidates, want) {
+		t.Fatalf("candidates %v, want %v", amb.Candidates, want)
+	}
+}
+
 func TestResolveAllowedDoesNotModifyInput(t *testing.T) {
 	explicit := pfxs("192.168.1.7/24", "10.0.0.0/8")
 	orig := slices.Clone(explicit)
-	if _, err := ResolveAllowed(explicit, nil); err != nil {
+	if _, err := ResolveAllowed(explicit, explicit, nil); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(explicit, orig) {

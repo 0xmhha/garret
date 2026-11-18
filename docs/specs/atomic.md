@@ -92,7 +92,7 @@ IPv4-mapped IPv6 prefix is unmapped first. An invalid prefix is false.
 | `::ffff:192.168.1.0/120` | true |
 | `127.0.0.0/8`, zero `Prefix{}` | false |
 
-### 4.2 `ResolveAllowed(explicit []netip.Prefix, candidates []Interface) ([]netip.Prefix, error)`
+### 4.2 `ResolveAllowed(explicit, known []netip.Prefix, candidates []Interface) ([]netip.Prefix, error)`
 
 `Interface` is `{Name string; Up, Loopback bool; Prefixes []netip.Prefix}`,
 filled by the stage 3 component that lists interfaces.
@@ -103,8 +103,12 @@ Logic, in order:
    removing duplicates.
 2. Otherwise keep interfaces that are up and not loopback, and their IPv4
    prefixes that are private. Exactly one such prefix: use it. None:
-   `ErrNoPrivateNetwork`. More than one: `ErrAmbiguousNetwork`, whose message
-   lists the candidates sorted by interface name then prefix.
+   `ErrNoPrivateNetwork`. More than one: use those that lie inside a prefix
+   of `known`, the networks of the stored CA (decision D19). When none does,
+   or `known` is empty, return an `*AmbiguousError`: it matches
+   `ErrAmbiguousNetwork` with `errors.Is`, its `Candidates` hold each
+   interface name and prefix sorted by interface name then prefix, and its
+   message lists them in that order.
 3. Every resulting prefix must pass `IsPrivate`, otherwise `ErrPublicNetwork`
    naming the prefix.
 
@@ -116,6 +120,11 @@ effects.
 | One interface `en0` with `192.168.1.23/24` | `[192.168.1.0/24]` |
 | `en0` private and `utun3` with a public address | `[192.168.1.0/24]` |
 | Two interfaces with private IPv4 prefixes | `ErrAmbiguousNetwork` listing both |
+| Two private interfaces, `known` holds one of them | That one |
+| Two private interfaces, `known` holds a wider prefix around both | Both |
+| Two private interfaces, `known` holds neither | `ErrAmbiguousNetwork` listing both |
+| One private interface outside `known` | That one (the CA check reports the mismatch) |
+| Explicit list and `known` | The explicit list; `known` is ignored |
 | Only loopback, or only interfaces that are down | `ErrNoPrivateNetwork` |
 | Only IPv6 private prefixes and no explicit list | `ErrNoPrivateNetwork` (IPv6 needs `--allow`) |
 | Explicit `192.168.1.7/24` | `[192.168.1.0/24]` |

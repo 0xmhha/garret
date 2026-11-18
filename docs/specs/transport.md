@@ -101,12 +101,18 @@ server; `cmd/garret` only parses flags and handles signals.
 
 Startup, in order; any failure stops the process before a listener opens:
 
-1. Resolve the allowed networks from `--allow` or the interfaces. The listen
+1. Open the data directory. Resolve the allowed networks from `--allow` or
+   the interfaces. When the interfaces give several candidates, the
+   networks of the CA stored there, if any, choose among them (decision
+   D19).
+   When they cannot, `garret serve` prints on standard error each candidate
+   with its interface and the `--allow` flag that chooses it, and exits
+   with status 1. The listen
    addresses are the addresses of up, non-loopback interfaces inside the
    allowed networks, sorted, plus `127.0.0.1`; `--listen` and
    `--enroll-listen` replace them. No address inside the allowed networks
    is an error.
-2. Open the data directory, the database (migrations run here) and the git
+2. Open the database (migrations run here) and the git
    runner (`HOME` is the data directory, `max(1, min(GOMAXPROCS-1, 4))`
    commands at once, components.md 4).
 3. Load or create the CA for the host, the allowed networks and the listen

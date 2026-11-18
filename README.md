@@ -204,10 +204,16 @@ press "Sync from source" on the project page to bring in new commits.
 |---|---|---|
 | `--data` | `~/Library/Application Support/garret` on macOS, `~/.local/share/garret` on Linux | Data directory, mode 700 |
 | `--host` | the machine's name plus `.local` | Host name in the certificate, the banner and clone URLs |
-| `--allow` | the private network of the machine's interfaces | Allowed network in CIDR form, repeatable |
+| `--allow` | the private network of the machine's interfaces; with several, the one of the first start | Allowed network in CIDR form, repeatable |
 | `--listen`, `--enroll-listen` | every allowed address and loopback, ports 8443 and 8444 | Address of the main and the enrollment listener |
 | `--client-cert` | chosen at the first start | `on` or `off` |
 | `--tls-cert`, `--tls-key` | none | An externally issued server certificate |
+
+Virtual machines, containers and Internet Sharing add private networks of
+their own. If the machine is on several when garret first starts, it
+refuses to guess and prints one `garret serve --allow <network>` command
+per network; run the one for the Wi-Fi or Ethernet connection the team is
+on. Later starts choose that network again by themselves.
 
 The certificate authority is created at the first start and can vouch only
 for the host name and the allowed networks of that start. If either changes,

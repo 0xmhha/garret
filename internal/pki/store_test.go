@@ -11,6 +11,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -287,5 +288,16 @@ func TestLoadCA(t *testing.T) {
 	}
 	if _, err := LoadCA(d); !errors.Is(err, ErrCAIncomplete) {
 		t.Fatalf("missing key: %v", err)
+	}
+}
+
+func TestCANetworks(t *testing.T) {
+	ca, err := LoadOrCreateCA(openDir(t), &fakeClock{now: now}, names, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := append(append([]netip.Prefix(nil), names.Networks...), loopbackRanges...)
+	if got := ca.Networks(); !slices.Equal(got, want) {
+		t.Fatalf("Networks() = %v, want %v", got, want)
 	}
 }

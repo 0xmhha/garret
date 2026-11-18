@@ -75,6 +75,22 @@ func LoadCA(dir *datadir.Dir) (*CA, error) {
 	return &CA{Cert: cert, Key: key}, nil
 }
 
+// Networks returns the IP ranges the CA may vouch for: the allowed
+// networks of the start that created it, then loopback (decisions.md D19).
+func (ca *CA) Networks() []netip.Prefix { return networks(ca.Cert) }
+
+func networks(cert *x509.Certificate) []netip.Prefix {
+	var out []netip.Prefix
+	for _, n := range cert.PermittedIPRanges {
+		addr, ok := netip.AddrFromSlice(n.IP)
+		ones, _ := n.Mask.Size()
+		if ok {
+			out = append(out, netip.PrefixFrom(addr.Unmap(), ones))
+		}
+	}
+	return out
+}
+
 // LoadOrCreateCA loads the CA from the data directory, or creates it when
 // neither file exists. It returns ErrCAIncomplete when only one file exists
 // and ErrCAMismatch when the stored CA cannot sign for names.
@@ -131,14 +147,7 @@ func covers(ca *x509.Certificate, names Names) bool {
 	if names.check() != nil || !slices.Contains(ca.PermittedDNSDomains, names.Host) {
 		return false
 	}
-	var permitted []netip.Prefix
-	for _, n := range ca.PermittedIPRanges {
-		addr, ok := netip.AddrFromSlice(n.IP)
-		ones, _ := n.Mask.Size()
-		if ok {
-			permitted = append(permitted, netip.PrefixFrom(addr.Unmap(), ones))
-		}
-	}
+	permitted := networks(ca)
 	for _, p := range names.Networks {
 		inside := slices.ContainsFunc(permitted, func(r netip.Prefix) bool {
 			return r.Addr().BitLen() == p.Addr().BitLen() && p.Bits() >= r.Bits() && r.Contains(p.Addr())

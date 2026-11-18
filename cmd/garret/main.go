@@ -167,6 +167,10 @@ func serve(args []string, stdout, stderr io.Writer) int {
 	probe := &diskcrypt.Probe{GOOS: runtime.GOOS, Root: os.DirFS("/"), FileVault: fileVaultStatus}
 	a, err := app.New(ctx, cfg, app.System{Clock: clock.System{}, Rand: rand.Reader, Interfaces: netguard.Interfaces,
 		GitPath: git, Log: log, Out: stdout, DiskProbe: probe})
+	if amb := (*netguard.AmbiguousError)(nil); errors.As(err, &amb) {
+		printNetworkChoice(stderr, amb)
+		return exitError
+	}
 	if err != nil {
 		log.Error("startup failed", "err", err)
 		return exitError
