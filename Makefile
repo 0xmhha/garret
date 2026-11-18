@@ -45,8 +45,10 @@ build-go:
 web:
 	cd $(WEB_DIR) && npm ci && npm test && npm run build
 
+# High and critical advisories fail, except those in audit-exceptions.json
+# (docs/specs/web.md).
 web-audit:
-	cd $(WEB_DIR) && npm audit --audit-level=high
+	cd $(WEB_DIR) && node --test scripts/audit.test.mjs && node scripts/audit.mjs
 
 # The browser suite builds its Go fixture with the embedded interface, so
 # the interface must already be built (docs/design/testing.md).

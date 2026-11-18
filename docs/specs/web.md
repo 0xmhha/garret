@@ -175,3 +175,12 @@ come from `GET /attachments/{id}/meta`, added for this screen.
   added. Install scripts are disabled (`ignore-scripts`): no dependency
   runs code at install time; Playwright browsers are installed by an
   explicit step.
+- `make web-audit` fails on any high or critical advisory (`npm audit`),
+  except one listed in `web/audit-exceptions.json` with its package, the
+  reason and an expiry date at most 30 days ahead. An exception is for an
+  advisory that has no fixed version yet, in a package used only to build
+  or test. It stops covering the advisory, and the audit fails again, when
+  the date has passed or when the package has a version newer than the
+  installed one that is at least 7 days old; the dependency is then
+  upgraded and the exception removed. The check is
+  `web/scripts/audit.mjs`, with Node only.
